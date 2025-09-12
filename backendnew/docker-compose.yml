@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  asset-scanner:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_PORT=8080
+      - SERVER_HOST=0.0.0.0
+      - STORAGE_DATA_DIR=/app/data
+      - SCANNER_SCRIPTS_DIR=/app/scripts
+      - RECONTOOL_BINARY_PATH=/app/recontool/regtech
+    volumes:
+      - ./data:/app/data
+      - ./scripts:/app/scripts
+      - ../recontool:/app/recontool:ro  # Mount recontool as read-only
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add a reverse proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro  # SSL certificates
+    depends_on:
+      - asset-scanner
+    restart: unless-stopped
+    profiles:
+      - with-proxy
+
+volumes:
+  scanner_data:
+    driver: local

@@ -1,0 +1,465 @@
+basePath: /
+definitions:
+  v1.AssetCatalogueResponse:
+    properties:
+      assets:
+        items:
+          $ref: '#/definitions/v1.AssetSummary'
+        type: array
+      total:
+        type: integer
+    required:
+    - assets
+    - total
+    type: object
+  v1.AssetDetails:
+    properties:
+      discovered_at:
+        type: string
+      id:
+        type: string
+      last_scanned_at:
+        type: string
+      properties:
+        additionalProperties: true
+        type: object
+      scan_count:
+        type: integer
+      scan_results:
+        items:
+          $ref: '#/definitions/v1.ScanResult'
+        type: array
+      status:
+        type: string
+      type:
+        type: string
+      value:
+        type: string
+    required:
+    - discovered_at
+    - id
+    - scan_count
+    - status
+    - type
+    - value
+    type: object
+  v1.AssetDetailsResponse:
+    properties:
+      asset:
+        $ref: '#/definitions/v1.AssetDetails'
+    required:
+    - asset
+    type: object
+  v1.AssetSummary:
+    properties:
+      discovered_at:
+        type: string
+      id:
+        type: string
+      last_scanned_at:
+        type: string
+      scan_count:
+        type: integer
+      status:
+        example: discovered,scanning,scanned,error
+        type: string
+      type:
+        example: domain,subdomain,ip,service
+        type: string
+      value:
+        type: string
+    required:
+    - discovered_at
+    - id
+    - scan_count
+    - status
+    - type
+    - value
+    type: object
+  v1.DiscoverAssetsRequest:
+    properties:
+      hosts:
+        example:
+        - example.com
+        - 192.168.1.1
+        items:
+          type: string
+        type: array
+    required:
+    - hosts
+    type: object
+  v1.DiscoverAssetsResponse:
+    properties:
+      host_count:
+        type: integer
+      job_id:
+        type: string
+      message:
+        type: string
+      started_at:
+        type: string
+    required:
+    - host_count
+    - job_id
+    - message
+    - started_at
+    type: object
+  v1.ErrorResponse:
+    properties:
+      code:
+        type: integer
+      details:
+        additionalProperties:
+          type: string
+        type: object
+      error:
+        type: string
+    required:
+    - code
+    - error
+    type: object
+  v1.HealthResponse:
+    properties:
+      services:
+        additionalProperties:
+          type: string
+        type: object
+      status:
+        example: healthy,unhealthy
+        type: string
+      timestamp:
+        type: string
+      version:
+        type: string
+    required:
+    - services
+    - status
+    - timestamp
+    type: object
+  v1.JobProgress:
+    properties:
+      completed:
+        type: integer
+      failed:
+        type: integer
+      total:
+        type: integer
+    required:
+    - completed
+    - failed
+    - total
+    type: object
+  v1.JobStatusResponse:
+    properties:
+      completed_at:
+        type: string
+      error:
+        type: string
+      job_id:
+        type: string
+      progress:
+        $ref: '#/definitions/v1.JobProgress'
+      started_at:
+        type: string
+      status:
+        example: pending,running,completed,failed
+        type: string
+    required:
+    - job_id
+    - progress
+    - started_at
+    - status
+    type: object
+  v1.ScanResult:
+    properties:
+      duration:
+        type: string
+      error:
+        type: string
+      executed_at:
+        type: string
+      id:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+      output:
+        items:
+          type: string
+        type: array
+      script_name:
+        type: string
+      success:
+        type: boolean
+    required:
+    - duration
+    - executed_at
+    - id
+    - script_name
+    - success
+    type: object
+  v1.StartAllAssetsScanRequest:
+    properties:
+      asset_types:
+        example:
+        - domain
+        - ip
+        - service
+        items:
+          type: string
+        type: array
+      scripts:
+        items:
+          type: string
+        type: array
+    type: object
+  v1.StartAllAssetsScanResponse:
+    properties:
+      asset_count:
+        type: integer
+      job_id:
+        type: string
+      message:
+        type: string
+      started_at:
+        type: string
+    required:
+    - asset_count
+    - job_id
+    - message
+    - started_at
+    type: object
+  v1.StartAssetScanRequest:
+    properties:
+      scripts:
+        example:
+        - vulnerability_scan.lua
+        - port_scan.lua
+        items:
+          type: string
+        type: array
+    type: object
+  v1.StartAssetScanResponse:
+    properties:
+      asset_id:
+        type: string
+      job_id:
+        type: string
+      message:
+        type: string
+      started_at:
+        type: string
+    required:
+    - asset_id
+    - job_id
+    - message
+    - started_at
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+    url: http://www.example.com/support
+  description: A powerful asset discovery and scanning API with Lua script support
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Asset Scanner API
+  version: "1.0"
+paths:
+  /api/v1/assets/{id}:
+    get:
+      description: Get detailed information about a specific asset including scan
+        results
+      parameters:
+      - description: Asset ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.AssetDetailsResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Get asset details
+      tags:
+      - assets
+  /api/v1/assets/{id}/scan:
+    post:
+      consumes:
+      - application/json
+      description: Start scanning a specific asset with specified scripts
+      parameters:
+      - description: Asset ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Scan configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v1.StartAssetScanRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/v1.StartAssetScanResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Start asset scan
+      tags:
+      - assets
+  /api/v1/assets/catalogue:
+    get:
+      description: Retrieve all discovered assets for 2D view
+      parameters:
+      - description: Filter by asset type
+        in: query
+        name: type
+        type: string
+      - description: Filter by asset status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.AssetCatalogueResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Get asset catalogue
+      tags:
+      - assets
+  /api/v1/assets/discover:
+    post:
+      consumes:
+      - application/json
+      description: Start asset discovery for a list of hosts using recontool
+      parameters:
+      - description: Hosts to discover
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v1.DiscoverAssetsRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/v1.DiscoverAssetsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Discover assets
+      tags:
+      - assets
+  /api/v1/assets/scan:
+    post:
+      consumes:
+      - application/json
+      description: Start scanning all assets with specified scripts
+      parameters:
+      - description: Scan configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v1.StartAllAssetsScanRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/v1.StartAllAssetsScanResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Start scan of all assets
+      tags:
+      - assets
+  /api/v1/jobs/{id}:
+    get:
+      description: Get the status and progress of a job
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.JobStatusResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Get job status
+      tags:
+      - jobs
+  /health:
+    get:
+      description: Check if the service is healthy
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.HealthResponse'
+      summary: Health check
+      tags:
+      - health
+swagger: "2.0"
