@@ -1,28 +1,42 @@
-# RegTech - Asset Discovery CLI Tool
+# RegTech - Advanced Asset Discovery & Reconnaissance Tool
 
-A powerful CLI tool for asset discovery and reconnaissance that processes domains, subdomains, and IP addresses to compile comprehensive JSON output with ASN information.
+A powerful CLI tool for comprehensive asset discovery and reconnaissance that processes domains, subdomains, and IP addresses with advanced features including real-time streaming output, port scanning, and service discovery.
 
-## Features
+## 🚀 Features
 
+### Core Functionality
 - **Multi-input Support**: Accepts domains, subdomains, and IP addresses
-- **Subdomain Discovery**: Uses passive enumeration to find subdomains (currently with basic implementation, full subfinder integration pending)
-- **IP Resolution**: Resolves IP addresses for all domains and subdomains
-- **ASN Lookup**: Queries Autonomous System Number (ASN) information for all discovered IPs
-- **JSON Output**: Structured JSON output with comprehensive asset information
-- **Concurrent Processing**: Processes multiple inputs concurrently for better performance
-- **Verbose Mode**: Detailed logging for troubleshooting and monitoring
+- **Subfinder Integration**: Full ProjectDiscovery subfinder integration for passive subdomain enumeration
+- **Comprehensive DNS Lookup**: A, AAAA, CNAME, MX, TXT, NS, SOA, and PTR records
+- **IP Resolution & ASN Lookup**: Resolves IPs and queries ASN information for all assets
+- **CDN/Proxy Detection**: Automatically detects if domains/subdomains are behind CDN services
+- **Port Scanning**: Efficient Nmap integration with SYN scan and TCP connect fallback
+- **Service Discovery**: Identifies services running on discovered ports
 
-## Installation
+### Output & Performance
+- **Streaming JSON Output**: Real-time asset discovery with immediate results
+- **Structured Asset Model**: Relational asset structure with unique IDs and references
+- **Concurrent Processing**: Parallelized discovery for maximum performance
+- **Comprehensive Logging**: Detailed verbose mode for troubleshooting
+
+### Asset Types
+- **Domains**: Root domains with discovered subdomains and DNS records
+- **Subdomains**: Individual subdomains with IP resolution and proxy detection
+- **IPs**: IP addresses with ASN information and discovered services
+- **Services**: Individual services with port, protocol, and version details
+
+## 📦 Installation
 
 ### Prerequisites
 - Go 1.19 or later
 - Internet connection for DNS resolution and ASN lookups
+- Nmap (optional, for port scanning functionality)
 
 ### Build from Source
 
 ```bash
 git clone <repository-url>
-cd RegTech
+cd RegTech/recontool
 go mod tidy
 go build -o regtech main.go
 ```
@@ -32,7 +46,21 @@ Or use the build script:
 ./build_and_run.sh
 ```
 
-## Usage
+## 🔧 Usage
+
+### Command Line Options
+
+```
+Usage:
+  regtech [domains/subdomains/ips...] [flags]
+
+Flags:
+  -h, --help            help for regtech
+  -o, --output string   Output file for JSON results (default: stdout)
+  -s, --scan            Enable port scanning with Nmap (requires nmap)
+      --stream          Enable streaming JSON output (one asset per line)
+  -v, --verbose         Enable verbose output
+```
 
 ### Basic Usage
 
@@ -40,127 +68,224 @@ Or use the build script:
 # Analyze a single domain
 ./regtech example.com
 
-# Analyze multiple domains
-./regtech example.com google.com
+# Analyze multiple domains with verbose output
+./regtech -v example.com google.com
 
-# Analyze mixed input types
-./regtech example.com 8.8.8.8 www.github.com
+# Enable port scanning
+./regtech -s -v example.com
 
-# Enable verbose output
-./regtech -v example.com
+# Stream results in real-time
+./regtech --stream -v example.com
 
-# Save output to file
-./regtech -o results.json example.com
+# Save to file with all features enabled
+./regtech -s --stream -v -o results.json example.com
 ```
 
-### Command Line Options
-
-- `-v, --verbose`: Enable verbose output for detailed logging
-- `-o, --output`: Specify output file for JSON results (default: stdout)
-- `-h, --help`: Show help information
-
-### Build and Run Script
-
-The included `build_and_run.sh` script provides an easy way to build and run the tool:
+### Advanced Examples
 
 ```bash
-# Build and show usage
-./build_and_run.sh
+# Full reconnaissance with streaming
+./regtech --stream -s -v company.com subdomain.company.com 192.168.1.1
 
-# Build and run with arguments
-./build_and_run.sh -v example.com
-./build_and_run.sh -o results.json example.com google.com
+# Port scanning only for specific IPs
+./regtech -s 8.8.8.8 1.1.1.1
+
+# Comprehensive domain analysis
+./regtech -s -v -o comprehensive-scan.json target.com
 ```
 
-## Output Format
+## 📊 Output Formats
 
-The tool outputs JSON with the following structure:
+### Batch Output (Default)
+Standard JSON array with all assets collected:
 
 ```json
 {
   "assets": [
     {
+      "id": "d1a2b3c4d5e6",
       "type": "domain",
       "value": "example.com",
-      "ips": ["93.184.216.34", "2606:2800:220:1:248:1893:25c8:1946"],
-      "asn": "AS15133",
-      "asn_org": "EDGECAST, US",
-      "subdomains": ["www.example.com"]
+      "ips": ["93.184.216.34"],
+      "subdomains": ["www.example.com"],
+      "proxied": false,
+      "dns_records": {
+        "a": ["93.184.216.34"],
+        "mx": ["10 mail.example.com"],
+        "txt": ["v=spf1 include:_spf.example.com ~all"],
+        "ns": ["ns1.example.com", "ns2.example.com"]
+      }
     },
     {
-      "type": "subdomain", 
-      "value": "www.example.com",
+      "id": "a1b2c3d4e5f6",
+      "type": "ip",
+      "value": "93.184.216.34",
       "ips": ["93.184.216.34"],
       "asn": "AS15133",
-      "asn_org": "EDGECAST, US"
+      "asn_org": "EDGECAST, US",
+      "service_ids": ["svc1234567890"]
     },
     {
-      "type": "ip",
-      "value": "8.8.8.8",
-      "ips": ["8.8.8.8"],
-      "asn": "AS15169",
-      "asn_org": "GOOGLE, US"
+      "id": "svc1234567890",
+      "type": "service",
+      "value": "93.184.216.34:443/tcp",
+      "port": 443,
+      "protocol": "tcp",
+      "state": "open",
+      "service": "https",
+      "version": "nginx/1.18.0",
+      "source_ip": "93.184.216.34"
     }
   ]
 }
 ```
 
-### Asset Types
+### Streaming Output (--stream)
+Real-time JSONL format (one asset per line):
 
-- **domain**: Root domains with discovered subdomains
-- **subdomain**: Individual subdomains with their IP resolution
-- **ip**: Direct IP addresses with ASN information
-
-## Examples
-
-### Single Domain Analysis
-```bash
-./regtech -v example.com
+```jsonl
+{"id":"d1a2b3c4d5e6","type":"domain","value":"example.com","ips":["93.184.216.34"],"subdomains":["www.example.com"],"proxied":false}
+{"id":"s1a2b3c4d5e6","type":"subdomain","value":"www.example.com","ips":["93.184.216.34"],"proxied":true}
+{"id":"a1b2c3d4e5f6","type":"ip","value":"93.184.216.34","asn":"AS15133","asn_org":"EDGECAST, US","service_ids":["svc1234567890"]}
+{"id":"svc1234567890","type":"service","value":"93.184.216.34:443/tcp","port":443,"protocol":"tcp","state":"open","service":"https","source_ip":"93.184.216.34"}
 ```
 
-### Multiple Domains with Output File
+## 🎯 Asset Structure
+
+### Domain Assets
+- **ID**: Unique identifier
+- **Subdomains**: List of discovered subdomains
+- **IPs**: Resolved IP addresses
+- **Proxied**: Boolean indicating CDN/proxy usage
+- **DNS Records**: Comprehensive DNS record lookup
+
+### IP Assets
+- **ASN & Organization**: Autonomous System information
+- **Service IDs**: References to discovered services
+- **Proxy Detection**: Identifies CDN/proxy IPs
+
+### Service Assets
+- **Port & Protocol**: Service endpoint details
+- **State**: Port state (open/closed/filtered)
+- **Service & Version**: Identified service and version
+- **Source IP**: Parent IP address reference
+
+## ⚡ Performance Features
+
+### Streaming Mode
+- **Real-time Output**: Assets streamed as discovered
+- **Memory Efficient**: No buffering of large result sets
+- **Progress Monitoring**: Immediate feedback during long scans
+
+### Concurrent Processing
+- **Parallel Subdomain Discovery**: Multiple domains processed simultaneously
+- **Concurrent Port Scanning**: Parallel Nmap execution
+- **Efficient DNS Lookups**: Optimized DNS resolution
+
+### Smart Scanning
+- **Proxy Detection**: Skips port scanning for CDN/proxy IPs
+- **Fallback Mechanisms**: TCP connect scan when SYN scan fails
+- **Timeout Management**: Configurable timeouts for all operations
+
+## 🛠 Build and Run Script
+
+The `build_and_run.sh` script provides convenient access:
+
 ```bash
-./regtech -o company-assets.json company.com subdomain.company.com 192.168.1.1
+# Build and show usage
+./build_and_run.sh
+
+# Build and run with streaming
+./build_and_run.sh --stream -v example.com
+
+# Full reconnaissance
+./build_and_run.sh -s --stream -v -o results.json target.com
 ```
 
-### Verbose Mode for Debugging
-```bash
-./regtech -v -o debug-output.json example.com
-```
+## 🔍 Advanced Features
 
-## Current Limitations
+### CDN/Proxy Detection
+Automatically identifies assets behind:
+- Cloudflare
+- Akamai  
+- AWS CloudFront
+- Fastly
+- And many more...
 
-- **Subfinder Integration**: Currently using basic subdomain enumeration. Full ProjectDiscovery subfinder integration is planned for future releases.
-- **Rate Limiting**: No built-in rate limiting for DNS queries (relies on system defaults).
-- **Error Handling**: Basic error handling for network issues.
+### Port Scanning Integration
+- **SYN Stealth Scans**: Fast, stealthy port discovery
+- **TCP Connect Fallback**: Works without root privileges
+- **Top 1000 Ports**: Efficient port selection
+- **Service Identification**: Automatic service detection
 
-## Planned Features
+### DNS Record Analysis
+Complete DNS reconnaissance including:
+- A/AAAA records (IPv4/IPv6)
+- CNAME records (aliases)
+- MX records (mail servers)
+- TXT records (SPF, DKIM, etc.)
+- NS records (name servers)
+- PTR records (reverse DNS)
 
-- [ ] Full ProjectDiscovery subfinder integration
-- [ ] Rate limiting for DNS queries  
-- [ ] Support for custom DNS servers
-- [ ] Additional ASN data sources
-- [ ] Export to multiple formats (CSV, XML)
-- [ ] Integration with other reconnaissance tools
+## 📈 Use Cases
 
-## Dependencies
+### Security Research
+- Asset discovery and enumeration
+- Attack surface mapping
+- Subdomain takeover identification
+- Service version analysis
+
+### Network Reconnaissance
+- Infrastructure mapping
+- Service discovery
+- CDN identification
+- DNS configuration analysis
+
+### Compliance & Auditing
+- Asset inventory creation
+- External exposure assessment
+- Service cataloging
+- Configuration validation
+
+## 🚨 Error Handling & Reliability
+
+- **Graceful Fallbacks**: Multiple scan methods for reliability
+- **Comprehensive Error Reporting**: Detailed error messages in verbose mode
+- **Timeout Management**: Prevents hanging on unresponsive targets
+- **Partial Results**: Returns discovered assets even if some operations fail
+
+## 📋 Dependencies
 
 - `github.com/spf13/cobra` - CLI framework
-- `github.com/ammario/ipisp` - ASN lookup functionality
-- `github.com/projectdiscovery/subfinder/v2` - Subdomain enumeration (integration pending)
+- `github.com/ammario/ipisp` - ASN lookup functionality  
+- `github.com/projectdiscovery/subfinder/v2` - Subdomain enumeration
+- `nmap` (optional) - Port scanning capabilities
 
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## License
+## 📄 License
 
 [Add your license information here]
 
-## Disclaimer
+## ⚠️ Disclaimer
 
-This tool is intended for legitimate security research and asset discovery purposes only. Users are responsible for ensuring they have proper authorization before scanning domains or networks they do not own.
+This tool is intended for legitimate security research, penetration testing, and asset discovery purposes only. Users are responsible for:
+
+- Obtaining proper authorization before scanning domains or networks
+- Complying with applicable laws and regulations
+- Using the tool ethically and responsibly
+- Respecting rate limits and target system resources
+
+The developers assume no liability for misuse of this tool.
+
+## 🔗 Related Projects
+
+- [ProjectDiscovery Subfinder](https://github.com/projectdiscovery/subfinder)
+- [Nmap](https://nmap.org/)
+- [ASN Lookup Tools](https://github.com/ammario/ipisp)
