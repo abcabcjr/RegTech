@@ -36,3 +36,6 @@ Thumbs.db
 /bin/
 /dist/
 regtech
+
+# Node modules
+/frontend/node_modules
