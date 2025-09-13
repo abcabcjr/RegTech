@@ -13,7 +13,8 @@
     CauseTag, 
     InitialDetails, 
     UpdateDetails, 
-    FinalDetails 
+    FinalDetails,
+    IncidentRecord 
   } from '$lib/types/incidents';
   import { CAUSE_TAGS, INCIDENT_STAGES, GRAVITY_LEVELS } from '$lib/types/incidents';
   
@@ -23,7 +24,13 @@
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
 
   // Props
-  let { open = $bindable(false) }: { open: boolean } = $props();
+  let { 
+    open = $bindable(false),
+    editIncident = null 
+  }: { 
+    open: boolean;
+    editIncident?: IncidentRecord | null;
+  } = $props();
 
   // State
   let currentStep = $state(1);
@@ -31,11 +38,21 @@
   
   // Form states
   let initialData = $state<Partial<InitialDetails>>({
+    summary: '',
+    detectedAt: '',
     suspectedIllegal: false,
     possibleCrossBorder: false
   });
-  let updateData = $state<Partial<UpdateDetails>>({});
-  let finalData = $state<Partial<FinalDetails>>({});
+  let updateData = $state<Partial<UpdateDetails>>({
+    gravity: '',
+    impact: ''
+  });
+  let finalData = $state<Partial<FinalDetails>>({
+    rootCause: '',
+    mitigations: '',
+    lessons: '',
+    crossBorderDesc: ''
+  });
   let basicData = $state({
     causeTag: 'other' as CauseTag,
     significant: false,
@@ -45,15 +62,78 @@
     financialImpactPct: 0,
   });
 
+  // Effect to populate form when editing or reset when creating
+  $effect(() => {
+    if (open) {
+      if (editIncident) {
+        // Populate form with existing incident data
+        incidentId = editIncident.id;
+        
+        // Set basic data
+        basicData.causeTag = editIncident.causeTag || 'other';
+        basicData.significant = editIncident.significant || false;
+        basicData.recurring = editIncident.recurring || false;
+        basicData.usersAffected = editIncident.usersAffected || 0;
+        basicData.downtimeMinutes = editIncident.downtimeMinutes || 0;
+        basicData.financialImpactPct = editIncident.financialImpactPct || 0;
+        
+        // Set initial data
+        if (editIncident.details.initial) {
+          initialData.summary = editIncident.details.initial.summary || '';
+          initialData.detectedAt = editIncident.details.initial.detectedAt || '';
+          initialData.suspectedIllegal = editIncident.details.initial.suspectedIllegal || false;
+          initialData.possibleCrossBorder = editIncident.details.initial.possibleCrossBorder || false;
+        }
+        
+        // Set update data
+        if (editIncident.details.update) {
+          updateData.gravity = editIncident.details.update.gravity || '';
+          updateData.impact = editIncident.details.update.impact || '';
+          updateData.corrections = editIncident.details.update.corrections || '';
+        }
+        
+        // Set final data
+        if (editIncident.details.final) {
+          finalData.rootCause = editIncident.details.final.rootCause || '';
+          finalData.mitigations = editIncident.details.final.mitigations || '';
+          finalData.lessons = editIncident.details.final.lessons || '';
+          finalData.crossBorderDesc = editIncident.details.final.crossBorderDesc || '';
+        }
+        
+        // Set current step based on the incident stage
+        if (editIncident.stage === 'final') {
+          currentStep = 3;
+        } else if (editIncident.stage === 'update') {
+          currentStep = 2;
+        } else {
+          currentStep = 1;
+        }
+      } else {
+        // Reset form for new incident
+        resetForm();
+      }
+    }
+  });
+
   function resetForm() {
     currentStep = 1;
     incidentId = null;
     initialData = {
+      summary: '',
+      detectedAt: '',
       suspectedIllegal: false,
       possibleCrossBorder: false
     };
-    updateData = {};
-    finalData = {};
+    updateData = {
+      gravity: '',
+      impact: ''
+    };
+    finalData = {
+      rootCause: '',
+      mitigations: '',
+      lessons: '',
+      crossBorderDesc: ''
+    };
     basicData = {
       causeTag: 'other' as CauseTag,
       significant: false,
@@ -82,20 +162,26 @@
       incidentsStore.setStageData(id, 'initial', initialData as InitialDetails);
       currentStep = 2;
     } else if (currentStep === 2) {
-      // Save update data and move to final
+      // Validate and save update data
+      if (!updateData.gravity || !updateData.impact) {
+        alert('Please fill in all required fields.');
+        return;
+      }
+
       if (incidentId) {
         incidentsStore.updateIncident(incidentId, basicData);
-        if (updateData.gravity || updateData.impact) {
-          incidentsStore.setStageData(incidentId, 'update', updateData as UpdateDetails);
-        }
+        incidentsStore.setStageData(incidentId, 'update', updateData as UpdateDetails);
       }
       currentStep = 3;
     } else if (currentStep === 3) {
-      // Save final data and close
+      // Validate and complete the incident
+      if (!finalData.rootCause || !finalData.mitigations) {
+        alert('Please fill in all required fields.');
+        return;
+      }
+
       if (incidentId) {
-        if (finalData.rootCause || finalData.mitigations) {
-          incidentsStore.setStageData(incidentId, 'final', finalData as FinalDetails);
-        }
+        incidentsStore.setStageData(incidentId, 'final', finalData as FinalDetails);
       }
       open = false;
       resetForm();
@@ -113,13 +199,72 @@
     resetForm();
   }
 
+  function handleStepClick(targetStep: number) {
+    // Allow backward navigation freely
+    if (targetStep < currentStep) {
+      currentStep = targetStep;
+      return;
+    }
+    
+    // For forward navigation, validate all previous steps
+    if (targetStep > currentStep) {
+      // Always check Step 1 requirements when moving forward
+      if (!initialData.summary || !initialData.detectedAt) {
+        alert('Please complete Step 1 required fields (Incident Summary and Detected At) before proceeding.');
+        return;
+      }
+      
+      // If jumping to Step 3, also check Step 2 requirements
+      if (targetStep === 3) {
+        if (!updateData.gravity || !updateData.impact) {
+          alert('Please complete Step 2 required fields (Incident Gravity and Impact Description) before proceeding to Step 3.');
+          return;
+        }
+      }
+    }
+    
+    // Allow navigation if validation passes or staying on same step
+    if (targetStep >= 1 && targetStep <= 3) {
+      currentStep = targetStep;
+    }
+  }
+
+  function handleSaveAndExit() {
+    // Save current progress as draft (no validation required)
+    let id = incidentId;
+    if (!id) {
+      // Create incident if it doesn't exist
+      const incident = incidentsStore.createIncident(basicData);
+      id = incident.id;
+      incidentId = id;
+    }
+
+    // Save data for any step that has content
+    if (initialData.summary || initialData.detectedAt) {
+      incidentsStore.setStageData(id, 'initial', initialData as InitialDetails);
+    }
+    if (updateData.gravity || updateData.impact || updateData.corrections) {
+      incidentsStore.setStageData(id, 'update', updateData as UpdateDetails);
+    }
+    if (finalData.rootCause || finalData.mitigations || finalData.lessons) {
+      incidentsStore.setStageData(id, 'final', finalData as FinalDetails);
+    }
+
+    // Update basic incident data
+    incidentsStore.updateIncident(id, basicData);
+
+    // Close the dialog
+    open = false;
+    resetForm();
+  }
+
 </script>
 
 <Dialog.Root bind:open>
   <Dialog.Content class="!max-w-[90vw] max-h-[90vh] overflow-y-auto">
     <!-- Header -->
     <div class="flex items-center justify-between px-8 py-6 border-b">
-      <h2 class="text-2xl font-semibold">Report Incident</h2>
+      <h2 class="text-2xl font-semibold">{editIncident ? 'Edit Incident' : 'Report Incident'}</h2>
     </div>
 
     <div class="px-8 py-6">
@@ -127,21 +272,27 @@
       <div class="flex items-center justify-between mb-8 px-4">
         {#each INCIDENT_STAGES as step, index}
           <div class="flex items-center flex-1 {index < INCIDENT_STAGES.length - 1 ? 'mr-4' : ''}">
-            <div class="flex items-center justify-center w-8 h-8 rounded-full border-2 flex-shrink-0 {
-              currentStep >= (step.value === 'initial' ? 1 : step.value === 'update' ? 2 : 3)
-                ? 'bg-primary border-primary text-primary-foreground'
-                : 'border-muted-foreground text-muted-foreground'
-            }">
+            <button
+              class="flex items-center justify-center w-8 h-8 rounded-full border-2 flex-shrink-0 transition-colors hover:bg-muted {
+                currentStep >= (step.value === 'initial' ? 1 : step.value === 'update' ? 2 : 3)
+                  ? 'bg-primary border-primary text-primary-foreground'
+                  : 'border-muted-foreground text-muted-foreground hover:border-primary'
+              }"
+              onclick={() => handleStepClick(step.value === 'initial' ? 1 : step.value === 'update' ? 2 : 3)}
+            >
               {#if currentStep > (step.value === 'initial' ? 1 : step.value === 'update' ? 2 : 3)}
                 <Check class="w-4 h-4" />
               {:else}
                 <span class="text-xs font-medium">{step.value === 'initial' ? 1 : step.value === 'update' ? 2 : 3}</span>
               {/if}
-            </div>
-            <div class="ml-2 flex-1 min-w-0">
+            </button>
+            <button
+              class="ml-2 flex-1 min-w-0 text-left transition-colors hover:text-primary"
+              onclick={() => handleStepClick(step.value === 'initial' ? 1 : step.value === 'update' ? 2 : 3)}
+            >
               <div class="text-xs font-medium truncate">{step.label}</div>
               <div class="text-xs text-muted-foreground truncate">{step.description}</div>
-            </div>
+            </button>
             {#if index < INCIDENT_STAGES.length - 1}
               <ChevronRight class="w-4 h-4 text-muted-foreground ml-2 flex-shrink-0" />
             {/if}
@@ -158,12 +309,12 @@
         <Card.Content class="space-y-6">
           <div class="space-y-2">
             <Label for="summary" class="text-sm font-medium">Incident Summary *</Label>
-            <Textarea
+            <textarea
               id="summary"
               placeholder="Brief description of what happened..."
               bind:value={initialData.summary}
-              class="min-h-[120px]"
-            />
+              class="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            ></textarea>
           </div>
           
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -256,7 +407,7 @@
           </div>
 
           <div>
-            <Label for="gravity">Incident Gravity</Label>
+            <Label for="gravity" class="text-sm font-medium">Incident Gravity *</Label>
             <select 
               class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               bind:value={updateData.gravity}
@@ -269,12 +420,13 @@
           </div>
 
           <div>
-            <Label for="impact">Impact Description</Label>
-            <Textarea
+            <Label for="impact" class="text-sm font-medium">Impact Description *</Label>
+            <textarea
               id="impact"
               placeholder="Describe the impact on systems and operations..."
               bind:value={updateData.impact}
-            />
+              class="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            ></textarea>
           </div>
 
           <div>
@@ -315,39 +467,43 @@
         </Card.Header>
         <Card.Content class="space-y-4">
           <div>
-            <Label for="rootCause">Root Cause Analysis</Label>
-            <Textarea
+            <Label for="rootCause" class="text-sm font-medium">Root Cause Analysis *</Label>
+            <textarea
               id="rootCause"
               placeholder="What was the underlying cause of this incident..."
               bind:value={finalData.rootCause}
-            />
+              class="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            ></textarea>
           </div>
 
           <div>
-            <Label for="mitigations">Mitigations Implemented</Label>
-            <Textarea
+            <Label for="mitigations" class="text-sm font-medium">Mitigations Implemented *</Label>
+            <textarea
               id="mitigations"
               placeholder="What measures were put in place to prevent recurrence..."
               bind:value={finalData.mitigations}
-            />
+              class="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            ></textarea>
           </div>
 
           <div>
             <Label for="lessons">Lessons Learned</Label>
-            <Textarea
+            <textarea
               id="lessons"
               placeholder="Key takeaways and improvements for the future..."
               bind:value={finalData.lessons}
-            />
+              class="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            ></textarea>
           </div>
 
           <div>
             <Label for="crossBorderDesc">Cross-Border Effects (if any)</Label>
-            <Textarea
+            <textarea
               id="crossBorderDesc"
               placeholder="Describe any international implications..."
               bind:value={finalData.crossBorderDesc}
-            />
+              class="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            ></textarea>
           </div>
         </Card.Content>
       </Card.Root>
@@ -365,6 +521,9 @@
       </Button>
       
       <div class="flex space-x-2">
+        <Button variant="outline" onclick={handleSaveAndExit}>
+          Save & Exit
+        </Button>
         <Button variant="outline" onclick={handleClose}>
           Cancel
         </Button>
