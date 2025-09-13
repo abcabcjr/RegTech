@@ -496,52 +496,44 @@
 		}
 	}
 
-	// Prepare export data
+	// Prepare export data - always include both manual and scanner data regardless of current view
 	function prepareExportData() {
 		const complianceItems: Array<{ section: string; items: any[] }> = [];
 		const scannedIssues: Array<{ section: string; items: any[] }> = [];
 
-		const sections = displaySections();
-
-		for (const section of sections) {
-			const sectionData = {
+		// Get manual compliance items
+		const manualTemplates = backendTemplates.filter((template) => template.kind === 'manual');
+		const manualSections = convertTemplatesToSections(manualTemplates);
+		for (const section of manualSections) {
+			complianceItems.push({
 				section: section.title,
 				items: section.items
-			};
-
-			if (activeView === 'manual') {
-				complianceItems.push(sectionData);
-			} else {
-				scannedIssues.push(sectionData);
-			}
+			});
 		}
 
-		// If we're in manual view, also get scanned issues for export
-		if (activeView === 'manual') {
-			// Switch context temporarily to get scanner data
-			const autoTemplates = backendTemplates.filter((template) => {
-				const isAutomatic =
-					template.kind === 'auto' ||
-					template.source === 'auto' ||
-					template.script_controlled === true ||
-					template.read_only === true ||
-					template.scope === 'asset';
+		// Get scanner/automatic issues
+		const autoTemplates = backendTemplates.filter((template) => {
+			const isAutomatic =
+				template.kind === 'auto' ||
+				template.source === 'auto' ||
+				template.script_controlled === true ||
+				template.read_only === true ||
+				template.scope === 'asset';
 
-				const hasNonCompliantAssets =
-					template.covered_assets &&
-					template.covered_assets.length > 0 &&
-					template.covered_assets.some((asset: any) => asset.status === 'no');
+			const hasNonCompliantAssets =
+				template.covered_assets &&
+				template.covered_assets.length > 0 &&
+				template.covered_assets.some((asset: any) => asset.status === 'no');
 
-				return isAutomatic && hasNonCompliantAssets;
+			return isAutomatic && hasNonCompliantAssets;
+		});
+
+		const scannerSections = convertTemplatesToSections(autoTemplates);
+		for (const section of scannerSections) {
+			scannedIssues.push({
+				section: section.title,
+				items: section.items
 			});
-
-			const scannerSections = convertTemplatesToSections(autoTemplates);
-			for (const section of scannerSections) {
-				scannedIssues.push({
-					section: section.title,
-					items: section.items
-				});
-			}
 		}
 
 		return { complianceItems, scannedIssues };
