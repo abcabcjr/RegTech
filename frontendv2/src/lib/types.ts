@@ -16,6 +16,17 @@ export interface AssetCoverage {
   updated_at?: string;
 }
 
+export interface FileAttachment {
+  id: string;
+  file_name: string;
+  original_name: string;
+  content_type: string;
+  file_size: number;
+  uploaded_at: string;
+  description?: string;
+  status: "uploading" | "uploaded" | "failed" | "deleted";
+}
+
 export interface ChecklistItem {
   id: string;
   title: string;
@@ -34,6 +45,7 @@ export interface ChecklistItem {
   info?: InfoBlock;
   notes?: string;
   coveredAssets?: AssetCoverage[];
+  attachments?: string[]; // Array of file IDs
 }
 
 export interface ChecklistSection {
