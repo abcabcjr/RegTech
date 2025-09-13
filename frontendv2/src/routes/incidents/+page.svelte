@@ -354,6 +354,21 @@
     }
   }
 
+  function getGravityBadgeVariant(gravity: string | undefined) {
+    switch (gravity?.toLowerCase()) {
+      case 'critical':
+        return 'destructive';
+      case 'high':
+        return 'destructive';
+      case 'medium':
+        return 'default';
+      case 'low':
+        return 'secondary';
+      default:
+        return 'outline';
+    }
+  }
+
   function formatDate(dateString: string) {
     return new Date(dateString).toLocaleDateString();
   }
@@ -374,7 +389,7 @@
     </p>
   </div>
 
-  <div class="grid lg:grid-cols-3 gap-8">
+  <div class="grid lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
     <!-- Incident List -->
     <div class="lg:col-span-1">
       <Card.Root>
@@ -411,9 +426,9 @@
                   onclick={() => handleSelectIncident(incident)}
                 >
                   <Card.Content class="p-4">
-                    <div class="flex items-start justify-between mb-2">
-                      <h3 class="font-medium text-sm">
-                        {incidentsStore.getIncidentSummary(incident)}...
+                    <div class="flex items-start justify-between gap-2 mb-2">
+                      <h3 class="font-medium text-sm truncate">
+                        {incidentsStore.getIncidentSummary(incident)}
                       </h3>
                       <Badge variant={getStatusBadgeVariant(incident.stage)}>
                         {incident.stage}
@@ -446,15 +461,17 @@
     </div>
 
     <!-- Incident Details / Empty State -->
-    <div class="lg:col-span-2">
+    <div class="lg:col-span-2 min-w-0">
       {#if selectedIncident}
-        <Card.Root>
+        <Card.Root class="overflow-hidden">
           <Card.Header>
-            <div class="flex items-center justify-between">
-              <Card.Title>
-                {incidentsStore.getIncidentSummary(selectedIncident)}
-              </Card.Title>
-              <Badge variant={getStatusBadgeVariant(selectedIncident.stage)}>
+            <div class="flex items-center gap-4 overflow-hidden">
+              <div class="flex-1 min-w-0 overflow-hidden">
+                <h2 class="text-lg font-semibold leading-none tracking-tight truncate">
+                  {incidentsStore.getIncidentSummary(selectedIncident)}
+                </h2>
+              </div>
+              <Badge variant={getStatusBadgeVariant(selectedIncident.stage)} class="flex-shrink-0">
                 {selectedIncident.stage}
               </Badge>
             </div>
@@ -521,7 +538,9 @@
                     </div>
                     <div>
                       <div class="text-sm font-semibold text-foreground">Gravity</div>
-                      <p class="text-sm">{selectedIncident.details.update?.gravity || 'Not assessed'}</p>
+                      <Badge variant={getGravityBadgeVariant(selectedIncident.details.update?.gravity)}>
+                        {selectedIncident.details.update?.gravity || 'Not assessed'}
+                      </Badge>
                     </div>
                     <div>
                       <div class="text-sm font-semibold text-foreground">Impact</div>
@@ -543,12 +562,6 @@
                     <div>
                       <div class="text-sm font-semibold text-foreground">Root Cause</div>
                       <p class="text-sm">{selectedIncident.details.final?.rootCause || 'Not determined'}</p>
-                    </div>
-                    <div>
-                      <div class="text-sm font-semibold text-foreground">Gravity</div>
-                      <Badge variant={selectedIncident.details.final?.gravity === 'critical' ? 'destructive' : 'outline'}>
-                        {selectedIncident.details.final?.gravity || 'Not assessed'}
-                      </Badge>
                     </div>
                     <div>
                       <div class="text-sm font-semibold text-foreground">Mitigations</div>
