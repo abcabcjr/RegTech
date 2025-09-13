@@ -524,6 +524,72 @@ func (h *AssetsHandler) runIntegratedDiscoveryWithJob(ctx context.Context, host 
 		// Convert recon.Asset to model.Asset
 		asset := h.convertReconAssetToModelAsset(reconAsset)
 
+		// Create additional HTTP service assets for proxied assets
+		var additionalAssets []*model.Asset
+		shouldCreateHTTPServices := false
+		var parentValue string
+
+		// Check if this asset is proxied and should have HTTP services created
+		if asset.Properties != nil {
+			if proxied, exists := asset.Properties["proxied"]; exists && proxied == true {
+				shouldCreateHTTPServices = true
+				parentValue = asset.Value
+				fmt.Printf("[AssetsHandler] %s %s is proxied, creating HTTP service assets\n", asset.Type, asset.Value)
+			}
+		}
+
+		// Also check for Cloudflare-proxied domains/subdomains via tags
+		if !shouldCreateHTTPServices && len(asset.Tags) > 0 {
+			for _, tag := range asset.Tags {
+				if tag == "cf-proxied" {
+					shouldCreateHTTPServices = true
+					parentValue = asset.Value
+					fmt.Printf("[AssetsHandler] %s %s has cf-proxied tag, creating HTTP service assets\n", asset.Type, asset.Value)
+					break
+				}
+			}
+		}
+
+		if shouldCreateHTTPServices {
+			// Create HTTPS service asset (port 443) - prioritize HTTPS first
+			httpsAsset := model.NewAsset(model.AssetTypeService, parentValue+":443")
+			httpsAsset.Properties = make(map[string]interface{})
+			httpsAsset.Properties["port"] = 443
+			httpsAsset.Properties["protocol"] = "tcp"
+			httpsAsset.Properties["proxied"] = true
+			httpsAsset.Properties["auto_generated"] = true
+
+			// Set parent reference based on asset type
+			if asset.Type == model.AssetTypeIP {
+				httpsAsset.Properties["parent_ip"] = parentValue
+			} else {
+				httpsAsset.Properties["parent_domain"] = parentValue
+			}
+
+			httpsAsset.Tags = append(httpsAsset.Tags, "cf-proxied", "auto-generated", "https")
+			additionalAssets = append(additionalAssets, httpsAsset)
+
+			// Create HTTP service asset (port 80) - add as secondary
+			httpAsset := model.NewAsset(model.AssetTypeService, parentValue+":80")
+			httpAsset.Properties = make(map[string]interface{})
+			httpAsset.Properties["port"] = 80
+			httpAsset.Properties["protocol"] = "tcp"
+			httpAsset.Properties["proxied"] = true
+			httpAsset.Properties["auto_generated"] = true
+
+			// Set parent reference based on asset type
+			if asset.Type == model.AssetTypeIP {
+				httpAsset.Properties["parent_ip"] = parentValue
+			} else {
+				httpAsset.Properties["parent_domain"] = parentValue
+			}
+
+			httpAsset.Tags = append(httpAsset.Tags, "cf-proxied", "auto-generated", "http")
+			additionalAssets = append(additionalAssets, httpAsset)
+
+			fmt.Printf("[AssetsHandler] Created %d additional HTTP service assets for proxied %s %s\n", len(additionalAssets), asset.Type, parentValue)
+		}
+
 		// Immediately save asset to storage (streaming persistence)
 		if err := h.storage.CreateAsset(ctxWithTimeout, asset); err != nil {
 			fmt.Printf("[AssetsHandler] Failed to save asset %s during streaming: %v\n", asset.Value, err)
@@ -541,6 +607,17 @@ func (h *AssetsHandler) runIntegratedDiscoveryWithJob(ctx context.Context, host 
 		}
 
 		assets = append(assets, asset)
+
+		// Save additional HTTP service assets for proxied IPs
+		for _, additionalAsset := range additionalAssets {
+			if err := h.storage.CreateAsset(ctxWithTimeout, additionalAsset); err != nil {
+				fmt.Printf("[AssetsHandler] Failed to save additional asset %s during streaming: %v\n", additionalAsset.Value, err)
+			} else {
+				fmt.Printf("[AssetsHandler] Successfully saved additional HTTP service asset %s to storage\n", additionalAsset.Value)
+				assets = append(assets, additionalAsset)
+				assetCount++
+			}
+		}
 
 		// Update job progress in real-time
 		if currentJob, jobErr := h.storage.GetJob(ctxWithTimeout, jobID); jobErr == nil {
