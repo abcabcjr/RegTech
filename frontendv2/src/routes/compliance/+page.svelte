@@ -12,6 +12,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { ProgressBar } from '$lib/components/ui/progress-bar';
 	import ChecklistItemComponent from '$lib/components/compliance/checklist-item.svelte';
+	import { getGuideByIdSync, getAllTemplates } from '$lib/guide/data';
 
 	let checklistState: ChecklistState = $state(loadChecklistState());
 	let activeView: 'manual' | 'scanner' = $state('manual');
@@ -94,6 +95,14 @@
 					resources: template.info.resources || []
 				} : undefined
 			};
+			
+			// Debug logging
+			console.log('Converting template to item:', {
+				id: template.id,
+				title: template.title,
+				hasInfo: !!template.info,
+				info: template.info
+			});
 			
 			categoryMap.get(category).items.push(item);
 		});

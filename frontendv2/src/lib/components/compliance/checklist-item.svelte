@@ -8,7 +8,8 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Tooltip } from '$lib/components/ui/tooltip';
-	import InfoPanel from './InfoPanel.svelte';
+	import InlineInfoPanel from './InlineInfoPanel.svelte';
+	import { getPdfGuide } from '$lib/data/pdf-guides';
 
 	interface Props {
 		item: ChecklistItem;
@@ -19,7 +20,22 @@
 	let { item, onUpdate, readOnly = false }: Props = $props();
 
 	let isExpanded = $state(true);
-	let infoPanelOpen = $state(false);
+	
+	// Debug logging
+	$effect(() => {
+		console.log('Checklist item data:', {
+			title: item.title,
+			info: item.info,
+			helpText: item.helpText,
+			whyMatters: item.whyMatters
+		});
+	});
+	let pdfGuide = $state<any | null>(null);
+
+	// Load PDF guide when component mounts
+	$effect(() => {
+		pdfGuide = getPdfGuide(item.id);
+	});
 
 	function handleStatusChange(event: CustomEvent<{ value: string }>) {
 		const status = event.detail.value as 'yes' | 'no' | 'na';
@@ -53,7 +69,7 @@
 	<Card.Header class="pb-3">
 		<div class="flex items-start justify-between">
 			<div class="flex-1">
-				<div class="flex items-center space-x-2 mb-2">
+				<div class="flex items-center space-x-2">
 					<Card.Title class="text-base font-medium">{item.title}</Card.Title>
 					{#if item.required}
 						<Badge variant="outline" class="text-xs">Required</Badge>
@@ -62,7 +78,6 @@
 						<Badge variant="secondary" class="text-xs">Auto-checked</Badge>
 					{/if}
 				</div>
-				<p class="text-sm text-muted-foreground">{item.description}</p>
 			</div>
 			<div class="flex items-center space-x-2">
 				<StatusBadge status={item.status} />
@@ -76,16 +91,6 @@
 						{item.coveredAssets.length} asset{item.coveredAssets.length !== 1 ? 's' : ''}
 					</Badge>
 				{/if}
-				<Button 
-					variant="ghost" 
-					size="sm"
-					onclick={() => infoPanelOpen = true}
-					title="Detailed Information"
-				>
-					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-					</svg>
-				</Button>
 				<Button 
 					variant="ghost" 
 					size="sm"
@@ -108,9 +113,6 @@
 
 	{#if isExpanded}
 		<Card.Content class="pt-0 space-y-4">
-			<div class="text-sm text-muted-foreground p-3 bg-muted/50 rounded-md">
-				<strong>Help:</strong> {item.helpText}
-			</div>
 
 			{#if !isDisplayOnly}
 				<div class="space-y-3">
@@ -160,20 +162,69 @@
 							In a real implementation, this would allow file uploads
 						</p>
 					</div>
+
 				</div>
 			{/if}
 
-			{#if item.status === "no" && item.recommendation}
-				<div class="flex items-start space-x-2 p-3 bg-warning/10 border border-warning/20 rounded-md">
-					<svg class="h-4 w-4 text-warning mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-					</svg>
-					<div>
-						<p class="text-sm font-medium text-warning">Recommendation</p>
-						<p class="text-sm text-warning/80">{item.recommendation}</p>
-					</div>
-				</div>
-			{/if}
+			<!-- Inline Information Panel -->
+			<InlineInfoPanel 
+				info={{
+					overview: {
+						what_it_means: (item.info?.whatItMeans) || item.helpText || "This compliance requirement helps ensure your organization meets cybersecurity standards and legal obligations.",
+						why_it_matters: (item.info?.whyItMatters) || item.whyMatters || "Implementing this requirement protects your business from cyber threats and ensures regulatory compliance."
+					},
+					risks: {
+						attack_vectors: [
+							"Attackers could exploit missing security controls",
+							"Weak implementation creates vulnerabilities",
+							"Non-compliance exposes organization to penalties"
+						],
+						potential_impact: [
+							"Data breaches and unauthorized access",
+							"Business disruption and operational damage", 
+							"Legal penalties and compliance violations",
+							"Loss of customer trust and reputation damage"
+						]
+					},
+					guide: {
+						non_technical_steps: [
+							"Review your current security policies and procedures",
+							"Identify gaps between current state and requirements",
+							"Develop an implementation plan with clear timelines",
+							"Assign responsibility to specific team members",
+							"Implement the required controls and processes",
+							"Document all changes and maintain evidence",
+							"Test and validate the implementation",
+							"Schedule regular reviews and updates"
+						]
+					},
+					media: {
+						images: [],
+						videos: [],
+						schemas: []
+					},
+					legal: {
+						requirement_summary: "This requirement is mandated by Moldova's Cybersecurity Law to protect critical infrastructure and sensitive data. Organizations must implement appropriate security measures and maintain proper documentation.",
+						article_refs: (item.info?.lawRefs) || ["Art. 11 - Security Requirements", "NU-49-MDED-2025"],
+						priority: (item.info?.priority) || "should"
+					},
+					resources: (item.info?.resources) || [
+						{
+							title: "Implementation Guide",
+							url: "https://example.com/implementation-guide",
+							type: "document",
+							description: "Step-by-step guide for implementing this requirement"
+						},
+						{
+							title: "Best Practices",
+							url: "https://example.com/best-practices",
+							type: "document", 
+							description: "Industry best practices and recommendations"
+						}
+					],
+					pdf_guide: pdfGuide
+				}}
+			/>
 
 			{#if item.coveredAssets && item.coveredAssets.length > 0}
 				<div class="mt-4">
@@ -212,10 +263,3 @@
 	{/if}
 </Card.Root>
 
-<!-- Info Panel -->
-<InfoPanel 
-	open={infoPanelOpen}
-	title={item.title}
-	info={item.info}
-	onClose={() => infoPanelOpen = false}
-/>
