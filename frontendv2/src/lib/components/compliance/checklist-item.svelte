@@ -23,6 +23,7 @@
 	let { item, onUpdate, readOnly = false, updating = false }: Props = $props();
 
 	let isExpanded = $state(true);
+	let infoPanelExpanded = $state(true); // New state for info panel expansion
 	let infoPanelOpen = $state(false);
 	let attachments = $state<FileAttachment[]>([]);
 	let loadingAttachments = $state(false);
@@ -173,6 +174,98 @@
 	{#if isExpanded}
 		<Card.Content class="pt-0 space-y-4">
 
+			<!-- Detailed Compliance Guide - First Section -->
+			<div class="border rounded-lg bg-card">
+				<div class="flex items-center justify-between p-4 border-b bg-muted/30">
+					<h3 class="text-lg font-semibold">Detailed Compliance Guide</h3>
+					<Button 
+						variant="ghost" 
+						size="sm"
+						onclick={() => infoPanelExpanded = !infoPanelExpanded}
+						class="flex items-center"
+						title={infoPanelExpanded ? 'Collapse Guide' : 'Expand Guide'}
+					>
+						<svg 
+							class="h-4 w-4 transition-transform duration-200 {infoPanelExpanded ? 'rotate-180' : ''}" 
+							fill="none" 
+							stroke="currentColor" 
+							viewBox="0 0 24 24"
+						>
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+						</svg>
+					</Button>
+				</div>
+				
+				{#if infoPanelExpanded}
+					<div class="p-0">
+						<InlineInfoPanel 
+							showHeader={false}
+							expanded={infoPanelExpanded}
+							info={{
+								overview: {
+									what_it_means: (item.info?.whatItMeans) || item.helpText || "This compliance requirement helps ensure your organization meets cybersecurity standards and legal obligations.",
+									why_it_matters: (item.info?.whyItMatters) || item.whyMatters || "Implementing this requirement protects your business from cyber threats and ensures regulatory compliance."
+								},
+								risks: {
+									attack_vectors: [
+										"Attackers could exploit missing security controls",
+										"Weak implementation creates vulnerabilities",
+										"Non-compliance exposes organization to penalties"
+									],
+									potential_impact: [
+										"Data breaches and unauthorized access",
+										"Business disruption and operational damage", 
+										"Legal penalties and compliance violations",
+										"Loss of customer trust and reputation damage"
+									]
+								},
+								guide: {
+									non_technical_steps: (item.info?.non_technical_steps) || [
+										"Review your current security policies and procedures",
+										"Identify gaps between current state and requirements",
+										"Develop an implementation plan with clear timelines",
+										"Assign responsibility to specific team members",
+										"Implement the required controls and processes",
+										"Document all changes and maintain evidence",
+										"Test and validate the implementation",
+										"Schedule regular reviews and updates"
+									],
+									scope_caveats: item.info?.scope_caveats || null,
+									acceptance_summary: item.info?.acceptance_summary || null,
+									faq: item.info?.faq || []
+								},
+								media: {
+									images: [],
+									videos: [],
+									schemas: []
+								},
+								legal: {
+									requirement_summary: "This requirement is mandated by Moldova's Cybersecurity Law to protect critical infrastructure and sensitive data. Organizations must implement appropriate security measures and maintain proper documentation.",
+									article_refs: (item.info?.lawRefs) || ["Art. 11 - Security Requirements", "NU-49-MDED-2025"],
+									priority: (item.info?.priority) || "should"
+								},
+								resources: (item.info?.resources) || [
+									{
+										title: "Implementation Guide",
+										url: "https://example.com/implementation-guide",
+										type: "document",
+										description: "Step-by-step guide for implementing this requirement"
+									},
+									{
+										title: "Best Practices",
+										url: "https://example.com/best-practices",
+										type: "document", 
+										description: "Industry best practices and recommendations"
+									}
+								],
+								pdf_guide: pdfGuide
+							}}
+						/>
+					</div>
+				{/if}
+			</div>
+
+			<!-- Compliance Status and Evidence - Second Section -->
 			{#if !isDisplayOnly}
 				<div class="space-y-3">
 					<div>
@@ -237,66 +330,6 @@
 				</div>
 			{/if}
 
-			<!-- Inline Information Panel -->
-			<InlineInfoPanel 
-				info={{
-					overview: {
-						what_it_means: (item.info?.whatItMeans) || item.helpText || "This compliance requirement helps ensure your organization meets cybersecurity standards and legal obligations.",
-						why_it_matters: (item.info?.whyItMatters) || item.whyMatters || "Implementing this requirement protects your business from cyber threats and ensures regulatory compliance."
-					},
-					risks: {
-						attack_vectors: [
-							"Attackers could exploit missing security controls",
-							"Weak implementation creates vulnerabilities",
-							"Non-compliance exposes organization to penalties"
-						],
-						potential_impact: [
-							"Data breaches and unauthorized access",
-							"Business disruption and operational damage", 
-							"Legal penalties and compliance violations",
-							"Loss of customer trust and reputation damage"
-						]
-					},
-					guide: {
-						non_technical_steps: [
-							"Review your current security policies and procedures",
-							"Identify gaps between current state and requirements",
-							"Develop an implementation plan with clear timelines",
-							"Assign responsibility to specific team members",
-							"Implement the required controls and processes",
-							"Document all changes and maintain evidence",
-							"Test and validate the implementation",
-							"Schedule regular reviews and updates"
-						]
-					},
-					media: {
-						images: [],
-						videos: [],
-						schemas: []
-					},
-					legal: {
-						requirement_summary: "This requirement is mandated by Moldova's Cybersecurity Law to protect critical infrastructure and sensitive data. Organizations must implement appropriate security measures and maintain proper documentation.",
-						article_refs: (item.info?.lawRefs) || ["Art. 11 - Security Requirements", "NU-49-MDED-2025"],
-						priority: (item.info?.priority) || "should"
-					},
-					resources: (item.info?.resources) || [
-						{
-							title: "Implementation Guide",
-							url: "https://example.com/implementation-guide",
-							type: "document",
-							description: "Step-by-step guide for implementing this requirement"
-						},
-						{
-							title: "Best Practices",
-							url: "https://example.com/best-practices",
-							type: "document", 
-							description: "Industry best practices and recommendations"
-						}
-					],
-					pdf_guide: pdfGuide
-				}}
-			/>
-
 			{#if item.coveredAssets && item.coveredAssets.length > 0}
 				<div class="mt-4">
 					<h4 class="text-sm font-medium mb-3">Coverage</h4>
@@ -316,7 +349,7 @@
 						{/each}
 					</div>
 				</div>
-			{:else if item.kind === 'auto' && item.scope === 'asset'}
+			{:else if item.kind === 'auto'}
 				<div class="text-sm text-muted-foreground p-3 bg-muted/20 rounded-md">
 					No assets currently covered by this compliance check
 				</div>

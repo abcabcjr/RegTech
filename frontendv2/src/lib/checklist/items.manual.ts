@@ -246,7 +246,7 @@ export const manualChecklistSections: ChecklistSection[] = [
         kind: "manual",
         readOnly: false,
         info: {
-          whatItMeans: "An international standard that specifies requirements for establishing, implementing, and maintaining an information security management system.",
+          whatItMeans: "VVVVVVVVVVVVn international standard that specifies requirements for establishing, implementing, and maintaining an information security management system.",
           whyItMatters: "Demonstrates commitment to information security best practices and can provide competitive advantage.",
           lawRefs: ["Art. 19 - Standards Compliance", "NU-49-MDED-2025 §9.2"],
           priority: "should",

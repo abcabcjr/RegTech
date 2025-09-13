@@ -135,7 +135,11 @@
 					whyItMatters: template.info.why_it_matters,
 					lawRefs: template.info.law_refs || [],
 					priority: template.info.priority,
-					resources: template.info.resources || []
+					resources: template.info.resources || [],
+					non_technical_steps: template.info.non_technical_steps || [],
+					scope_caveats: template.info.scope_caveats || null,
+					acceptance_summary: template.info.acceptance_summary || null,
+					faq: template.info.faq || []
 				} : undefined
 			};
 			
@@ -229,7 +233,11 @@
 					whyItMatters: item.info.why_it_matters,
 					lawRefs: item.info.law_refs || [],
 					priority: item.info.priority,
-					resources: item.info.resources || []
+					resources: item.info.resources || [],
+					non_technical_steps: item.info.non_technical_steps || [],
+					scope_caveats: item.info.scope_caveats || null,
+					acceptance_summary: item.info.acceptance_summary || null,
+					faq: item.info.faq || []
 				} : undefined
 			};
 			

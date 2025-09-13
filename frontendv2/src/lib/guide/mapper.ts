@@ -13,6 +13,9 @@ export interface InfoPanelData {
   };
   guide: {
     non_technical_steps: string[];
+    scope_caveats?: string | null;
+    acceptance_summary?: string | null;
+    faq?: Array<{q: string; a: string}>;
   };
   media: {
     images: GuideImage[];
