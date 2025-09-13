@@ -1,556 +1,436 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { checklistStore } from '$lib/stores/checklist.svelte';
-	import { assetStore } from '$lib/stores/assets.svelte';
-	import type { ModelDerivedChecklistItem, V1AssetSummary } from '$lib/api/Api';
+	import type { ChecklistState, ChecklistItem } from '$lib/types';
+	import { loadChecklistState, saveChecklistState } from '$lib/persistence';
+	// Remove hardcoded imports - we'll load from backend instead
+	// import { manualChecklistSections } from '$lib/checklist/items.manual';
+	// import { autoTemplateSections } from '$lib/checklist/items.auto.template';
+	import { apiClient } from '$lib/api/client';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import * as Tabs from '$lib/components/ui/tabs';
-	import { Progress } from '$lib/components/ui/progress';
-	import { Input } from '$lib/components/ui/input';
-	import * as Alert from '$lib/components/ui/alert';
+	import { Badge } from '$lib/components/ui/badge';
+	import { ProgressBar } from '$lib/components/ui/progress-bar';
+	import ChecklistItemComponent from '$lib/components/compliance/checklist-item.svelte';
 
-	let globalItems: ModelDerivedChecklistItem[] = $state([]);
-	let assetComplianceMap: Record<string, ModelDerivedChecklistItem[]> = $state({});
-	let assets: V1AssetSummary[] = $state([]);
-	let loading = $state(true);
+	let checklistState: ChecklistState = $state(loadChecklistState());
+	let activeView: 'manual' | 'scanner' = $state('manual');
+	let backendTemplates: any[] = $state([]);
+	let backendGlobalChecklist: any[] = $state([]);
+	let templatesLoading: boolean = $state(false);
+	let globalChecklistLoading: boolean = $state(false);
 	
-	// File upload state
-	let fileInput: HTMLInputElement;
-	let uploadMessage = $state('');
-	let uploadError = $state('');
-	let uploading = $state(false);
-
-	// Computed compliance statistics
-	let globalStats = $derived(() => {
-		const total = globalItems.length;
-		const passed = globalItems.filter(item => item.status === 'yes').length;
-		const failed = globalItems.filter(item => item.status === 'no').length;
-		const na = globalItems.filter(item => item.status === 'na').length;
-		const required = globalItems.filter(item => item.required).length;
-		const requiredPassed = globalItems.filter(item => item.required && item.status === 'yes').length;
-		
-		return {
-			total,
-			passed,
-			failed,
-			na,
-			required,
-			requiredPassed,
-			passRate: total > 0 ? Math.round((passed / total) * 100) : 0,
-			requiredPassRate: required > 0 ? Math.round((requiredPassed / required) * 100) : 0
-		};
+	// Convert backend templates to sections format, filtered by type
+	let displaySections = $derived(() => {
+		if (activeView === 'scanner') {
+			// For scanner view, use global checklist (with asset coverage) filtered for auto items
+			console.log('Scanner view - backendGlobalChecklist:', backendGlobalChecklist);
+			
+			// Try multiple filtering approaches to find auto items
+			const autoItems = backendGlobalChecklist.filter(item => 
+				item.kind === 'auto' || 
+				item.source === 'auto' || 
+				item.script_controlled === true ||
+				item.read_only === true ||
+				(item.scope === 'asset') // Asset-scoped items are often automatic
+			);
+			console.log('Filtered auto items:', autoItems);
+			console.log('Sample item structure:', backendGlobalChecklist[0]);
+			
+			// If no auto items from global checklist, fall back to auto templates
+			if (autoItems.length === 0 && backendTemplates.length > 0) {
+				console.log('No auto items in global checklist, falling back to auto templates');
+				const autoTemplates = backendTemplates.filter(template => template.kind === 'auto');
+				return convertTemplatesToSections(autoTemplates);
+			}
+			
+			return convertGlobalChecklistToSections(autoItems);
+		} else {
+			// For manual view, show only manual templates
+			const manualTemplates = backendTemplates.filter(template => template.kind === 'manual');
+			return convertTemplatesToSections(manualTemplates);
+		}
 	});
 
-	let assetStats = $derived(() => {
-		const assetTypes = ['domain', 'subdomain', 'ip', 'service'];
-		const stats: Record<string, any> = {};
+	// Convert backend templates to frontend sections format
+	function convertTemplatesToSections(templates: any[]) {
+		if (!templates || templates.length === 0) return [];
 		
-		assetTypes.forEach(type => {
-			const typeAssets = assets.filter(a => a.type === type);
-			const totalAssets = typeAssets.length;
-			let totalItems = 0;
-			let passedItems = 0;
-			let requiredItems = 0;
-			let requiredPassedItems = 0;
+		// Group templates by category
+		const categoryMap = new Map();
+		
+		templates.forEach(template => {
+			const category = template.category || 'Other';
+			if (!categoryMap.has(category)) {
+				categoryMap.set(category, {
+					id: category.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+					title: category,
+					description: `${category} compliance requirements`,
+					items: []
+				});
+			}
 			
-			typeAssets.forEach(asset => {
-				const items = assetComplianceMap[asset.id] || [];
-				totalItems += items.length;
-				passedItems += items.filter(item => item.status === 'yes').length;
-				requiredItems += items.filter(item => item.required).length;
-				requiredPassedItems += items.filter(item => item.required && item.status === 'yes').length;
-			});
-			
-			stats[type] = {
-				totalAssets,
-				totalItems,
-				passedItems,
-				requiredItems,
-				requiredPassedItems,
-				passRate: totalItems > 0 ? Math.round((passedItems / totalItems) * 100) : 0,
-				requiredPassRate: requiredItems > 0 ? Math.round((requiredPassedItems / requiredItems) * 100) : 0
+			// Convert backend template to frontend item format
+			const item = {
+				id: template.id,
+				title: template.title,
+				description: template.description,
+				helpText: template.help_text || template.description,
+				whyMatters: template.why_matters || template.recommendation,
+				category: category.toLowerCase(),
+				required: template.required,
+				status: "no", // Default status, will be overridden by checklistState
+				recommendation: template.recommendation,
+				kind: template.kind || (template.scope === 'global' ? 'manual' : 'auto'),
+				readOnly: template.read_only || false,
+				info: template.info ? {
+					whatItMeans: template.info.what_it_means,
+					whyItMatters: template.info.why_it_matters,
+					lawRefs: template.info.law_refs || [],
+					priority: template.info.priority,
+					resources: template.info.resources || []
+				} : undefined
 			};
+			
+			categoryMap.get(category).items.push(item);
 		});
 		
-		return stats;
-	});
+		return Array.from(categoryMap.values());
+	}
 
-	let overallStats = $derived(() => {
-		const totalGlobalPassed = globalStats().passed;
-		const totalGlobalItems = globalStats().total;
+	// Convert global checklist items (with asset coverage) to frontend sections format
+	function convertGlobalChecklistToSections(checklistItems: any[]) {
+		if (!checklistItems || checklistItems.length === 0) return [];
 		
-		let totalAssetItems = 0;
-		let totalAssetPassed = 0;
+		// Group checklist items by category
+		const categoryMap = new Map();
 		
-		Object.values(assetComplianceMap).forEach(items => {
-			totalAssetItems += items.length;
-			totalAssetPassed += items.filter(item => item.status === 'yes').length;
+		checklistItems.forEach(item => {
+			const category = item.category || 'Other';
+			if (!categoryMap.has(category)) {
+				categoryMap.set(category, {
+					id: category.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+					title: category,
+					description: `${category} compliance requirements`,
+					items: []
+				});
+			}
+			
+			// Convert backend checklist item to frontend item format (includes asset coverage)
+			const frontendItem = {
+				id: item.id,
+				title: item.title,
+				description: item.description,
+				helpText: item.help_text || item.description,
+				whyMatters: item.why_matters || item.recommendation,
+				category: category.toLowerCase(),
+				required: item.required,
+				status: item.status || "no",
+				recommendation: item.recommendation,
+				kind: item.kind || item.source || 'auto',
+				readOnly: item.read_only || true, // Auto items are typically read-only
+				notes: item.notes,
+				lastUpdated: item.updated_at,
+				coveredAssets: item.covered_assets || [], // This is the key difference!
+				info: item.info ? {
+					whatItMeans: item.info.what_it_means,
+					whyItMatters: item.info.why_it_matters,
+					lawRefs: item.info.law_refs || [],
+					priority: item.info.priority,
+					resources: item.info.resources || []
+				} : undefined
+			};
+			
+			categoryMap.get(category).items.push(frontendItem);
 		});
 		
-		const grandTotal = totalGlobalItems + totalAssetItems;
-		const grandPassed = totalGlobalPassed + totalAssetPassed;
+		return Array.from(categoryMap.values());
+	}
+
+	// Load backend templates
+	async function loadBackendTemplates() {
+		templatesLoading = true;
+		try {
+			const response = await apiClient.checklist.templatesList();
+			backendTemplates = response.data || [];
+			console.log('Loaded backend templates:', backendTemplates);
+		} catch (err) {
+			console.error('Failed to load backend templates:', err);
+			// Fallback to empty array if backend is not available
+			backendTemplates = [];
+		} finally {
+			templatesLoading = false;
+		}
+	}
+
+	// Load backend global checklist (includes asset coverage)
+	async function loadBackendGlobalChecklist() {
+		globalChecklistLoading = true;
+		try {
+			const response = await apiClient.checklist.globalList();
+			backendGlobalChecklist = response.data || [];
+			console.log('Loaded backend global checklist:', backendGlobalChecklist);
+		} catch (err) {
+			console.error('Failed to load backend global checklist:', err);
+			// Fallback to empty array if backend is not available
+			backendGlobalChecklist = [];
+		} finally {
+			globalChecklistLoading = false;
+		}
+	}
+
+	function updateChecklistItem(sectionId: string, itemId: string, updates: Partial<ChecklistItem>) {
+		// Only allow updates for manual items
+		if (activeView !== 'manual') return;
 		
-		return {
-			grandTotal,
-			grandPassed,
-			overallPassRate: grandTotal > 0 ? Math.round((grandPassed / grandTotal) * 100) : 0
+		// Ensure the section exists in checklistState
+		const sectionExists = checklistState.sections.some(section => section.id === sectionId);
+		if (!sectionExists) {
+			// Add the section from displaySections
+			const displaySection = displaySections().find(section => section.id === sectionId);
+			if (displaySection) {
+				checklistState = {
+					...checklistState,
+					sections: [...checklistState.sections, displaySection]
+				};
+			}
+		}
+		
+		const newState = {
+			...checklistState,
+			sections: checklistState.sections.map(section => 
+				section.id === sectionId 
+					? {
+							...section,
+							items: section.items.map(item => 
+								item.id === itemId ? { ...item, ...updates } : item
+							)
+						}
+					: section
+			),
+			lastUpdated: new Date().toISOString()
 		};
+		checklistState = newState;
+		saveChecklistState(newState);
+	}
+
+	// Calculate compliance score for current view
+	let complianceScore = $derived(() => {
+		const sections = displaySections();
+		if (sections.length === 0) return 0;
+		
+		const totalRequired = sections.reduce((acc, section) => 
+			acc + section.items.filter((item: any) => item.required).length, 0
+		);
+		
+		// For manual items, check against saved state; for auto items, they don't have saved state
+		let completedRequired = 0;
+		if (activeView === 'manual') {
+			completedRequired = sections.reduce((acc, section) => {
+				const sectionState = checklistState.sections.find(s => s.id === section.id);
+				if (!sectionState) return acc;
+				return acc + sectionState.items.filter((item: any) => item.required && item.status === "yes").length;
+			}, 0);
+		}
+		
+		return totalRequired > 0 ? Math.round((completedRequired / totalRequired) * 100) : 0;
 	});
 
-	async function loadComplianceData() {
-		loading = true;
-		try {
-			// Load global checklist items
-			await checklistStore.loadGlobal();
-			globalItems = checklistStore.globalItems;
-
-			// Load assets
-			await assetStore.load();
-			assets = assetStore.data?.assets || [];
-
-			// Load asset-specific checklist items for each asset
-			const assetPromises = assets.map(async (asset) => {
-				const items = await checklistStore.getAssetItems(asset.id);
-				assetComplianceMap[asset.id] = items;
-			});
-			
-			await Promise.all(assetPromises);
-		} catch (error) {
-			console.error('Failed to load compliance data:', error);
-		} finally {
-			loading = false;
-		}
-	}
-
-	function getStatusColor(status?: string): string {
-		return checklistStore.getStatusColor(status);
-	}
-
-	function getStatusLabel(status?: string): string {
-		return checklistStore.getStatusLabel(status);
-	}
-
-	async function updateGlobalItemStatus(itemId: string, status: 'yes' | 'no' | 'na') {
-		try {
-			await checklistStore.setStatus(itemId, '', status, '');
-			// Create a new array to trigger reactivity
-			globalItems = [...checklistStore.globalItems];
-		} catch (error) {
-			console.error('Failed to update global item status:', error);
-		}
-	}
-
-	async function updateAssetItemStatus(assetId: string, itemId: string, status: 'yes' | 'no' | 'na') {
-		try {
-			await checklistStore.setAssignment({
-				item_id: itemId,
-				scope: 'asset',
-				asset_id: assetId,
-				status: status,
-				notes: ''
-			});
-			// Reload asset items to reflect the change
-			const items = await checklistStore.getAssetItems(assetId);
-			// Create a new object to trigger reactivity
-			assetComplianceMap = { ...assetComplianceMap, [assetId]: [...items] };
-		} catch (error) {
-			console.error('Failed to update asset item status:', error);
-		}
-	}
-
-	// Handle file upload
-	async function handleFileUpload(event: Event) {
-		console.log('File upload triggered');
-		const target = event.target as HTMLInputElement;
-		const file = target.files?.[0];
-		
-		console.log('Selected file:', file);
-		if (!file) return;
-		
-		uploadMessage = '';
-		uploadError = '';
-		uploading = true;
-		
-		try {
-			console.log('Reading file...');
-			const text = await file.text();
-			console.log('File content:', text.substring(0, 200) + '...');
-			
-			const data = JSON.parse(text);
-			console.log('Parsed data:', data);
-			
-			// Validate that it's an array of templates
-			if (!Array.isArray(data.templates) && !Array.isArray(data)) {
-				throw new Error('Invalid JSON format. Expected an array of templates or an object with a "templates" array.');
-			}
-			
-			const templates = Array.isArray(data) ? data : data.templates;
-			console.log('Templates to upload:', templates.length);
-			
-			// Validate template structure
-			for (const template of templates) {
-				if (!template.id || !template.title || !template.scope) {
-					throw new Error('Invalid template structure. Each template must have id, title, and scope.');
-				}
-			}
-			
-			console.log('Calling uploadTemplates...');
-			const result = await checklistStore.uploadTemplates(templates);
-			console.log('Upload result:', result);
-			
-			uploadMessage = `Successfully uploaded ${result.count || templates.length} templates!`;
-			
-			// Reload compliance data
-			await loadComplianceData();
-			
-		} catch (error) {
-			console.error('Upload error:', error);
-			uploadError = error instanceof Error ? error.message : 'Failed to upload templates';
-		} finally {
-			uploading = false;
-			// Clear the file input
-			if (fileInput) {
-				fileInput.value = '';
-			}
-		}
-	}
 
 	onMount(() => {
-		loadComplianceData();
+		checklistState = loadChecklistState();
+		loadBackendTemplates(); // Load templates from backend
+		loadBackendGlobalChecklist(); // Load global checklist with asset coverage
 	});
 </script>
 
-<div class="container mx-auto px-4 py-8 max-w-7xl">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 	<div class="mb-8">
-		<div class="flex justify-between items-start mb-4">
-			<div>
-				<h1 class="text-3xl font-bold text-gray-900 mb-2">Compliance Overview</h1>
-				<p class="text-gray-600">
-					Monitor your organization's compliance posture across global policies and asset-specific requirements.
-				</p>
-			</div>
-			
-			<!-- File Upload Section -->
-			<div class="flex flex-col items-end space-y-2">
-				<div class="flex items-center space-x-2">
-					<input
-						bind:this={fileInput}
-						type="file"
-						accept=".json"
-						onchange={handleFileUpload}
-						disabled={uploading}
-						class="hidden"
-						id="file-upload"
-					/>
-					<Button 
-						disabled={uploading} 
-						variant="outline"
-						onclick={() => {
-							console.log('Button clicked');
-							const input = document.getElementById('file-upload') as HTMLInputElement;
-							console.log('Input element:', input);
-							input?.click();
-						}}
+		<h1 class="text-3xl font-bold text-foreground mb-4">Compliance Checklist</h1>
+		<p class="text-muted-foreground mb-6">
+			Track your compliance with Moldova's Cybersecurity Law requirements. 
+			Complete the checklist items below and upload evidence where applicable.
+		</p>
+		
+		<!-- Manual/Scanner Toggle -->
+		<div class="mb-6">
+			<Tabs.Root value={activeView} class="w-full">
+				<Tabs.List class="grid w-full grid-cols-2 mb-6">
+					<Tabs.Trigger 
+						value="manual"
+						onclick={() => activeView = 'manual'}
+						class="text-sm"
 					>
-						{uploading ? 'Uploading...' : 'Choose JSON File'}
-					</Button>
-				</div>
-				
-				{#if uploadMessage}
-					<Alert.Root class="w-80">
-						<Alert.Description class="text-green-600">
-							{uploadMessage}
-						</Alert.Description>
-					</Alert.Root>
-				{/if}
-				
-				{#if uploadError}
-					<Alert.Root class="w-80" variant="destructive">
-						<Alert.Description>
-							{uploadError}
-						</Alert.Description>
-					</Alert.Root>
-				{/if}
-			</div>
-		</div>
-	</div>
+						Manual Templates
+					</Tabs.Trigger>
+					<Tabs.Trigger 
+						value="scanner"
+						onclick={() => activeView = 'scanner'}
+						class="text-sm"
+					>
+						Automatic Templates
+					</Tabs.Trigger>
+				</Tabs.List>
 
-	{#if loading}
-		<div class="flex items-center justify-center py-12">
-			<div class="text-gray-500">Loading compliance data...</div>
-		</div>
-	{:else}
-		<!-- Overall Compliance Dashboard -->
-		<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-			<Card.Root>
+				<!-- Manual View -->
+				<Tabs.Content value="manual">
+					<Card.Root class="mb-6">
 				<Card.Header>
-					<Card.Title class="text-lg">Overall Compliance</Card.Title>
-					<Card.Description>Across all global and asset-specific checks</Card.Description>
+							<Card.Title>Manual Compliance Templates</Card.Title>
+							<Card.Description>
+								Manual compliance items that require human verification and documentation
+							</Card.Description>
 				</Card.Header>
 				<Card.Content>
-					<div class="text-3xl font-bold text-blue-600 mb-2">{overallStats().overallPassRate}%</div>
-					<Progress value={overallStats().overallPassRate} class="mb-2" />
-					<div class="text-sm text-gray-600">
-						{overallStats().grandPassed} of {overallStats().grandTotal} checks passed
-					</div>
+							{#if activeView === 'manual'}
+								<ProgressBar value={complianceScore()} size="lg" />
+								<div class="flex justify-between text-sm text-muted-foreground mt-2">
+									<span>
+										{displaySections().reduce((acc, section) => {
+											const sectionState = checklistState.sections.find(s => s.id === section.id);
+											if (!sectionState) return acc;
+											return acc + sectionState.items.filter((item: any) => item.required && item.status === "yes").length;
+										}, 0)} of {displaySections().reduce((acc, section) => 
+											acc + section.items.filter((item: any) => item.required).length, 0
+										)} required items completed
+									</span>
+									<span>
+										Last updated: {new Date(checklistState.lastUpdated).toLocaleDateString()}
+									</span>
+								</div>
+							{:else}
+								<div class="text-sm text-muted-foreground p-4 bg-muted/30 rounded-md">
+									<strong>Info:</strong> Manual compliance tracking is not available for automatic templates.
+								</div>
+							{/if}
 				</Card.Content>
 			</Card.Root>
 
-			<Card.Root>
-				<Card.Header>
-					<Card.Title class="text-lg">Global Compliance</Card.Title>
-					<Card.Description>Organization-wide policies</Card.Description>
-				</Card.Header>
-				<Card.Content>
-					<div class="text-3xl font-bold text-green-600 mb-2">{globalStats().passRate}%</div>
-					<Progress value={globalStats().passRate} class="mb-2" />
-					<div class="text-sm text-gray-600">
-						{globalStats().passed} of {globalStats().total} global checks passed
-					</div>
-					{#if globalStats().required > 0}
-						<div class="text-xs text-gray-500 mt-1">
-							Required: {globalStats().requiredPassed}/{globalStats().required} ({globalStats().requiredPassRate}%)
+					{#if templatesLoading}
+						<div class="flex items-center justify-center p-8">
+							<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+							<span class="ml-2">Loading checklist templates...</span>
+						</div>
+					{:else if displaySections().length > 0}
+						<Tabs.Root value={displaySections()[0]?.id} class="w-full">
+							<Tabs.List class="grid w-full grid-cols-3 lg:grid-cols-9 mb-8">
+								{#each displaySections() as section}
+									<Tabs.Trigger 
+										value={section.id}
+										class="text-xs p-1"
+									>
+										{section.title.split(' ')[0]}
+									</Tabs.Trigger>
+								{/each}
+							</Tabs.List>
+
+							{#each displaySections() as section}
+								<Tabs.Content value={section.id}>
+									<Card.Root class="mb-6">
+					<Card.Header>
+											<Card.Title>{section.title}</Card.Title>
+											<Card.Description>{section.description}</Card.Description>
+					</Card.Header>
+				</Card.Root>
+
+								<div class="space-y-4">
+										{#each section.items as item}
+											<ChecklistItemComponent
+												item={item}
+												onUpdate={(updates) => updateChecklistItem(section.id, item.id, updates)}
+												readOnly={item.readOnly || activeView === 'scanner'}
+											/>
+									{/each}
+								</div>
+								</Tabs.Content>
+							{/each}
+						</Tabs.Root>
+					{:else}
+						<div class="text-center p-8 text-muted-foreground">
+							<p>No checklist templates available. Please ensure the backend is running and templates are loaded.</p>
+							<Button 
+								variant="outline" 
+								class="mt-4" 
+								onclick={loadBackendTemplates}
+							>
+								Retry
+							</Button>
 						</div>
 					{/if}
-				</Card.Content>
-			</Card.Root>
+			</Tabs.Content>
 
-			<Card.Root>
-				<Card.Header>
-					<Card.Title class="text-lg">Asset Coverage</Card.Title>
-					<Card.Description>Assets with compliance data</Card.Description>
-				</Card.Header>
-				<Card.Content>
-					<div class="text-3xl font-bold text-purple-600 mb-2">{assets.length}</div>
-					<div class="text-sm text-gray-600 mb-2">Total assets monitored</div>
-					<div class="text-xs text-gray-500">
-						{Object.keys(assetComplianceMap).length} assets have checklist items
-					</div>
-				</Card.Content>
-			</Card.Root>
-		</div>
-
-		<Tabs.Root value="global" class="w-full">
-			<Tabs.List class="grid w-full grid-cols-3">
-				<Tabs.Trigger value="global">Global Checklist</Tabs.Trigger>
-				<Tabs.Trigger value="assets">Asset Compliance</Tabs.Trigger>
-				<Tabs.Trigger value="summary">Summary by Type</Tabs.Trigger>
-			</Tabs.List>
-
-			<!-- Global Checklist Tab -->
-			<Tabs.Content value="global" class="mt-6">
-				<Card.Root>
+				<!-- Scanner Template View -->
+				<Tabs.Content value="scanner">
+					<Card.Root class="mb-6">
 					<Card.Header>
-						<Card.Title>Global Compliance Items</Card.Title>
+							<Card.Title>Automatic Compliance Templates</Card.Title>
 						<Card.Description>
-							Organization-wide compliance requirements that apply to your entire infrastructure.
+								Automated compliance checks that can be performed by the scanner
 						</Card.Description>
 					</Card.Header>
 					<Card.Content>
-						{#if globalItems.length > 0}
-							<div class="space-y-4">
-								{#each globalItems as item (item.id)}
-									<div class="border border-gray-200 rounded-lg p-4 bg-white">
-										<div class="flex items-start justify-between mb-2">
-											<div class="flex-1">
-												<div class="flex items-center gap-2 mb-1">
-													<span class="font-medium text-gray-900">{item.title}</span>
-													<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {getStatusColor(item.status)}">
-														{getStatusLabel(item.status)}
-													</span>
-													<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-														{checklistStore.getSourceLabel(item.source)}
-													</span>
-													{#if item.required}
-														<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200">
-															Required
-														</span>
-													{/if}
-												</div>
-												{#if item.category}
-													<div class="text-xs text-gray-500 mb-2">{item.category}</div>
-												{/if}
-											</div>
-											{#if item.source === 'manual'}
-												<div class="flex gap-2">
-													<Button 
-														size="sm" 
-														variant={item.status === 'yes' ? 'default' : 'outline'}
-														onclick={() => updateGlobalItemStatus(item.id || '', 'yes')}
-													>
-														Yes
-													</Button>
-													<Button 
-														size="sm" 
-														variant={item.status === 'no' ? 'default' : 'outline'}
-														onclick={() => updateGlobalItemStatus(item.id || '', 'no')}
-													>
-														No
-													</Button>
-													<Button 
-														size="sm" 
-														variant={item.status === 'na' ? 'default' : 'outline'}
-														onclick={() => updateGlobalItemStatus(item.id || '', 'na')}
-													>
-														N/A
-													</Button>
-												</div>
-											{/if}
-										</div>
-										{#if item.description}
-											<div class="text-sm text-gray-600 mb-2">{item.description}</div>
-										{/if}
-										{#if item.notes}
-											<div class="text-sm text-gray-700 mb-2">
-												<span class="font-medium">Notes:</span> {item.notes}
-											</div>
-										{/if}
-										{#if item.recommendation}
-											<div class="text-sm text-gray-700">
-												<span class="font-medium">Recommendation:</span> {item.recommendation}
-											</div>
-										{/if}
-									</div>
-								{/each}
+							<div class="text-sm text-muted-foreground p-4 bg-muted/30 rounded-md">
+								<strong>Note:</strong> These are read-only templates that would be automatically checked by the compliance scanner.
 							</div>
-						{:else}
-							<div class="text-center py-8 text-gray-500">
-								No global checklist items found. Create templates to get started.
-							</div>
-						{/if}
 					</Card.Content>
 				</Card.Root>
-			</Tabs.Content>
 
-			<!-- Asset Compliance Tab -->
-			<Tabs.Content value="assets" class="mt-6">
-				<Card.Root>
+					{#if globalChecklistLoading || templatesLoading}
+						<div class="flex items-center justify-center p-8">
+							<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+							<span class="ml-2">Loading automatic templates...</span>
+						</div>
+					{:else if displaySections().length > 0}
+						<Tabs.Root value={displaySections()[0]?.id} class="w-full">
+							<Tabs.List class="grid w-full grid-cols-3 lg:grid-cols-9 mb-8">
+								{#each displaySections() as section}
+									<Tabs.Trigger 
+										value={section.id}
+										class="text-xs p-1"
+									>
+										{section.title.split(' ')[0]}
+									</Tabs.Trigger>
+								{/each}
+							</Tabs.List>
+
+							{#each displaySections() as section}
+								<Tabs.Content value={section.id}>
+									<Card.Root class="mb-6">
 					<Card.Header>
-						<Card.Title>Asset-Specific Compliance</Card.Title>
-						<Card.Description>
-							Compliance status for individual assets in your infrastructure.
-						</Card.Description>
+											<Card.Title>{section.title}</Card.Title>
+											<Card.Description>{section.description}</Card.Description>
 					</Card.Header>
-					<Card.Content>
-						{#if assets.length > 0}
-							<div class="space-y-4">
-								{#each assets as asset (asset.id)}
-									{@const items = assetComplianceMap[asset.id] || []}
-									{#if items.length > 0}
-										<div class="border border-gray-200 rounded-lg p-4 bg-white">
-											<div class="flex items-center justify-between mb-3">
-												<div>
-													<div class="font-medium text-gray-900">{asset.value}</div>
-													<div class="text-sm text-gray-500">{asset.type.toUpperCase()} • {asset.id}</div>
-												</div>
-												<div class="text-right">
-													<div class="text-sm font-medium">
-														{items.filter(i => i.status === 'yes').length}/{items.length} passed
-													</div>
-													<div class="text-xs text-gray-500">
-														{Math.round((items.filter(i => i.status === 'yes').length / items.length) * 100)}% compliance
-													</div>
-												</div>
-											</div>
-											<div class="space-y-2">
-												{#each items as item (item.id)}
-													<div class="flex items-center justify-between py-2 px-3 bg-gray-50 rounded">
-														<div class="flex items-center gap-2">
-															<span class="text-sm font-medium">{item.title}</span>
-															{#if item.required}
-																<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">
-																	Required
-																</span>
-															{/if}
-															<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
-																{checklistStore.getSourceLabel(item.source)}
-															</span>
-														</div>
-														<div class="flex items-center gap-2">
-															<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {getStatusColor(item.status)}">
-																{getStatusLabel(item.status)}
-															</span>
-															{#if item.source === 'manual'}
-																<div class="flex gap-1">
-																	<Button 
-																		size="sm" 
-																		variant={item.status === 'yes' ? 'default' : 'outline'}
-																		onclick={() => updateAssetItemStatus(asset.id, item.id || '', 'yes')}
-																		class="px-2 py-1 text-xs"
-																	>
-																		Yes
-																	</Button>
-																	<Button 
-																		size="sm" 
-																		variant={item.status === 'no' ? 'default' : 'outline'}
-																		onclick={() => updateAssetItemStatus(asset.id, item.id || '', 'no')}
-																		class="px-2 py-1 text-xs"
-																	>
-																		No
-																	</Button>
-																	<Button 
-																		size="sm" 
-																		variant={item.status === 'na' ? 'default' : 'outline'}
-																		onclick={() => updateAssetItemStatus(asset.id, item.id || '', 'na')}
-																		class="px-2 py-1 text-xs"
-																	>
-																		N/A
-																	</Button>
-																</div>
-															{/if}
-														</div>
-													</div>
-												{/each}
-											</div>
-										</div>
-									{/if}
-								{/each}
-							</div>
-						{:else}
-							<div class="text-center py-8 text-gray-500">
-								No assets found. Discover assets to see compliance data.
-							</div>
-						{/if}
-					</Card.Content>
 				</Card.Root>
-			</Tabs.Content>
 
-			<!-- Summary by Type Tab -->
-			<Tabs.Content value="summary" class="mt-6">
-				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-					{#each Object.entries(assetStats) as [type, stats]}
-						<Card.Root>
-							<Card.Header>
-								<Card.Title class="text-lg capitalize">{type} Assets</Card.Title>
-								<Card.Description>{stats.totalAssets} assets</Card.Description>
-							</Card.Header>
-							<Card.Content>
-								<div class="text-2xl font-bold text-blue-600 mb-2">{stats.passRate}%</div>
-								<Progress value={stats.passRate} class="mb-2" />
-								<div class="text-sm text-gray-600 mb-2">
-									{stats.passedItems} of {stats.totalItems} checks passed
+								<div class="space-y-4">
+										{#each section.items as item}
+											<ChecklistItemComponent
+												item={item}
+												onUpdate={(updates) => updateChecklistItem(section.id, item.id, updates)}
+												readOnly={item.readOnly || activeView === 'scanner'}
+											/>
+									{/each}
 								</div>
-								{#if stats.requiredItems > 0}
-									<div class="text-xs text-gray-500">
-										Required: {stats.requiredPassedItems}/{stats.requiredItems} ({stats.requiredPassRate}%)
-									</div>
-								{/if}
-							</Card.Content>
-						</Card.Root>
-					{/each}
-				</div>
+								</Tabs.Content>
+							{/each}
+						</Tabs.Root>
+					{:else}
+						<div class="text-center p-8 text-muted-foreground">
+							<p>No automatic templates available. Please ensure the backend is running and templates are loaded.</p>
+							<Button 
+								variant="outline" 
+								class="mt-4" 
+								onclick={() => {
+									loadBackendGlobalChecklist();
+									loadBackendTemplates();
+								}}
+							>
+								Retry
+							</Button>
+						</div>
+					{/if}
 			</Tabs.Content>
 		</Tabs.Root>
-
-		<!-- Action Buttons -->
-		<div class="mt-8 flex gap-4">
-			<Button onclick={loadComplianceData}>
-				Refresh Data
-			</Button>
-			<Button variant="outline" onclick={() => checklistStore.loadTemplates()}>
-				Manage Templates
-			</Button>
 		</div>
-	{/if}
+		</div>
 </div>

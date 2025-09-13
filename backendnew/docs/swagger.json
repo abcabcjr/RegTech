@@ -297,6 +297,36 @@
                 }
             }
         },
+        "/checklist/coverage/summary": {
+            "get": {
+                "description": "Get a summary of compliance coverage showing which assets are covered by compliance checks",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "checklist"
+                ],
+                "summary": "Get compliance coverage summary",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/checklist/global": {
             "get": {
                 "description": "Retrieve all global checklist items with their current status",
@@ -457,6 +487,354 @@
                 }
             }
         },
+        "/files": {
+            "get": {
+                "description": "List all file attachments for a specific checklist key",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "files"
+                ],
+                "summary": "List file attachments",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Checklist key (e.g., global:item1 or asset:assetId:item1)",
+                        "name": "checklistKey",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.FileAttachmentSummary"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/files/limits": {
+            "get": {
+                "description": "Get information about file upload limits and restrictions",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "files"
+                ],
+                "summary": "Get upload limits",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/files/status": {
+            "get": {
+                "description": "Get the current status of the MinIO file upload service",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "files"
+                ],
+                "summary": "Get file service status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/files/supported-types": {
+            "get": {
+                "description": "Get the list of content types that are supported for file uploads",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "files"
+                ],
+                "summary": "Get supported content types",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/files/upload/initiate": {
+            "post": {
+                "description": "Create a file attachment record and get a pre-signed upload URL",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "files"
+                ],
+                "summary": "Initiate file upload",
+                "parameters": [
+                    {
+                        "description": "Upload initiation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.InitiateUploadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.PresignedUploadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/files/{fileId}": {
+            "get": {
+                "description": "Get metadata for a file attachment",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "files"
+                ],
+                "summary": "Get file information",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "File ID",
+                        "name": "fileId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.FileAttachment"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a file attachment and remove it from MinIO storage",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "files"
+                ],
+                "summary": "Delete file attachment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "File ID",
+                        "name": "fileId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/files/{fileId}/confirm": {
+            "post": {
+                "description": "Verify that a file upload was completed and update the file status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "files"
+                ],
+                "summary": "Confirm file upload",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "File ID",
+                        "name": "fileId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/files/{fileId}/download": {
+            "get": {
+                "description": "Generate a pre-signed download URL for a file attachment",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "files"
+                ],
+                "summary": "Generate download URL",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "File ID",
+                        "name": "fileId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.PresignedDownloadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "Check if the service is healthy",
@@ -520,6 +898,37 @@
         }
     },
     "definitions": {
+        "handler.InitiateUploadRequest": {
+            "type": "object",
+            "required": [
+                "checklist_key",
+                "file_name",
+                "file_size"
+            ],
+            "properties": {
+                "checklist_key": {
+                    "type": "string",
+                    "example": "global:item1"
+                },
+                "content_type": {
+                    "type": "string",
+                    "example": "application/pdf"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Evidence for compliance check"
+                },
+                "file_name": {
+                    "type": "string",
+                    "example": "evidence.pdf"
+                },
+                "file_size": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "example": 1024
+                }
+            }
+        },
         "handler.SetStatusRequest": {
             "type": "object",
             "properties": {
@@ -559,6 +968,30 @@
                     "items": {
                         "$ref": "#/definitions/model.ChecklistItemTemplate"
                     }
+                }
+            }
+        },
+        "model.AssetCoverage": {
+            "type": "object",
+            "properties": {
+                "asset_id": {
+                    "type": "string"
+                },
+                "asset_type": {
+                    "type": "string"
+                },
+                "asset_value": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "\"yes\", \"no\" (excludes \"na\")",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
@@ -617,8 +1050,22 @@
                         "type": "string"
                     }
                 },
+                "attachments": {
+                    "description": "File attachment IDs",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "category": {
                     "type": "string"
+                },
+                "covered_assets": {
+                    "description": "Assets covered by this check",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AssetCoverage"
+                    }
                 },
                 "description": {
                     "type": "string"
@@ -690,6 +1137,138 @@
                 },
                 "value": {
                     "description": "Value for \"eq\", \"regex\", \"gte_days_since\""
+                }
+            }
+        },
+        "model.FileAttachment": {
+            "type": "object",
+            "properties": {
+                "asset_id": {
+                    "description": "Optional: links to specific asset",
+                    "type": "string"
+                },
+                "bucket_name": {
+                    "description": "Storage metadata",
+                    "type": "string"
+                },
+                "checklist_key": {
+                    "description": "Compliance context",
+                    "type": "string"
+                },
+                "content_type": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "error": {
+                    "description": "Error message if status is \"failed\"",
+                    "type": "string"
+                },
+                "etag": {
+                    "description": "MinIO ETag for integrity",
+                    "type": "string"
+                },
+                "file_name": {
+                    "type": "string"
+                },
+                "file_size": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "object_key": {
+                    "description": "Full path in MinIO",
+                    "type": "string"
+                },
+                "original_name": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status",
+                    "type": "string"
+                },
+                "uploaded_at": {
+                    "type": "string"
+                },
+                "uploaded_by": {
+                    "description": "Future: user identification",
+                    "type": "string"
+                }
+            }
+        },
+        "model.FileAttachmentSummary": {
+            "type": "object",
+            "properties": {
+                "content_type": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "file_name": {
+                    "type": "string"
+                },
+                "file_size": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "original_name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "uploaded_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.PresignedDownloadResponse": {
+            "type": "object",
+            "properties": {
+                "content_type": {
+                    "type": "string"
+                },
+                "download_url": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "file_name": {
+                    "type": "string"
+                },
+                "file_size": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.PresignedUploadResponse": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "fields": {
+                    "description": "Additional form fields for POST uploads",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "file_id": {
+                    "type": "string"
+                },
+                "method": {
+                    "description": "\"PUT\" or \"POST\"",
+                    "type": "string"
+                },
+                "upload_url": {
+                    "type": "string"
                 }
             }
         },

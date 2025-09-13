@@ -4,10 +4,11 @@ import "time"
 
 // SimpleChecklistStatus represents a simple status storage
 type SimpleChecklistStatus struct {
-	Key       string    `json:"key"`    // Format: "global:{itemId}" or "asset:{assetId}:{itemId}"
-	Status    string    `json:"status"` // "yes", "no", "na"
-	Notes     string    `json:"notes,omitempty"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Key         string    `json:"key"`    // Format: "global:{itemId}" or "asset:{assetId}:{itemId}"
+	Status      string    `json:"status"` // "yes", "no", "na"
+	Notes       string    `json:"notes,omitempty"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Attachments []string  `json:"attachments,omitempty"` // File attachment IDs
 }
 
 // Helper functions to create keys

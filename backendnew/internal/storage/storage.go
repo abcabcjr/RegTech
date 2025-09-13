@@ -50,6 +50,14 @@ type Storage interface {
 	GetChecklistStatus(ctx context.Context, key string) (*model.SimpleChecklistStatus, error)
 	ListChecklistStatuses(ctx context.Context) (map[string]*model.SimpleChecklistStatus, error)
 
+	// File attachment operations
+	CreateFileAttachment(ctx context.Context, attachment *model.FileAttachment) error
+	GetFileAttachment(ctx context.Context, id string) (*model.FileAttachment, error)
+	UpdateFileAttachment(ctx context.Context, attachment *model.FileAttachment) error
+	DeleteFileAttachment(ctx context.Context, id string) error
+	ListFileAttachments(ctx context.Context, checklistKey string) ([]*model.FileAttachment, error)
+	ListAllFileAttachments(ctx context.Context) ([]*model.FileAttachment, error)
+
 	// Utility operations
 	Close() error
 	Backup() error
@@ -58,9 +66,10 @@ type Storage interface {
 
 // StorageStats provides statistics about the storage
 type StorageStats struct {
-	AssetCount      int64   `json:"asset_count"`
-	JobCount        int64   `json:"job_count"`
-	ScanResultCount int64   `json:"scan_result_count"`
-	ScriptCount     int64   `json:"script_count"`
-	LastBackup      *string `json:"last_backup,omitempty"`
+	AssetCount          int64   `json:"asset_count"`
+	JobCount            int64   `json:"job_count"`
+	ScanResultCount     int64   `json:"scan_result_count"`
+	ScriptCount         int64   `json:"script_count"`
+	FileAttachmentCount int64   `json:"file_attachment_count"`
+	LastBackup          *string `json:"last_backup,omitempty"`
 }
