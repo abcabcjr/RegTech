@@ -1,0 +1,277 @@
+{
+  "templates": [
+    {
+      "id": "security-policy-001",
+      "title": "Cybersecurity Policy Documentation",
+      "description": "Formal cybersecurity policy document approved by management covering roles, responsibilities, and procedures",
+      "category": "Governance & Risk Management",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Develop and approve a comprehensive cybersecurity policy that establishes the foundation for your cybersecurity program. Should be reviewed annually.",
+      "evidence_rules": []
+    },
+    {
+      "id": "incident-response-002",
+      "title": "Incident Response Plan",
+      "description": "Documented incident response procedures with defined roles, escalation paths, and communication protocols",
+      "category": "Security Operations",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Maintain a comprehensive incident response plan and test it quarterly. Include contact information, escalation procedures, and recovery steps.",
+      "evidence_rules": []
+    },
+    {
+      "id": "backup-strategy-003",
+      "title": "Backup Strategy Implementation",
+      "description": "Documented backup and recovery procedures with regular testing of restore capabilities",
+      "category": "Backup & Disaster Recovery",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Implement 3-2-1 backup strategy (3 copies, 2 different media, 1 offsite). Test restoration procedures monthly.",
+      "evidence_rules": []
+    },
+    {
+      "id": "mfa-privileged-004",
+      "title": "Multi-Factor Authentication for Privileged Accounts",
+      "description": "MFA enabled for all administrator and privileged user accounts across all systems",
+      "category": "Identity & Access Management",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Enable MFA for all admin accounts immediately. Use hardware tokens or authenticator apps rather than SMS when possible.",
+      "evidence_rules": []
+    },
+    {
+      "id": "security-training-005",
+      "title": "Annual Security Awareness Training",
+      "description": "All employees receive annual cybersecurity awareness training with completion tracking",
+      "category": "Awareness & Training",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Provide mandatory annual cybersecurity training for all employees. Include phishing simulation exercises.",
+      "evidence_rules": []
+    },
+    {
+      "id": "access-review-006",
+      "title": "Quarterly Access Rights Review",
+      "description": "Regular review of user access rights and permissions to ensure principle of least privilege",
+      "category": "Identity & Access Management",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Conduct quarterly reviews of all user access. Remove unnecessary permissions and deactivate unused accounts.",
+      "evidence_rules": []
+    },
+    {
+      "id": "risk-assessment-007",
+      "title": "Annual Risk Assessment",
+      "description": "Comprehensive cybersecurity risk assessment documenting threats, vulnerabilities, and mitigation strategies",
+      "category": "Governance & Risk Management",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Conduct formal risk assessments annually. Document findings and track remediation efforts.",
+      "evidence_rules": []
+    },
+    {
+      "id": "log-retention-008",
+      "title": "Security Log Retention Policy",
+      "description": "Security logs retained for minimum 12 months with centralized collection and monitoring",
+      "category": "Logging & Monitoring",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Implement centralized logging with minimum 12-month retention. Monitor logs for security events.",
+      "evidence_rules": []
+    },
+    {
+      "id": "email-security-009",
+      "title": "Email Security Controls (SPF/DKIM/DMARC)",
+      "description": "Email authentication protocols properly configured to prevent spoofing and phishing",
+      "category": "Email Security",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Configure SPF, DKIM, and DMARC records. Start with monitoring mode, then enforce.",
+      "evidence_rules": []
+    },
+    {
+      "id": "external-audit-010",
+      "title": "External Security Audit",
+      "description": "Independent security assessment conducted within the last 3 years",
+      "category": "Audits & Certifications",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Schedule external security audits every 2-3 years for objective validation of security controls.",
+      "evidence_rules": []
+    },
+    {
+      "id": "asset-vulnerability-scan-011",
+      "title": "Regular Vulnerability Scanning",
+      "description": "Automated vulnerability scanning performed regularly on network assets",
+      "category": "Vulnerability Management",
+      "required": true,
+      "scope": "asset",
+      "asset_types": ["ip", "service", "domain", "subdomain"],
+      "recommendation": "Schedule weekly vulnerability scans. Remediate critical findings within 72 hours, high within 30 days.",
+      "evidence_rules": [
+        {
+          "source": "scan_metadata",
+          "key": "last_scanned_at",
+          "op": "gte_days_since",
+          "value": 7
+        }
+      ]
+    },
+    {
+      "id": "ssl-certificate-validation-012",
+      "title": "SSL/TLS Certificate Validation",
+      "description": "Valid SSL/TLS certificates with proper configuration and current expiration dates",
+      "category": "Cryptography",
+      "required": true,
+      "scope": "asset",
+      "asset_types": ["service"],
+      "recommendation": "Use certificates from trusted CAs. Monitor expiration dates and renew 30 days before expiry.",
+      "script_controlled": true
+    },
+    {
+      "id": "http-security-headers-013",
+      "title": "HTTP Security Headers Implementation",
+      "description": "Proper implementation of HTTP security headers (HSTS, CSP, X-Frame-Options, etc.)",
+      "category": "Web Security",
+      "required": false,
+      "scope": "asset",
+      "asset_types": ["service"],
+      "recommendation": "Implement security headers: HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy.",
+      "script_controlled": true
+    },
+    {
+      "id": "open-ports-review-014",
+      "title": "Open Ports Security Review",
+      "description": "Regular review of open ports and services to ensure only necessary services are exposed",
+      "category": "Network Security",
+      "required": true,
+      "scope": "asset",
+      "asset_types": ["ip", "service"],
+      "recommendation": "Review open ports monthly. Close unnecessary services and restrict access where possible.",
+      "script_controlled": true
+    },
+    {
+      "id": "service-banner-analysis-015",
+      "title": "Service Banner Security Analysis",
+      "description": "Analysis of service banners to identify software versions and potential vulnerabilities",
+      "category": "Information Disclosure",
+      "required": false,
+      "scope": "asset",
+      "asset_types": ["service"],
+      "recommendation": "Configure services to minimize information disclosure in banners. Update software regularly.",
+      "evidence_rules": [
+        {
+          "source": "scan_metadata",
+          "key": "banner",
+          "op": "exists"
+        }
+      ]
+    },
+    {
+      "id": "web-application-title-016",
+      "title": "Web Application Identification",
+      "description": "Identification and cataloging of web applications for security assessment",
+      "category": "Asset Management",
+      "required": false,
+      "scope": "asset",
+      "asset_types": ["service"],
+      "recommendation": "Maintain inventory of all web applications. Ensure they are included in security testing.",
+      "evidence_rules": [
+        {
+          "source": "scan_metadata",
+          "key": "http.title",
+          "op": "exists"
+        }
+      ]
+    },
+    {
+      "id": "dns-security-config-017",
+      "title": "DNS Security Configuration",
+      "description": "DNS security measures including DNSSEC and proper record configuration",
+      "category": "Network Security",
+      "required": true,
+      "scope": "asset",
+      "asset_types": ["domain", "subdomain"],
+      "recommendation": "Implement DNSSEC where possible. Regularly audit DNS records for unauthorized changes.",
+      "evidence_rules": []
+    },
+    {
+      "id": "subdomain-enumeration-018",
+      "title": "Subdomain Security Assessment",
+      "description": "Regular assessment of subdomains for security misconfigurations and unauthorized services",
+      "category": "Asset Management",
+      "required": true,
+      "scope": "asset",
+      "asset_types": ["subdomain"],
+      "recommendation": "Regularly enumerate subdomains to identify shadow IT and unauthorized services.",
+      "evidence_rules": []
+    },
+    {
+      "id": "ip-geolocation-review-019",
+      "title": "IP Address Geolocation Review",
+      "description": "Review of IP address geolocation for compliance and security considerations",
+      "category": "Compliance",
+      "required": false,
+      "scope": "asset",
+      "asset_types": ["ip"],
+      "recommendation": "Ensure IP addresses are in approved geographic regions for regulatory compliance.",
+      "evidence_rules": []
+    },
+    {
+      "id": "service-authentication-020",
+      "title": "Service Authentication Requirements",
+      "description": "Verification that services require proper authentication and authorization",
+      "category": "Identity & Access Management",
+      "required": true,
+      "scope": "asset",
+      "asset_types": ["service"],
+      "recommendation": "Ensure all services require authentication. Implement strong password policies and consider MFA.",
+      "script_controlled": true
+    },
+    {
+      "id": "data-encryption-021",
+      "title": "Data Encryption in Transit and at Rest",
+      "description": "Verification that sensitive data is encrypted both in transit and at rest",
+      "category": "Cryptography",
+      "required": true,
+      "scope": "asset",
+      "asset_types": ["service"],
+      "recommendation": "Implement encryption for all sensitive data. Use TLS 1.2+ for transit, AES-256 for rest.",
+      "evidence_rules": []
+    },
+    {
+      "id": "service-patching-022",
+      "title": "Service Software Patching",
+      "description": "Regular patching and updates of service software to address security vulnerabilities",
+      "category": "Vulnerability Management",
+      "required": true,
+      "scope": "asset",
+      "asset_types": ["service"],
+      "recommendation": "Implement automated patching where possible. Test patches in staging before production deployment.",
+      "evidence_rules": []
+    },
+    {
+      "id": "network-segmentation-023",
+      "title": "Network Segmentation Implementation",
+      "description": "Proper network segmentation to limit blast radius of potential security incidents",
+      "category": "Network Security",
+      "required": true,
+      "scope": "asset",
+      "asset_types": ["ip"],
+      "recommendation": "Segment networks based on risk levels. Implement VLANs and firewalls between segments.",
+      "evidence_rules": []
+    },
+    {
+      "id": "monitoring-alerting-024",
+      "title": "Security Monitoring and Alerting",
+      "description": "Continuous monitoring of assets with automated alerting for security events",
+      "category": "Logging & Monitoring",
+      "required": true,
+      "scope": "asset",
+      "asset_types": ["service", "ip"],
+      "recommendation": "Implement SIEM or equivalent monitoring. Configure alerts for suspicious activities.",
+      "evidence_rules": []
+    }
+  ]
+}
