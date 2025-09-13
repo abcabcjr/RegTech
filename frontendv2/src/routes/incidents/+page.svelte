@@ -41,15 +41,279 @@
 
   function handlePrintReport() {
     if (selectedIncident) {
-      // For now, just open a new window with the incident data
       const printWindow = window.open('', '_blank');
       if (printWindow) {
+        const formatDate = (dateStr: string) => {
+          return new Date(dateStr).toLocaleString();
+        };
+
+        const formatBadge = (stage: string) => {
+          const variants = {
+            'initial': 'background: #f3f4f6; color: #374151; padding: 4px 8px; border-radius: 4px; font-size: 12px;',
+            'update': 'background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 4px; font-size: 12px;',
+            'final': 'background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 4px; font-size: 12px;'
+          };
+          return variants[stage as keyof typeof variants] || variants.initial;
+        };
+
         printWindow.document.write(`
+          <!DOCTYPE html>
           <html>
-            <head><title>Incident Report - ${selectedIncident.id}</title></head>
+            <head>
+              <title>Incident Report - ${selectedIncident.id}</title>
+              <style>
+                body {
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                  line-height: 1.6;
+                  color: #374151;
+                  max-width: 800px;
+                  margin: 0 auto;
+                  padding: 20px;
+                  background: white;
+                }
+                
+                .header {
+                  border-bottom: 2px solid #e5e7eb;
+                  padding-bottom: 20px;
+                  margin-bottom: 30px;
+                }
+                
+                .header h1 {
+                  color: #111827;
+                  margin: 0 0 10px 0;
+                  font-size: 28px;
+                  font-weight: 700;
+                }
+                
+                .header-info {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  flex-wrap: wrap;
+                  gap: 10px;
+                }
+                
+                .meta-info {
+                  color: #6b7280;
+                  font-size: 14px;
+                }
+                
+                .status-badge {
+                  ${formatBadge(selectedIncident.stage)}
+                  font-weight: 500;
+                  text-transform: capitalize;
+                }
+                
+                .section {
+                  margin-bottom: 30px;
+                  background: #f9fafb;
+                  padding: 20px;
+                  border-radius: 8px;
+                  border: 1px solid #e5e7eb;
+                }
+                
+                .section h2 {
+                  color: #111827;
+                  margin: 0 0 15px 0;
+                  font-size: 20px;
+                  font-weight: 600;
+                  border-bottom: 1px solid #d1d5db;
+                  padding-bottom: 8px;
+                }
+                
+                .field-grid {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                  gap: 15px;
+                  margin-bottom: 15px;
+                }
+                
+                .field {
+                  margin-bottom: 12px;
+                }
+                
+                .field-label {
+                  font-weight: 600;
+                  color: #374151;
+                  font-size: 14px;
+                  margin-bottom: 4px;
+                  display: block;
+                }
+                
+                .field-value {
+                  color: #111827;
+                  font-size: 14px;
+                  word-wrap: break-word;
+                }
+                
+                .field-value.empty {
+                  color: #9ca3af;
+                  font-style: italic;
+                }
+                
+                .yes-badge {
+                  background: #fef2f2;
+                  color: #dc2626;
+                  padding: 2px 6px;
+                  border-radius: 4px;
+                  font-size: 12px;
+                  font-weight: 500;
+                }
+                
+                .no-badge {
+                  background: #f0fdf4;
+                  color: #16a34a;
+                  padding: 2px 6px;
+                  border-radius: 4px;
+                  font-size: 12px;
+                  font-weight: 500;
+                }
+                
+                @media print {
+                  body { margin: 0; padding: 15px; }
+                  .section { break-inside: avoid; }
+                  .header { break-after: avoid; }
+                }
+              </style>
+            </head>
             <body>
-              <h1>Incident Report</h1>
-              <pre>${JSON.stringify(selectedIncident, null, 2)}</pre>
+              <div class="header">
+                <h1>Incident Report</h1>
+                <div class="header-info">
+                  <div class="meta-info">
+                    ID: <strong>${selectedIncident.id}</strong><br>
+                    Created: ${formatDate(selectedIncident.createdAt)}<br>
+                    Last Updated: ${formatDate(selectedIncident.updatedAt)}
+                  </div>
+                  <span class="status-badge">${selectedIncident.stage}</span>
+                </div>
+              </div>
+
+              <!-- Initial Report Section -->
+              <div class="section">
+                <h2>Initial Report</h2>
+                <div class="field">
+                  <span class="field-label">Summary</span>
+                  <div class="field-value">${selectedIncident.details.initial?.summary || '<span class="empty">Not provided</span>'}</div>
+                </div>
+                
+                <div class="field-grid">
+                  <div class="field">
+                    <span class="field-label">Detected At</span>
+                    <div class="field-value">${selectedIncident.details.initial?.detectedAt ? formatDate(selectedIncident.details.initial.detectedAt) : '<span class="empty">Not provided</span>'}</div>
+                  </div>
+                  <div class="field">
+                    <span class="field-label">Cause</span>
+                    <div class="field-value">${selectedIncident.causeTag || '<span class="empty">Not specified</span>'}</div>
+                  </div>
+                </div>
+                
+                <div class="field-grid">
+                  <div class="field">
+                    <span class="field-label">Suspected Illegal Activity</span>
+                    <div class="field-value">
+                      <span class="${selectedIncident.details.initial?.suspectedIllegal ? 'yes-badge' : 'no-badge'}">
+                        ${selectedIncident.details.initial?.suspectedIllegal ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <span class="field-label">Cross-Border Effects</span>
+                    <div class="field-value">
+                      <span class="${selectedIncident.details.initial?.possibleCrossBorder ? 'yes-badge' : 'no-badge'}">
+                        ${selectedIncident.details.initial?.possibleCrossBorder ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              ${selectedIncident.stage !== 'initial' ? `
+              <!-- Update Report Section -->
+              <div class="section">
+                <h2>Impact Assessment</h2>
+                
+                <div class="field-grid">
+                  <div class="field">
+                    <span class="field-label">Users Affected</span>
+                    <div class="field-value">${selectedIncident.usersAffected || 0}</div>
+                  </div>
+                  <div class="field">
+                    <span class="field-label">Downtime (minutes)</span>
+                    <div class="field-value">${selectedIncident.downtimeMinutes || 0}</div>
+                  </div>
+                  <div class="field">
+                    <span class="field-label">Financial Impact (%)</span>
+                    <div class="field-value">${selectedIncident.financialImpactPct || 0}%</div>
+                  </div>
+                </div>
+                
+                <div class="field-grid">
+                  <div class="field">
+                    <span class="field-label">Gravity</span>
+                    <div class="field-value">${selectedIncident.details.update?.gravity || '<span class="empty">Not assessed</span>'}</div>
+                  </div>
+                  <div class="field">
+                    <span class="field-label">Significant Incident</span>
+                    <div class="field-value">
+                      <span class="${selectedIncident.significant ? 'yes-badge' : 'no-badge'}">
+                        ${selectedIncident.significant ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <span class="field-label">Recurring Incident</span>
+                    <div class="field-value">
+                      <span class="${selectedIncident.recurring ? 'yes-badge' : 'no-badge'}">
+                        ${selectedIncident.recurring ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="field">
+                  <span class="field-label">Impact Description</span>
+                  <div class="field-value">${selectedIncident.details.update?.impact || '<span class="empty">Not documented</span>'}</div>
+                </div>
+                
+                <div class="field">
+                  <span class="field-label">Interim Actions</span>
+                  <div class="field-value">${selectedIncident.details.update?.corrections || '<span class="empty">No actions documented</span>'}</div>
+                </div>
+              </div>
+              ` : ''}
+
+              ${selectedIncident.stage === 'final' ? `
+              <!-- Final Report Section -->
+              <div class="section">
+                <h2>Final Report</h2>
+                
+                <div class="field">
+                  <span class="field-label">Root Cause Analysis</span>
+                  <div class="field-value">${selectedIncident.details.final?.rootCause || '<span class="empty">Not determined</span>'}</div>
+                </div>
+                
+                <div class="field">
+                  <span class="field-label">Mitigations Implemented</span>
+                  <div class="field-value">${selectedIncident.details.final?.mitigations || '<span class="empty">Not documented</span>'}</div>
+                </div>
+                
+                <div class="field">
+                  <span class="field-label">Lessons Learned</span>
+                  <div class="field-value">${selectedIncident.details.final?.lessons || '<span class="empty">Not documented</span>'}</div>
+                </div>
+                
+                <div class="field">
+                  <span class="field-label">Cross-Border Effects Description</span>
+                  <div class="field-value">${selectedIncident.details.final?.crossBorderDesc || '<span class="empty">None identified</span>'}</div>
+                </div>
+              </div>
+              ` : ''}
+              
+              <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px;">
+                Generated on ${new Date().toLocaleString()}<br>
+                RegTech Incident Management System
+              </div>
             </body>
           </html>
         `);
@@ -206,28 +470,28 @@
                 <h3 class="font-semibold text-lg mb-3">Initial Report</h3>
                 <div class="grid gap-4">
                   <div>
-                    <div class="text-sm font-medium text-muted-foreground">Summary</div>
+                    <div class="text-sm font-semibold text-foreground">Summary</div>
                     <p class="text-sm">{selectedIncident.details.initial?.summary || 'No summary'}</p>
                   </div>
                   <div class="grid grid-cols-2 gap-4">
                     <div>
-                      <div class="text-sm font-medium text-muted-foreground">Detected At</div>
+                      <div class="text-sm font-semibold text-foreground">Detected At</div>
                       <p class="text-sm">{selectedIncident.details.initial?.detectedAt || 'Not specified'}</p>
                     </div>
                     <div>
-                      <div class="text-sm font-medium text-muted-foreground">Cause</div>
+                      <div class="text-sm font-semibold text-foreground">Cause</div>
                       <p class="text-sm">{incidentsStore.getCauseTagLabel(selectedIncident.causeTag)}</p>
                     </div>
                   </div>
                   <div class="grid grid-cols-2 gap-4">
                     <div class="flex items-center space-x-2">
-                      <span class="text-sm font-medium text-muted-foreground">Suspected Illegal:</span>
+                      <span class="text-sm font-semibold text-foreground">Suspected Illegal:</span>
                       <Badge variant={selectedIncident.details.initial?.suspectedIllegal ? 'destructive' : 'outline'}>
                         {selectedIncident.details.initial?.suspectedIllegal ? 'Yes' : 'No'}
                       </Badge>
                     </div>
                     <div class="flex items-center space-x-2">
-                      <span class="text-sm font-medium text-muted-foreground">Cross-Border:</span>
+                      <span class="text-sm font-semibold text-foreground">Cross-Border:</span>
                       <Badge variant={selectedIncident.details.initial?.possibleCrossBorder ? 'destructive' : 'outline'}>
                         {selectedIncident.details.initial?.possibleCrossBorder ? 'Possible' : 'No'}
                       </Badge>
@@ -243,28 +507,28 @@
                   <div class="grid gap-4">
                     <div class="grid grid-cols-3 gap-4">
                       <div>
-                        <div class="text-sm font-medium text-muted-foreground">Users Affected</div>
+                        <div class="text-sm font-semibold text-foreground">Users Affected</div>
                         <p class="text-sm">{selectedIncident.usersAffected || 0}</p>
                       </div>
                       <div>
-                        <div class="text-sm font-medium text-muted-foreground">Downtime (min)</div>
+                        <div class="text-sm font-semibold text-foreground">Downtime (min)</div>
                         <p class="text-sm">{selectedIncident.downtimeMinutes || 0}</p>
                       </div>
                       <div>
-                        <div class="text-sm font-medium text-muted-foreground">Financial Impact %</div>
+                        <div class="text-sm font-semibold text-foreground">Financial Impact %</div>
                         <p class="text-sm">{selectedIncident.financialImpactPct || 0}%</p>
                       </div>
                     </div>
                     <div>
-                      <div class="text-sm font-medium text-muted-foreground">Gravity</div>
+                      <div class="text-sm font-semibold text-foreground">Gravity</div>
                       <p class="text-sm">{selectedIncident.details.update?.gravity || 'Not assessed'}</p>
                     </div>
                     <div>
-                      <div class="text-sm font-medium text-muted-foreground">Impact</div>
+                      <div class="text-sm font-semibold text-foreground">Impact</div>
                       <p class="text-sm">{selectedIncident.details.update?.impact || 'Not described'}</p>
                     </div>
                     <div>
-                      <div class="text-sm font-medium text-muted-foreground">Interim Actions</div>
+                      <div class="text-sm font-semibold text-foreground">Interim Actions</div>
                       <p class="text-sm">{selectedIncident.details.update?.corrections || 'No actions documented'}</p>
                     </div>
                   </div>
@@ -277,25 +541,25 @@
                   <h3 class="font-semibold text-lg mb-3">Final Report</h3>
                   <div class="grid gap-4">
                     <div>
-                      <div class="text-sm font-medium text-muted-foreground">Root Cause</div>
+                      <div class="text-sm font-semibold text-foreground">Root Cause</div>
                       <p class="text-sm">{selectedIncident.details.final?.rootCause || 'Not determined'}</p>
                     </div>
                     <div>
-                      <div class="text-sm font-medium text-muted-foreground">Gravity</div>
+                      <div class="text-sm font-semibold text-foreground">Gravity</div>
                       <Badge variant={selectedIncident.details.final?.gravity === 'critical' ? 'destructive' : 'outline'}>
                         {selectedIncident.details.final?.gravity || 'Not assessed'}
                       </Badge>
                     </div>
                     <div>
-                      <div class="text-sm font-medium text-muted-foreground">Mitigations</div>
+                      <div class="text-sm font-semibold text-foreground">Mitigations</div>
                       <p class="text-sm">{selectedIncident.details.final?.mitigations || 'Not documented'}</p>
                     </div>
                     <div>
-                      <div class="text-sm font-medium text-muted-foreground">Cross-Border Effects</div>
+                      <div class="text-sm font-semibold text-foreground">Cross-Border Effects</div>
                       <p class="text-sm">{selectedIncident.details.final?.crossBorderDesc || 'None identified'}</p>
                     </div>
                     <div>
-                      <div class="text-sm font-medium text-muted-foreground">Lessons Learned</div>
+                      <div class="text-sm font-semibold text-foreground">Lessons Learned</div>
                       <p class="text-sm">{selectedIncident.details.final?.lessons || 'Not documented'}</p>
                     </div>
                   </div>
