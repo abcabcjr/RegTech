@@ -1,0 +1,19 @@
+import {
+	PUBLIC_FLAVOR,
+	PUBLIC_VER,
+	PUBLIC_BUILD_TIME,
+	PUBLIC_IS_DEV,
+	PUBLIC_PKG_VER,
+	PUBLIC_REVISION,
+	PUBLIC_IS_PACKAGED,
+	PUBLIC_API_HOST
+} from '$env/static/public';
+
+export const FLAVOR = PUBLIC_FLAVOR;
+export const VER = PUBLIC_VER;
+export const BUILD_TIME = PUBLIC_BUILD_TIME;
+export const IS_DEV = PUBLIC_IS_DEV;
+export const PKG_VER = PUBLIC_PKG_VER;
+export const REVISION = PUBLIC_REVISION;
+export const IS_PACKAGED = PUBLIC_IS_PACKAGED;
+export const API_HOST = PUBLIC_API_HOST;

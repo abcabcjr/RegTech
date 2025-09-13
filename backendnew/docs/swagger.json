@@ -18,7 +18,7 @@
     "host": "localhost:8080",
     "basePath": "/",
     "paths": {
-        "/api/v1/assets/catalogue": {
+        "/assets/catalogue": {
             "get": {
                 "description": "Retrieve all discovered assets for 2D view",
                 "produces": [
@@ -58,7 +58,7 @@
                 }
             }
         },
-        "/api/v1/assets/discover": {
+        "/assets/discover": {
             "post": {
                 "description": "Start asset discovery for a list of hosts using recontool",
                 "consumes": [
@@ -104,7 +104,7 @@
                 }
             }
         },
-        "/api/v1/assets/scan": {
+        "/assets/scan": {
             "post": {
                 "description": "Start scanning all assets with specified scripts",
                 "consumes": [
@@ -150,7 +150,7 @@
                 }
             }
         },
-        "/api/v1/assets/{id}": {
+        "/assets/{id}": {
             "get": {
                 "description": "Get detailed information about a specific asset including scan results",
                 "produces": [
@@ -191,7 +191,7 @@
                 }
             }
         },
-        "/api/v1/assets/{id}/scan": {
+        "/assets/{id}/scan": {
             "post": {
                 "description": "Start scanning a specific asset with specified scripts",
                 "consumes": [
@@ -250,7 +250,234 @@
                 }
             }
         },
-        "/api/v1/jobs/{id}": {
+        "/checklist/asset/{id}": {
+            "get": {
+                "description": "Retrieve all checklist items applicable to a specific asset with their current status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "checklist"
+                ],
+                "summary": "Get asset-specific checklist items",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Asset ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.DerivedChecklistItem"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/checklist/global": {
+            "get": {
+                "description": "Retrieve all global checklist items with their current status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "checklist"
+                ],
+                "summary": "Get global checklist items",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.DerivedChecklistItem"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/checklist/status": {
+            "post": {
+                "description": "Set the status (yes/no/na) of a checklist item, either global or asset-specific",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "checklist"
+                ],
+                "summary": "Set checklist item status",
+                "parameters": [
+                    {
+                        "description": "Status update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.SetStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/checklist/templates": {
+            "get": {
+                "description": "Retrieve all available checklist item templates",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "checklist"
+                ],
+                "summary": "List all checklist templates",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.ChecklistItemTemplate"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/checklist/templates/upload": {
+            "post": {
+                "description": "Upload a JSON file containing checklist templates that will overwrite all existing templates",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "checklist"
+                ],
+                "summary": "Upload checklist templates from JSON",
+                "parameters": [
+                    {
+                        "description": "Templates upload request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.UploadTemplatesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Check if the service is healthy",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/jobs/{id}": {
             "get": {
                 "description": "Get the status and progress of a job",
                 "produces": [
@@ -290,29 +517,174 @@
                     }
                 }
             }
-        },
-        "/health": {
-            "get": {
-                "description": "Check if the service is healthy",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "health"
-                ],
-                "summary": "Health check",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v1.HealthResponse"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
+        "handler.SetStatusRequest": {
+            "type": "object",
+            "properties": {
+                "asset_id": {
+                    "description": "Asset ID (empty for global items)",
+                    "type": "string",
+                    "example": "asset-123"
+                },
+                "item_id": {
+                    "description": "Checklist item template ID",
+                    "type": "string",
+                    "example": "security-policy-001"
+                },
+                "notes": {
+                    "description": "Optional notes",
+                    "type": "string",
+                    "example": "Verified during security audit"
+                },
+                "status": {
+                    "description": "Status: yes, no, or na",
+                    "type": "string",
+                    "enum": [
+                        "yes",
+                        "no",
+                        "na"
+                    ],
+                    "example": "yes"
+                }
+            }
+        },
+        "handler.UploadTemplatesRequest": {
+            "type": "object",
+            "properties": {
+                "templates": {
+                    "description": "Array of checklist templates to upload",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ChecklistItemTemplate"
+                    }
+                }
+            }
+        },
+        "model.ChecklistItemTemplate": {
+            "type": "object",
+            "properties": {
+                "asset_types": {
+                    "description": "Applicable asset types if scope is \"asset\"",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "category": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "evidence_rules": {
+                    "description": "Rules for auto-derivation",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.EvidenceRule"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "recommendation": {
+                    "type": "string"
+                },
+                "required": {
+                    "type": "boolean"
+                },
+                "scope": {
+                    "description": "\"global\" or \"asset\"",
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DerivedChecklistItem": {
+            "type": "object",
+            "properties": {
+                "asset_types": {
+                    "description": "Applicable asset types if scope is \"asset\"",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "category": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "evidence": {
+                    "description": "Relevant metadata for auto-derived status",
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "evidence_rules": {
+                    "description": "Rules for auto-derivation",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.EvidenceRule"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "notes": {
+                    "description": "From manual assignment",
+                    "type": "string"
+                },
+                "recommendation": {
+                    "type": "string"
+                },
+                "required": {
+                    "type": "boolean"
+                },
+                "scope": {
+                    "description": "\"global\" or \"asset\"",
+                    "type": "string"
+                },
+                "source": {
+                    "description": "\"auto\" or \"manual\"",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "\"yes\", \"no\", \"na\"",
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "From manual assignment",
+                    "type": "string"
+                }
+            }
+        },
+        "model.EvidenceRule": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "description": "e.g., \"http.title\", \"last_scanned_at\"",
+                    "type": "string"
+                },
+                "op": {
+                    "description": "\"exists\", \"eq\", \"regex\", \"gte_days_since\"",
+                    "type": "string"
+                },
+                "source": {
+                    "description": "\"scan_metadata\"",
+                    "type": "string"
+                },
+                "value": {
+                    "description": "Value for \"eq\", \"regex\", \"gte_days_since\""
+                }
+            }
+        },
         "v1.AssetCatalogueResponse": {
             "type": "object",
             "required": [

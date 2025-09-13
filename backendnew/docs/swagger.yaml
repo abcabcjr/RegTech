@@ -1,5 +1,122 @@
 basePath: /
 definitions:
+  handler.SetStatusRequest:
+    properties:
+      asset_id:
+        description: Asset ID (empty for global items)
+        example: asset-123
+        type: string
+      item_id:
+        description: Checklist item template ID
+        example: security-policy-001
+        type: string
+      notes:
+        description: Optional notes
+        example: Verified during security audit
+        type: string
+      status:
+        description: 'Status: yes, no, or na'
+        enum:
+        - "yes"
+        - "no"
+        - na
+        example: "yes"
+        type: string
+    type: object
+  handler.UploadTemplatesRequest:
+    properties:
+      templates:
+        description: Array of checklist templates to upload
+        items:
+          $ref: '#/definitions/model.ChecklistItemTemplate'
+        type: array
+    type: object
+  model.ChecklistItemTemplate:
+    properties:
+      asset_types:
+        description: Applicable asset types if scope is "asset"
+        items:
+          type: string
+        type: array
+      category:
+        type: string
+      description:
+        type: string
+      evidence_rules:
+        description: Rules for auto-derivation
+        items:
+          $ref: '#/definitions/model.EvidenceRule'
+        type: array
+      id:
+        type: string
+      recommendation:
+        type: string
+      required:
+        type: boolean
+      scope:
+        description: '"global" or "asset"'
+        type: string
+      title:
+        type: string
+    type: object
+  model.DerivedChecklistItem:
+    properties:
+      asset_types:
+        description: Applicable asset types if scope is "asset"
+        items:
+          type: string
+        type: array
+      category:
+        type: string
+      description:
+        type: string
+      evidence:
+        additionalProperties: true
+        description: Relevant metadata for auto-derived status
+        type: object
+      evidence_rules:
+        description: Rules for auto-derivation
+        items:
+          $ref: '#/definitions/model.EvidenceRule'
+        type: array
+      id:
+        type: string
+      notes:
+        description: From manual assignment
+        type: string
+      recommendation:
+        type: string
+      required:
+        type: boolean
+      scope:
+        description: '"global" or "asset"'
+        type: string
+      source:
+        description: '"auto" or "manual"'
+        type: string
+      status:
+        description: '"yes", "no", "na"'
+        type: string
+      title:
+        type: string
+      updated_at:
+        description: From manual assignment
+        type: string
+    type: object
+  model.EvidenceRule:
+    properties:
+      key:
+        description: e.g., "http.title", "last_scanned_at"
+        type: string
+      op:
+        description: '"exists", "eq", "regex", "gte_days_since"'
+        type: string
+      source:
+        description: '"scan_metadata"'
+        type: string
+      value:
+        description: Value for "eq", "regex", "gte_days_since"
+    type: object
   v1.AssetCatalogueResponse:
     properties:
       assets:
@@ -269,7 +386,7 @@ info:
   title: Asset Scanner API
   version: "1.0"
 paths:
-  /api/v1/assets/{id}:
+  /assets/{id}:
     get:
       description: Get detailed information about a specific asset including scan
         results
@@ -297,7 +414,7 @@ paths:
       summary: Get asset details
       tags:
       - assets
-  /api/v1/assets/{id}/scan:
+  /assets/{id}/scan:
     post:
       consumes:
       - application/json
@@ -336,7 +453,7 @@ paths:
       summary: Start asset scan
       tags:
       - assets
-  /api/v1/assets/catalogue:
+  /assets/catalogue:
     get:
       description: Retrieve all discovered assets for 2D view
       parameters:
@@ -362,7 +479,7 @@ paths:
       summary: Get asset catalogue
       tags:
       - assets
-  /api/v1/assets/discover:
+  /assets/discover:
     post:
       consumes:
       - application/json
@@ -392,7 +509,7 @@ paths:
       summary: Discover assets
       tags:
       - assets
-  /api/v1/assets/scan:
+  /assets/scan:
     post:
       consumes:
       - application/json
@@ -422,7 +539,159 @@ paths:
       summary: Start scan of all assets
       tags:
       - assets
-  /api/v1/jobs/{id}:
+  /checklist/asset/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all checklist items applicable to a specific asset with
+        their current status
+      parameters:
+      - description: Asset ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.DerivedChecklistItem'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Get asset-specific checklist items
+      tags:
+      - checklist
+  /checklist/global:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all global checklist items with their current status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.DerivedChecklistItem'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Get global checklist items
+      tags:
+      - checklist
+  /checklist/status:
+    post:
+      consumes:
+      - application/json
+      description: Set the status (yes/no/na) of a checklist item, either global or
+        asset-specific
+      parameters:
+      - description: Status update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.SetStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Set checklist item status
+      tags:
+      - checklist
+  /checklist/templates:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all available checklist item templates
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.ChecklistItemTemplate'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: List all checklist templates
+      tags:
+      - checklist
+  /checklist/templates/upload:
+    post:
+      consumes:
+      - application/json
+      description: Upload a JSON file containing checklist templates that will overwrite
+        all existing templates
+      parameters:
+      - description: Templates upload request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UploadTemplatesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Upload checklist templates from JSON
+      tags:
+      - checklist
+  /health:
+    get:
+      description: Check if the service is healthy
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.HealthResponse'
+      summary: Health check
+      tags:
+      - health
+  /jobs/{id}:
     get:
       description: Get the status and progress of a job
       parameters:
@@ -449,17 +718,4 @@ paths:
       summary: Get job status
       tags:
       - jobs
-  /health:
-    get:
-      description: Check if the service is healthy
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v1.HealthResponse'
-      summary: Health check
-      tags:
-      - health
 swagger: "2.0"

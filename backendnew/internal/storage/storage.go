@@ -37,6 +37,18 @@ type Storage interface {
 	DeleteScript(ctx context.Context, name string) error
 	ListScripts(ctx context.Context) ([]*model.Script, error)
 
+	// Checklist operations
+	CreateChecklistTemplate(ctx context.Context, template *model.ChecklistItemTemplate) error
+	GetChecklistTemplate(ctx context.Context, id string) (*model.ChecklistItemTemplate, error)
+	UpdateChecklistTemplate(ctx context.Context, template *model.ChecklistItemTemplate) error
+	DeleteChecklistTemplate(ctx context.Context, id string) error
+	ListChecklistTemplates(ctx context.Context) ([]*model.ChecklistItemTemplate, error)
+
+	// Simple checklist status operations
+	SetChecklistStatus(ctx context.Context, key string, status *model.SimpleChecklistStatus) error
+	GetChecklistStatus(ctx context.Context, key string) (*model.SimpleChecklistStatus, error)
+	ListChecklistStatuses(ctx context.Context) (map[string]*model.SimpleChecklistStatus, error)
+
 	// Utility operations
 	Close() error
 	Backup() error

@@ -15,23 +15,27 @@ import (
 
 // JSONStorage implements Storage interface using JSON files
 type JSONStorage struct {
-	config      *config.StorageConfig
-	mu          sync.RWMutex
-	assets      map[string]*model.Asset
-	jobs        map[string]*model.Job
-	scanResults map[string]*model.ScanResult
-	scripts     map[string]*model.Script
-	lastBackup  *time.Time
+	config             *config.StorageConfig
+	mu                 sync.RWMutex
+	assets             map[string]*model.Asset
+	jobs               map[string]*model.Job
+	scanResults        map[string]*model.ScanResult
+	scripts            map[string]*model.Script
+	checklistTemplates map[string]*model.ChecklistItemTemplate
+	checklistStatuses  map[string]*model.SimpleChecklistStatus
+	lastBackup         *time.Time
 }
 
 // NewJSONStorage creates a new JSON file storage
 func NewJSONStorage(cfg *config.StorageConfig) (*JSONStorage, error) {
 	storage := &JSONStorage{
-		config:      cfg,
-		assets:      make(map[string]*model.Asset),
-		jobs:        make(map[string]*model.Job),
-		scanResults: make(map[string]*model.ScanResult),
-		scripts:     make(map[string]*model.Script),
+		config:             cfg,
+		assets:             make(map[string]*model.Asset),
+		jobs:               make(map[string]*model.Job),
+		scanResults:        make(map[string]*model.ScanResult),
+		scripts:            make(map[string]*model.Script),
+		checklistTemplates: make(map[string]*model.ChecklistItemTemplate),
+		checklistStatuses:  make(map[string]*model.SimpleChecklistStatus),
 	}
 
 	// Create data directory if it doesn't exist
@@ -322,6 +326,101 @@ func (s *JSONStorage) ListScripts(ctx context.Context) ([]*model.Script, error) 
 	return scripts, nil
 }
 
+// Checklist operations
+
+func (s *JSONStorage) CreateChecklistTemplate(ctx context.Context, template *model.ChecklistItemTemplate) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.checklistTemplates[template.ID]; exists {
+		return errors.NewConflict(fmt.Sprintf("Checklist template with ID %s already exists", template.ID))
+	}
+
+	s.checklistTemplates[template.ID] = template
+	return s.saveChecklistTemplates()
+}
+
+func (s *JSONStorage) GetChecklistTemplate(ctx context.Context, id string) (*model.ChecklistItemTemplate, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	template, exists := s.checklistTemplates[id]
+	if !exists {
+		return nil, errors.NewNotFound("Checklist template")
+	}
+
+	return template, nil
+}
+
+func (s *JSONStorage) UpdateChecklistTemplate(ctx context.Context, template *model.ChecklistItemTemplate) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.checklistTemplates[template.ID]; !exists {
+		return errors.NewNotFound("Checklist template")
+	}
+
+	s.checklistTemplates[template.ID] = template
+	return s.saveChecklistTemplates()
+}
+
+func (s *JSONStorage) DeleteChecklistTemplate(ctx context.Context, id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.checklistTemplates[id]; !exists {
+		return errors.NewNotFound("Checklist template")
+	}
+
+	delete(s.checklistTemplates, id)
+	return s.saveChecklistTemplates()
+}
+
+func (s *JSONStorage) ListChecklistTemplates(ctx context.Context) ([]*model.ChecklistItemTemplate, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var templates []*model.ChecklistItemTemplate
+	for _, template := range s.checklistTemplates {
+		templates = append(templates, template)
+	}
+
+	return templates, nil
+}
+
+// Simple checklist status operations
+func (s *JSONStorage) SetChecklistStatus(ctx context.Context, key string, status *model.SimpleChecklistStatus) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.checklistStatuses[key] = status
+	return s.saveChecklistStatuses()
+}
+
+func (s *JSONStorage) GetChecklistStatus(ctx context.Context, key string) (*model.SimpleChecklistStatus, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	status, exists := s.checklistStatuses[key]
+	if !exists {
+		return nil, errors.NewNotFound("Checklist status")
+	}
+
+	return status, nil
+}
+
+func (s *JSONStorage) ListChecklistStatuses(ctx context.Context) (map[string]*model.SimpleChecklistStatus, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// Return a copy of the map
+	result := make(map[string]*model.SimpleChecklistStatus)
+	for k, v := range s.checklistStatuses {
+		result[k] = v
+	}
+	return result, nil
+}
+
 // Utility operations
 
 func (s *JSONStorage) Close() error {
@@ -400,7 +499,13 @@ func (s *JSONStorage) loadData() error {
 	if err := s.loadScanResults(); err != nil {
 		return err
 	}
-	return s.loadScripts()
+	if err := s.loadScripts(); err != nil {
+		return err
+	}
+	if err := s.loadChecklistTemplates(); err != nil {
+		return err
+	}
+	return s.loadChecklistStatuses()
 }
 
 func (s *JSONStorage) loadAssets() error {
@@ -423,6 +528,16 @@ func (s *JSONStorage) loadScripts() error {
 	return s.loadJSONFile(filePath, &s.scripts)
 }
 
+func (s *JSONStorage) loadChecklistTemplates() error {
+	filePath := filepath.Join(s.config.DataDir, "checklist_templates.json")
+	return s.loadJSONFile(filePath, &s.checklistTemplates)
+}
+
+func (s *JSONStorage) loadChecklistStatuses() error {
+	filePath := filepath.Join(s.config.DataDir, "checklist_statuses.json")
+	return s.loadJSONFile(filePath, &s.checklistStatuses)
+}
+
 func (s *JSONStorage) saveAssets() error {
 	filePath := filepath.Join(s.config.DataDir, s.config.AssetsFile)
 	return s.saveJSONFile(filePath, s.assets)
@@ -443,6 +558,16 @@ func (s *JSONStorage) saveScripts() error {
 	return s.saveJSONFile(filePath, s.scripts)
 }
 
+func (s *JSONStorage) saveChecklistTemplates() error {
+	filePath := filepath.Join(s.config.DataDir, "checklist_templates.json")
+	return s.saveJSONFile(filePath, s.checklistTemplates)
+}
+
+func (s *JSONStorage) saveChecklistStatuses() error {
+	filePath := filepath.Join(s.config.DataDir, "checklist_statuses.json")
+	return s.saveJSONFile(filePath, s.checklistStatuses)
+}
+
 func (s *JSONStorage) saveAll() error {
 	if err := s.saveAssets(); err != nil {
 		return err
@@ -453,7 +578,13 @@ func (s *JSONStorage) saveAll() error {
 	if err := s.saveScanResults(); err != nil {
 		return err
 	}
-	return s.saveScripts()
+	if err := s.saveScripts(); err != nil {
+		return err
+	}
+	if err := s.saveChecklistTemplates(); err != nil {
+		return err
+	}
+	return s.saveChecklistStatuses()
 }
 
 func (s *JSONStorage) loadJSONFile(filePath string, data interface{}) error {

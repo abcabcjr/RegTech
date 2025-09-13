@@ -55,7 +55,7 @@ func NewAssetsHandler(storage storage.Storage, scanner *scanner.LuaScanner, reco
 // @Success 202 {object} v1.DiscoverAssetsResponse
 // @Failure 400 {object} v1.ErrorResponse
 // @Failure 500 {object} v1.ErrorResponse
-// @Router /api/v1/assets/discover [post]
+// @Router /assets/discover [post]
 func (h *AssetsHandler) DiscoverAssets(c echo.Context) error {
 	var req v1.DiscoverAssetsRequest
 	if err := c.Bind(&req); err != nil {
@@ -131,7 +131,7 @@ func (h *AssetsHandler) DiscoverAssets(c echo.Context) error {
 // @Param status query string false "Filter by asset status"
 // @Success 200 {object} v1.AssetCatalogueResponse
 // @Failure 500 {object} v1.ErrorResponse
-// @Router /api/v1/assets/catalogue [get]
+// @Router /assets/catalogue [get]
 func (h *AssetsHandler) GetAssetCatalogue(c echo.Context) error {
 	// Build filter from query parameters
 	filter := &model.AssetFilter{}
@@ -181,7 +181,7 @@ func (h *AssetsHandler) GetAssetCatalogue(c echo.Context) error {
 // @Success 200 {object} v1.AssetDetailsResponse
 // @Failure 404 {object} v1.ErrorResponse
 // @Failure 500 {object} v1.ErrorResponse
-// @Router /api/v1/assets/{id} [get]
+// @Router /assets/{id} [get]
 func (h *AssetsHandler) GetAssetDetails(c echo.Context) error {
 	assetID := c.Param("id")
 	if assetID == "" {
@@ -244,7 +244,7 @@ func (h *AssetsHandler) GetAssetDetails(c echo.Context) error {
 // @Failure 400 {object} v1.ErrorResponse
 // @Failure 404 {object} v1.ErrorResponse
 // @Failure 500 {object} v1.ErrorResponse
-// @Router /api/v1/assets/{id}/scan [post]
+// @Router /assets/{id}/scan [post]
 func (h *AssetsHandler) StartAssetScan(c echo.Context) error {
 	assetID := c.Param("id")
 	if assetID == "" {
@@ -315,7 +315,7 @@ func (h *AssetsHandler) StartAssetScan(c echo.Context) error {
 // @Success 202 {object} v1.StartAllAssetsScanResponse
 // @Failure 400 {object} v1.ErrorResponse
 // @Failure 500 {object} v1.ErrorResponse
-// @Router /api/v1/assets/scan [post]
+// @Router /assets/scan [post]
 func (h *AssetsHandler) StartAllAssetsScan(c echo.Context) error {
 	var req v1.StartAllAssetsScanRequest
 	if err := c.Bind(&req); err != nil {
@@ -389,7 +389,7 @@ func (h *AssetsHandler) StartAllAssetsScan(c echo.Context) error {
 // @Success 200 {object} v1.JobStatusResponse
 // @Failure 404 {object} v1.ErrorResponse
 // @Failure 500 {object} v1.ErrorResponse
-// @Router /api/v1/jobs/{id} [get]
+// @Router /jobs/{id} [get]
 func (h *AssetsHandler) GetJobStatus(c echo.Context) error {
 	jobID := c.Param("id")
 	if jobID == "" {

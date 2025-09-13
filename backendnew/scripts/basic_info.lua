@@ -1,3 +1,4 @@
+-- @title Basic Info
 -- @description Basic asset information gathering
 -- @category information
 -- @author Asset Scanner Team
@@ -26,6 +27,8 @@ if asset.type == "domain" or asset.type == "subdomain" then
         set_metadata("is_dev_environment", true)
     end
 
+    pass()
+
 elseif asset.type == "ip" then
     log("Processing IP asset")
     
@@ -41,6 +44,8 @@ elseif asset.type == "ip" then
         log("Public IP address")
         set_metadata("is_private_ip", false)
     end
+
+    pass()
 
 elseif asset.type == "service" then
     log("Processing service asset")
@@ -62,6 +67,8 @@ elseif asset.type == "service" then
             set_metadata("service_type", "ftp")
         end
     end
+
+    pass()
 end
 
 log("Basic information gathering completed")

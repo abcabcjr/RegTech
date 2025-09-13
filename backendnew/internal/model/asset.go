@@ -24,6 +24,7 @@ type ScanResult struct {
 	ScriptName string                 `json:"script_name"`
 	ExecutedAt time.Time              `json:"executed_at"`
 	Success    bool                   `json:"success"`
+	Decision   string                 `json:"decision,omitempty"`
 	Output     []string               `json:"output"`
 	Error      string                 `json:"error,omitempty"`
 	Duration   time.Duration          `json:"duration"`
@@ -66,14 +67,16 @@ type ScanJob struct {
 
 // Script represents a Lua scanning script
 type Script struct {
-	Name        string   `json:"name"`
-	Path        string   `json:"path"`
-	Description string   `json:"description,omitempty"`
-	Category    string   `json:"category,omitempty"`
-	Author      string   `json:"author,omitempty"`
-	Version     string   `json:"version,omitempty"`
-	AssetTypes  []string `json:"asset_types,omitempty"` // Which asset types this script can process
-	Content     string   `json:"content"`
+	Name           string   `json:"name"`
+	Path           string   `json:"path"`
+	Title          string   `json:"title,omitempty"`
+	Description    string   `json:"description,omitempty"`
+	Category       string   `json:"category,omitempty"`
+	Author         string   `json:"author,omitempty"`
+	Version        string   `json:"version,omitempty"`
+	AssetTypes     []string `json:"asset_types,omitempty"` // Which asset types this script can process
+	RequiresPassed []string `json:"requires_passed,omitempty"`
+	Content        string   `json:"content"`
 }
 
 // AssetFilter represents filtering criteria for assets
