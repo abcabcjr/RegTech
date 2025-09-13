@@ -23,8 +23,13 @@ local shopify_patterns = {
         "shopify_access_token",
         "shopify_webhook_secret",
         "SHOPIFY_API_KEY",
-        "api_key.*['\"][0-9a-f]{32,}['\"]",
-        "secret.*['\"][0-9a-zA-Z]{32,}['\"]"
+        "shpss_[0-9a-zA-Z]+",
+        "shpat_[0-9a-zA-Z]+",
+        "shppa_[0-9a-zA-Z]+",
+        "whsec_[0-9a-zA-Z]+",
+        "api_key.*['\"][0-9a-f]{8,}['\"]",
+        "secret.*['\"][0-9a-zA-Z]{8,}['\"]",
+        "token.*['\"][0-9a-zA-Z]{20,}['\"]"
     },
     
     -- JSON endpoints to test
@@ -50,64 +55,168 @@ local shopify_patterns = {
 
 -- Function to detect if target is a Shopify store
 local function is_shopify_store(host)
-    -- Check for Shopify domain patterns
+    log("Checking if " .. host .. " is a Shopify store")
+    
+    -- Check for Shopify domain patterns first
     for _, pattern in ipairs(shopify_patterns.domains) do
         if string.match(host, pattern) then
+            log("Matched Shopify domain pattern: " .. pattern)
             return true, "Shopify domain detected: " .. pattern
         end
     end
     
-    -- Check HTTP response for Shopify indicators
-    local status, body, headers, err = http.get("http://" .. host, {
-        ["User-Agent"] = "RegTech-Shopify-Scanner/1.0"
-    }, 5)
+    -- Try both HTTP and HTTPS
+    local protocols = {"https://", "http://"}
     
-    if status and headers then
-        -- Check headers for Shopify indicators
-        if headers["x-shopify-stage"] or headers["x-shopify-shop-id"] then
-            return true, "Shopify headers detected"
-        end
+    for _, protocol in ipairs(protocols) do
+        local url = protocol .. host
+        log("Testing " .. url .. " for Shopify indicators")
         
-        -- Check for Shopify JavaScript/CSS references
-        if body and (
-            string.match(body, "shopify%.com") or 
-            string.match(body, "Shopify%.theme") or
-            string.match(body, "shopify%-analytics") or
-            string.match(body, "cdn%.shopify%.com")
-        ) then
-            return true, "Shopify assets detected in page content"
+        local status, body, headers, err = http.get(url, {
+            ["User-Agent"] = "RegTech-Shopify-Scanner/1.0"
+        }, 10)
+        
+        if status and status >= 200 and status < 400 then
+            log("Got response " .. status .. " from " .. url)
+            
+            -- Check headers for Shopify indicators
+            if headers then
+                for header_name, header_value in pairs(headers) do
+                    local header_lower = string.lower(header_name)
+                    local value_lower = string.lower(tostring(header_value))
+                    
+                    if string.match(header_lower, "shopify") or 
+                       string.match(value_lower, "shopify") or
+                       header_name == "x-shopify-stage" or
+                       header_name == "x-shopify-shop-id" or
+                       header_name == "server" and string.match(value_lower, "nginx") then
+                        log("Found Shopify indicator in headers: " .. header_name .. " = " .. tostring(header_value))
+                        return true, "Shopify headers detected: " .. header_name
+                    end
+                end
+            end
+            
+            -- Check body for Shopify indicators
+            if body then
+                local body_indicators = {
+                    "shopify%.com",
+                    "Shopify%.theme", 
+                    "shopify%-analytics",
+                    "cdn%.shopify%.com",
+                    "myshopify%.com",
+                    "ShopifyAnalytics",
+                    "window%.Shopify",
+                    "Shopify%.shop",
+                    "shopify_pay",
+                    "shopify%-section",
+                    "powered[^>]*shopify"
+                }
+                
+                for _, indicator in ipairs(body_indicators) do
+                    if string.match(body, indicator) then
+                        log("Found Shopify indicator in body: " .. indicator)
+                        return true, "Shopify content detected: " .. indicator
+                    end
+                end
+                
+                -- Check for Shopify-specific meta tags
+                if string.match(body, '<meta[^>]*shopify') or 
+                   string.match(body, 'generator[^>]*shopify') then
+                    log("Found Shopify meta tags")
+                    return true, "Shopify meta tags detected"
+                end
+            end
+            
+            -- If we got a successful response from HTTPS, don't try HTTP
+            if protocol == "https://" then
+                break
+            end
+        else
+            log("Failed to get response from " .. url .. ": " .. tostring(err))
         end
     end
     
+    log("No Shopify indicators found for " .. host)
     return false, "No Shopify indicators found"
 end
 
 -- Function to check for hardcoded secrets
 local function check_hardcoded_secrets(host)
     local secrets_found = {}
-    local endpoints_to_check = {"/", "/assets/theme.js", "/assets/application.js", "/checkout"}
+    local endpoints_to_check = {
+        "/", 
+        "/assets/theme.js", 
+        "/assets/application.js", 
+        "/assets/constants.js",
+        "/assets/theme.css",
+        "/checkout"
+    }
+    
+    log("Checking for hardcoded secrets on " .. host)
     
     for _, endpoint in ipairs(endpoints_to_check) do
-        local url = "https://" .. host .. endpoint
-        local status, body, headers, err = http.get(url, {
-            ["User-Agent"] = "RegTech-Shopify-Scanner/1.0"
-        }, 10)
-        
-        if body then
-            -- Check for secret patterns
-            for _, pattern in ipairs(shopify_patterns.secrets) do
-                local matches = {}
-                for match in string.gmatch(body, pattern) do
-                    table.insert(matches, match)
+        -- Try both HTTPS and HTTP
+        for _, protocol in ipairs({"https://", "http://"}) do
+            local url = protocol .. host .. endpoint
+            log("Checking endpoint: " .. url)
+            
+            local status, body, headers, err = http.get(url, {
+                ["User-Agent"] = "RegTech-Shopify-Scanner/1.0"
+            }, 10)
+            
+            if status and status >= 200 and status < 400 and body then
+                log("Got response from " .. url .. " (status: " .. status .. ", size: " .. #body .. " bytes)")
+                
+                -- Check for secret patterns
+                for _, pattern in ipairs(shopify_patterns.secrets) do
+                    local matches = {}
+                    
+                    -- Use more flexible pattern matching
+                    if pattern == "shopify_api_key" then
+                        for match in string.gmatch(body, "['\"]?shopify_api_key['\"]?%s*[:=]%s*['\"]([^'\"]+)['\"]") do
+                            table.insert(matches, match)
+                        end
+                        for match in string.gmatch(body, "shopify_api_key[^'\"]*['\"]([^'\"]+)['\"]") do
+                            table.insert(matches, match)
+                        end
+                    elseif string.match(pattern, "^[a-z_]+$") then
+                        -- Simple string patterns
+                        for match in string.gmatch(body, pattern) do
+                            table.insert(matches, match)
+                        end
+                    else
+                        -- Regex patterns
+                        for match in string.gmatch(body, pattern) do
+                            table.insert(matches, match)
+                        end
+                    end
                 end
                 
-                if #matches > 0 then
-                    table.insert(secrets_found, {
-                        endpoint = endpoint,
-                        pattern = pattern,
-                        matches = matches
-                    })
+                -- Additional patterns for comprehensive detection
+                local additional_patterns = {
+                    "api[_%-]?key%s*[:=]%s*['\"]([^'\"]{16,})['\"]",
+                    "secret[_%-]?key%s*[:=]%s*['\"]([^'\"]{16,})['\"]", 
+                    "access[_%-]?token%s*[:=]%s*['\"]([^'\"]{20,})['\"]",
+                    "webhook[_%-]?secret%s*[:=]%s*['\"]([^'\"]{16,})['\"]",
+                    "(sk_[a-zA-Z0-9_]{20,})",
+                    "(pk_[a-zA-Z0-9_]{20,})"
+                }
+                
+                for _, pattern in ipairs(additional_patterns) do
+                    for match in string.gmatch(body, pattern) do
+                        table.insert(secrets_found, {
+                            endpoint = endpoint,
+                            pattern = "additional_pattern",
+                            matches = {match},
+                            url = url
+                        })
+                        log("Found potential secret: " .. match .. " at " .. url)
+                    end
                 end
+                
+                break -- If HTTPS worked, don't try HTTP
+            else
+                log("No response from " .. url .. " (status: " .. tostring(status) .. ", error: " .. tostring(err) .. ")")
             end
         end
         
@@ -115,6 +224,7 @@ local function check_hardcoded_secrets(host)
         sleep(0.5)
     end
     
+    log("Found " .. #secrets_found .. " potential secrets")
     return secrets_found
 end
 
@@ -216,14 +326,24 @@ end
 -- Main analysis function
 local function analyze_shopify_security()
     local target_host = asset.value
+    
+    -- Handle different asset types
     if asset.type == "service" then
         local host, port = string.match(asset.value, "([^:]+):(%d+)")
         if host then
             target_host = host
         end
+    elseif asset.type == "domain" or asset.type == "subdomain" then
+        target_host = asset.value
     end
     
-    log("Analyzing Shopify security for: " .. target_host)
+    -- Remove protocol if present
+    target_host = string.gsub(target_host, "^https?://", "")
+    target_host = string.gsub(target_host, "/$", "")
+    
+    log("=== Starting Shopify Security Analysis ===")
+    log("Target: " .. target_host)
+    log("Asset type: " .. asset.type)
     
     -- Check if this is a Shopify store
     local is_shopify, shopify_reason = is_shopify_store(target_host)
