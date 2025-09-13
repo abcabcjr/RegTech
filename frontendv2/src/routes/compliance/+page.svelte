@@ -86,6 +86,7 @@
 				recommendation: template.recommendation,
 				kind: template.kind || (template.scope === 'global' ? 'manual' : 'auto'),
 				readOnly: template.read_only || false,
+				attachments: [], // No attachments for templates initially
 				info: template.info ? {
 					whatItMeans: template.info.what_it_means,
 					whyItMatters: template.info.why_it_matters,
@@ -135,6 +136,7 @@
 				notes: item.notes,
 				lastUpdated: item.updated_at,
 				coveredAssets: item.covered_assets || [], // This is the key difference!
+				attachments: item.attachments || [], // File attachments
 				info: item.info ? {
 					whatItMeans: item.info.what_it_means,
 					whyItMatters: item.info.why_it_matters,

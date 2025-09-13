@@ -97,11 +97,11 @@ func main() {
 	// Initialize services
 	simpleChecklistService := service.NewSimpleChecklistService(store)
 
-	// Initialize file service (non-fatal if MinIO is unavailable)
-	fileService, err := service.NewFileService(&cfg.MinIO, store)
+	// Initialize file service for local file storage
+	fileService, err := service.NewFileService(cfg.Storage.DataDir, store)
 	if err != nil {
 		log.Printf("Warning: Failed to initialize file service: %v", err)
-		log.Printf("File upload functionality will be unavailable until MinIO is accessible")
+		log.Printf("File upload functionality will be unavailable until data directory is accessible")
 	}
 
 	// Initialize handlers
@@ -147,9 +147,8 @@ func main() {
 	apiV1.GET("/checklist/coverage/summary", simpleChecklistHandler.GetComplianceCoverageSummary)
 
 	// File upload/download routes
-	apiV1.POST("/files/upload/initiate", filesHandler.InitiateUpload)
-	apiV1.POST("/files/:fileId/confirm", filesHandler.ConfirmUpload)
-	apiV1.GET("/files/:fileId/download", filesHandler.GenerateDownloadURL)
+	apiV1.POST("/files/upload", filesHandler.UploadFile)
+	apiV1.GET("/files/:fileId/download", filesHandler.DownloadFile)
 	apiV1.GET("/files/:fileId", filesHandler.GetFileInfo)
 	apiV1.GET("/files", filesHandler.ListFileAttachments)
 	apiV1.DELETE("/files/:fileId", filesHandler.DeleteFile)

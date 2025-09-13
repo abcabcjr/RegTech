@@ -18,31 +18,21 @@ type FileAttachment struct {
 	AssetID      string `json:"asset_id,omitempty"` // Optional: links to specific asset
 
 	// Storage metadata
-	BucketName string `json:"bucket_name"`
-	ObjectKey  string `json:"object_key"`     // Full path in MinIO
-	ETag       string `json:"etag,omitempty"` // MinIO ETag for integrity
+	FilePath string `json:"file_path"` // Local file system path
 
 	// Status
 	Status string `json:"status"`          // "uploading", "uploaded", "failed", "deleted"
 	Error  string `json:"error,omitempty"` // Error message if status is "failed"
 }
 
-// PresignedUploadResponse represents a pre-signed upload URL response
-type PresignedUploadResponse struct {
-	FileID    string            `json:"file_id"`
-	UploadURL string            `json:"upload_url"`
-	ExpiresAt time.Time         `json:"expires_at"`
-	Fields    map[string]string `json:"fields,omitempty"` // Additional form fields for POST uploads
-	Method    string            `json:"method"`           // "PUT" or "POST"
-}
-
-// PresignedDownloadResponse represents a pre-signed download URL response
-type PresignedDownloadResponse struct {
-	DownloadURL string    `json:"download_url"`
-	ExpiresAt   time.Time `json:"expires_at"`
+// FileUploadResponse represents a successful file upload response
+type FileUploadResponse struct {
+	FileID      string    `json:"file_id"`
 	FileName    string    `json:"file_name"`
 	ContentType string    `json:"content_type"`
 	FileSize    int64     `json:"file_size"`
+	UploadedAt  time.Time `json:"uploaded_at"`
+	Status      string    `json:"status"`
 }
 
 // FileAttachmentSummary represents a summary view of file attachments
@@ -92,8 +82,8 @@ func IsContentTypeSupported(contentType string) bool {
 	return SupportedContentTypes[contentType]
 }
 
-// GenerateObjectKey generates a unique object key for MinIO storage
-func GenerateObjectKey(checklistKey, fileID, originalName string) string {
-	// Format: compliance/{checklistKey}/{fileID}_{originalName}
-	return "compliance/" + checklistKey + "/" + fileID + "_" + originalName
+// GenerateFileName generates a unique file name for local storage
+func GenerateFileName(fileID, originalName string) string {
+	// Format: {fileID}_{originalName}
+	return fileID + "_" + originalName
 }
