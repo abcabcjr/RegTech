@@ -37,7 +37,10 @@
 <style>
 	.fullscreen-overlay {
 		position: fixed;
-		inset: 0;
+		top: 0;
+		left: 4rem; /* Account for sidebar */
+		right: 0;
+		bottom: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -77,7 +80,7 @@
 	.job-overlay {
 		position: fixed;
 		top: 1rem;
-		left: 50%;
+		left: calc(50% + 2rem); /* Center in available space after sidebar */
 		transform: translateX(-50%);
 		z-index: 50;
 	}

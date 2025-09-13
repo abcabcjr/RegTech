@@ -1,0 +1,476 @@
+{
+  "templates": [
+    {
+      "id": "risk-assessment",
+      "title": "Risk Assessment Documentation",
+      "description": "Documented cybersecurity risk assessment for your organization",
+      "category": "Governance & Risk Management",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Conduct a formal cybersecurity risk assessment and document the findings",
+      "help_text": "Upload or reference your latest cybersecurity risk assessment document",
+      "why_matters": "Required by law to identify and document cybersecurity risks to your business operations",
+      "kind": "manual",
+      "read_only": false,
+      "info": {
+        "what_it_means": "A formal document that identifies, analyzes, and evaluates cybersecurity risks to your organization's information systems and data.",
+        "why_it_matters": "Required by Moldova's Cybersecurity Law to demonstrate proactive risk management and compliance with regulatory requirements.",
+        "law_refs": ["Art. 11 - Risk Assessment", "NU-49-MDED-2025 §3.2"],
+        "priority": "must",
+        "resources": [
+          {"title": "Cybersecurity Risk Assessment Guide", "url": "https://example.com/risk-assessment"},
+          {"title": "Moldova Cybersecurity Law", "url": "https://example.com/cyber-law"}
+        ]
+      }
+    },
+    {
+      "id": "security-policy",
+      "title": "Cybersecurity Policy",
+      "description": "Formal cybersecurity policy document approved by management",
+      "category": "Governance & Risk Management",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Develop and approve a comprehensive cybersecurity policy",
+      "help_text": "A written policy covering cybersecurity roles, responsibilities, and procedures",
+      "why_matters": "Establishes the foundation for your cybersecurity program and compliance efforts",
+      "kind": "manual",
+      "read_only": false,
+      "info": {
+        "what_it_means": "A comprehensive written document that outlines your organization's approach to cybersecurity, including roles, responsibilities, and procedures.",
+        "why_it_matters": "Provides clear guidance for employees and demonstrates management commitment to cybersecurity compliance.",
+        "law_refs": ["Art. 12 - Security Policies", "NU-49-MDED-2025 §4.1"],
+        "priority": "must",
+        "resources": [
+          {"title": "Policy Template", "url": "https://example.com/policy-template"}
+        ]
+      }
+    },
+    {
+      "id": "mfa-privileged",
+      "title": "MFA for Privileged Accounts",
+      "description": "Multi-factor authentication enabled for administrator and privileged user accounts",
+      "category": "Identity & Access Management",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Enable MFA for all administrator and privileged accounts immediately",
+      "help_text": "All admin accounts should require at least two authentication factors",
+      "why_matters": "Prevents unauthorized access even if passwords are compromised",
+      "kind": "manual",
+      "read_only": false,
+      "info": {
+        "what_it_means": "Multi-factor authentication requires users to provide two or more verification factors to access privileged accounts.",
+        "why_it_matters": "Significantly reduces the risk of unauthorized access even if passwords are compromised or stolen.",
+        "law_refs": ["Art. 8 - Access Controls", "NU-49-MDED-2025 §5.2"],
+        "priority": "must",
+        "resources": [
+          {"title": "MFA Implementation Guide", "url": "https://example.com/mfa-guide"}
+        ]
+      }
+    },
+    {
+      "id": "access-review",
+      "title": "Regular Access Reviews",
+      "description": "Periodic review of user access rights and permissions",
+      "category": "Identity & Access Management",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Establish a quarterly access review process",
+      "help_text": "Review who has access to what systems at least annually",
+      "why_matters": "Ensures employees only have access to systems they need for their current role",
+      "kind": "manual",
+      "read_only": false,
+      "info": {
+        "what_it_means": "Regular review and validation of user access rights to ensure employees only have access to systems necessary for their current role.",
+        "why_it_matters": "Prevents privilege creep and reduces security risks by ensuring access rights remain appropriate over time.",
+        "law_refs": ["Art. 9 - Access Management", "NU-49-MDED-2025 §5.3"],
+        "priority": "must",
+        "resources": [
+          {"title": "Access Review Checklist", "url": "https://example.com/access-review"}
+        ]
+      }
+    },
+    {
+      "id": "centralized-logs",
+      "title": "Centralized Security Logging",
+      "description": "Security events are logged in a centralized system",
+      "category": "Logging & Monitoring",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Implement centralized logging for all critical systems",
+      "help_text": "All security-relevant events should be collected in one place",
+      "why_matters": "Enables detection of security incidents and forensic investigation",
+      "kind": "manual",
+      "read_only": false,
+      "info": {
+        "what_it_means": "Centralized collection and storage of security events from all systems in a single, searchable location.",
+        "why_it_matters": "Essential for detecting security incidents, conducting forensic investigations, and meeting compliance requirements.",
+        "law_refs": ["Art. 13 - Logging Requirements", "NU-49-MDED-2025 §6.1"],
+        "priority": "must",
+        "resources": [
+          {"title": "SIEM Implementation Guide", "url": "https://example.com/siem-guide"}
+        ]
+      }
+    },
+    {
+      "id": "log-retention",
+      "title": "Log Retention (≥12 months)",
+      "description": "Security logs are retained for at least 12 months",
+      "category": "Logging & Monitoring",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Configure log retention for at least 12 months",
+      "help_text": "Legal requirement to maintain logs for investigation purposes",
+      "why_matters": "Required by law for incident investigation and compliance audits",
+      "kind": "manual",
+      "read_only": false,
+      "info": {
+        "what_it_means": "A documented policy that defines how long security logs must be retained, typically 12 months minimum.",
+        "why_it_matters": "Required by law to support incident investigation and compliance audits. Insufficient retention can result in penalties.",
+        "law_refs": ["Art. 14 - Data Retention", "NU-49-MDED-2025 §6.2"],
+        "priority": "must",
+        "resources": [
+          {"title": "Log Retention Best Practices", "url": "https://example.com/log-retention"}
+        ]
+      }
+    },
+    {
+      "id": "backup-strategy",
+      "title": "Backup Strategy Documented",
+      "description": "Formal backup and recovery procedures are documented",
+      "category": "Backup & Disaster Recovery",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Document your backup strategy and test it regularly",
+      "help_text": "Written procedures for backing up and restoring critical data",
+      "why_matters": "Ensures business continuity in case of data loss or ransomware attacks",
+      "kind": "manual",
+      "read_only": false,
+      "info": {
+        "what_it_means": "A comprehensive written plan that outlines how critical data is backed up, stored, and can be restored.",
+        "why_it_matters": "Essential for business continuity and recovery from data loss, ransomware attacks, or system failures.",
+        "law_refs": ["Art. 16 - Data Protection", "NU-49-MDED-2025 §8.1"],
+        "priority": "must",
+        "resources": [
+          {"title": "Backup Strategy Template", "url": "https://example.com/backup-strategy"}
+        ]
+      }
+    },
+    {
+      "id": "restore-test",
+      "title": "Last Successful Restore Test",
+      "description": "Recent test of backup restoration procedures",
+      "category": "Backup & Disaster Recovery",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Test backup restoration procedures at least quarterly",
+      "help_text": "When did you last verify that backups can be successfully restored?",
+      "why_matters": "Backups are only useful if they can be successfully restored when needed",
+      "kind": "manual",
+      "read_only": false,
+      "info": {
+        "what_it_means": "Regular testing to verify that backup data can be successfully restored and systems can be recovered.",
+        "why_it_matters": "Backups are worthless if they cannot be restored. Regular testing ensures recovery procedures work when needed.",
+        "law_refs": ["Art. 17 - Recovery Testing", "NU-49-MDED-2025 §8.2"],
+        "priority": "must",
+        "resources": [
+          {"title": "Disaster Recovery Testing Guide", "url": "https://example.com/dr-testing"}
+        ]
+      }
+    },
+    {
+      "id": "spf-dkim-dmarc",
+      "title": "SPF/DKIM/DMARC Implementation",
+      "description": "Email authentication protocols are properly configured",
+      "category": "Email Security",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Configure SPF, DKIM, and DMARC records for your email domain",
+      "help_text": "These protocols help prevent email spoofing and phishing attacks",
+      "why_matters": "Protects your domain from being used in phishing attacks and improves email deliverability",
+      "kind": "manual",
+      "read_only": false,
+      "info": {
+        "what_it_means": "Email authentication protocols that verify the legitimacy of emails sent from your domain.",
+        "why_it_matters": "Prevents email spoofing and phishing attacks, improving email security and deliverability.",
+        "law_refs": ["Art. 15 - Email Security", "NU-49-MDED-2025 §7.3"],
+        "priority": "should",
+        "resources": [
+          {"title": "Email Authentication Guide", "url": "https://example.com/email-auth"}
+        ]
+      }
+    },
+    {
+      "id": "security-audit",
+      "title": "Security Audit (≤3 years)",
+      "description": "External security audit within the last 3 years",
+      "category": "Audits & Certifications",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Schedule an external security audit",
+      "help_text": "Independent assessment of your cybersecurity controls",
+      "why_matters": "Provides objective validation of your security measures",
+      "kind": "manual",
+      "read_only": false,
+      "info": {
+        "what_it_means": "An independent, third-party assessment of your organization's cybersecurity controls and practices.",
+        "why_it_matters": "Provides objective validation of security measures and helps identify gaps that internal teams might miss.",
+        "law_refs": ["Art. 18 - External Audits", "NU-49-MDED-2025 §9.1"],
+        "priority": "must",
+        "resources": [
+          {"title": "Security Audit Checklist", "url": "https://example.com/security-audit"}
+        ]
+      }
+    },
+    {
+      "id": "iso27001",
+      "title": "ISO 27001 Certification",
+      "description": "ISO 27001 information security management certification",
+      "category": "Audits & Certifications",
+      "required": false,
+      "scope": "global",
+      "recommendation": "Consider pursuing ISO 27001 certification",
+      "help_text": "International standard for information security management",
+      "why_matters": "Demonstrates commitment to information security best practices",
+      "kind": "manual",
+      "read_only": false,
+      "info": {
+        "what_it_means": "An international standard that specifies requirements for establishing, implementing, and maintaining an information security management system.",
+        "why_it_matters": "Demonstrates commitment to information security best practices and can provide competitive advantage.",
+        "law_refs": ["Art. 19 - Standards Compliance", "NU-49-MDED-2025 §9.2"],
+        "priority": "should",
+        "resources": [
+          {"title": "ISO 27001 Implementation Guide", "url": "https://example.com/iso27001"}
+        ]
+      }
+    },
+    {
+      "id": "security-training",
+      "title": "Last Security Awareness Training",
+      "description": "Date of most recent cybersecurity training for employees",
+      "category": "Awareness & Training",
+      "required": true,
+      "scope": "global",
+      "recommendation": "Provide annual cybersecurity awareness training for all employees",
+      "help_text": "All employees should receive cybersecurity awareness training",
+      "why_matters": "Employees are the first line of defense against cyber attacks",
+      "kind": "manual",
+      "read_only": false,
+      "info": {
+        "what_it_means": "Regular training programs that educate employees about cybersecurity threats, best practices, and their role in protecting organizational data.",
+        "why_it_matters": "Employees are often the first line of defense against cyber attacks. Well-trained staff significantly reduce security risks.",
+        "law_refs": ["Art. 20 - Security Training", "NU-49-MDED-2025 §10.1"],
+        "priority": "must",
+        "resources": [
+          {"title": "Security Awareness Training Materials", "url": "https://example.com/security-training"}
+        ]
+      }
+    },
+    {
+      "id": "ssl-certificate-validation-012",
+      "title": "SSL Certificate Validation",
+      "description": "SSL certificates are valid and properly configured",
+      "category": "Network Security",
+      "required": true,
+      "scope": "asset",
+      "recommendation": "Ensure all HTTPS services have valid SSL certificates",
+      "help_text": "Certificate should be valid, not expired, and properly configured",
+      "why_matters": "Ensures encrypted communication and builds user trust",
+      "kind": "auto",
+      "read_only": true,
+      "script_controlled": true,
+      "info": {
+        "what_it_means": "Valid SSL/TLS certificate that enables encrypted communication between users and your website.",
+        "why_it_matters": "Ensures encrypted communication, builds user trust, and prevents data interception.",
+        "law_refs": ["Art. 16 - Data Encryption", "NU-49-MDED-2025 §8.3"],
+        "priority": "must",
+        "resources": [
+          {"title": "SSL Certificate Guide", "url": "https://example.com/ssl-guide"}
+        ]
+      }
+    },
+    {
+      "id": "http-security-headers-013",
+      "title": "HTTP Security Headers",
+      "description": "Security headers like HSTS are properly configured",
+      "category": "Network Security",
+      "required": true,
+      "scope": "asset",
+      "recommendation": "Configure security headers including HSTS, CSP, and X-Frame-Options",
+      "help_text": "Headers like HSTS, CSP, and X-Frame-Options protect against common attacks",
+      "why_matters": "Prevents common web vulnerabilities and attacks",
+      "kind": "auto",
+      "read_only": true,
+      "script_controlled": true,
+      "info": {
+        "what_it_means": "HTTP security headers that provide additional protection against common web vulnerabilities and attacks.",
+        "why_it_matters": "Prevents common web attacks like clickjacking, XSS, and protocol downgrade attacks.",
+        "law_refs": ["Art. 16 - Data Encryption", "NU-49-MDED-2025 §8.3"],
+        "priority": "should",
+        "resources": [
+          {"title": "Security Headers Guide", "url": "https://example.com/security-headers"}
+        ]
+      }
+    },
+    {
+      "id": "open-ports-review-014",
+      "title": "Open Ports Security Review",
+      "description": "All open ports have been reviewed and justified",
+      "category": "Network Security",
+      "required": true,
+      "scope": "asset",
+      "recommendation": "Regularly review all open ports and services",
+      "help_text": "Only required ports should be accessible from the internet",
+      "why_matters": "Reduces attack surface and potential entry points",
+      "kind": "auto",
+      "read_only": true,
+      "script_controlled": true,
+      "info": {
+        "what_it_means": "Identification of unnecessary open network ports that could be exploited by attackers.",
+        "why_it_matters": "Reduces attack surface by closing unnecessary entry points to your systems.",
+        "law_refs": ["Art. 17 - Vulnerability Management", "NU-49-MDED-2025 §8.4"],
+        "priority": "should",
+        "resources": [
+          {"title": "Port Security Guide", "url": "https://example.com/port-security"}
+        ]
+      }
+    },
+    {
+      "id": "service-authentication-020",
+      "title": "Service Authentication",
+      "description": "Services require proper authentication and authorization",
+      "category": "Identity & Access Management",
+      "required": true,
+      "scope": "asset",
+      "recommendation": "Ensure all exposed services implement proper authentication mechanisms",
+      "help_text": "Database and admin services should never be directly accessible from the internet",
+      "why_matters": "Prevents unauthorized access to sensitive services and data",
+      "kind": "auto",
+      "read_only": true,
+      "script_controlled": true,
+      "info": {
+        "what_it_means": "Proper authentication and authorization controls for all exposed network services.",
+        "why_it_matters": "Prevents unauthorized access to sensitive services and data, especially critical for database and admin services.",
+        "law_refs": ["Art. 8 - Access Controls", "NU-49-MDED-2025 §5.2"],
+        "priority": "must",
+        "resources": [
+          {"title": "Service Authentication Guide", "url": "https://example.com/service-auth"}
+        ]
+      }
+    },
+    {
+      "id": "web-service-security-021",
+      "title": "Web Service Security",
+      "description": "Web services are properly secured and configured",
+      "category": "Web Security",
+      "required": true,
+      "scope": "asset",
+      "recommendation": "Web services should use HTTPS, implement proper authentication, and include security headers",
+      "help_text": "This is automatically checked by our scanning tools",
+      "why_matters": "Encrypts data in transit and builds user trust",
+      "kind": "auto",
+      "read_only": true,
+      "script_controlled": true,
+      "info": {
+        "what_it_means": "Comprehensive security configuration for web services including encryption, authentication, and protective headers.",
+        "why_it_matters": "Protects web applications from common attacks and ensures data is encrypted in transit.",
+        "law_refs": ["Art. 16 - Data Encryption", "NU-49-MDED-2025 §8.3"],
+        "priority": "must",
+        "resources": [
+          {"title": "Web Security Best Practices", "url": "https://example.com/web-security"}
+        ]
+      }
+    },
+    {
+      "id": "http-to-https-redirect-022",
+      "title": "HTTP to HTTPS Redirect",
+      "description": "HTTP traffic is properly redirected to HTTPS",
+      "category": "Web Security",
+      "required": true,
+      "scope": "asset",
+      "recommendation": "Configure automatic redirection from HTTP to HTTPS",
+      "help_text": "All web traffic should be automatically upgraded to secure connections",
+      "why_matters": "Ensures all web traffic is encrypted and secure",
+      "kind": "auto",
+      "read_only": true,
+      "script_controlled": true,
+      "info": {
+        "what_it_means": "Automatic redirection that forces all HTTP traffic to use HTTPS encryption.",
+        "why_it_matters": "Ensures all web traffic is encrypted and prevents accidental transmission of sensitive data over unencrypted connections.",
+        "law_refs": ["Art. 16 - Data Encryption", "NU-49-MDED-2025 §8.3"],
+        "priority": "should",
+        "resources": [
+          {"title": "HTTPS Redirect Configuration", "url": "https://example.com/https-redirect"}
+        ]
+      }
+    },
+    {
+      "id": "insecure-service-detection-023",
+      "title": "Insecure Service Detection",
+      "description": "No insecure services (FTP, Telnet, unencrypted protocols) are exposed",
+      "category": "Vulnerability Management",
+      "required": true,
+      "scope": "asset",
+      "recommendation": "Replace insecure protocols with secure alternatives",
+      "help_text": "Protocols like FTP, Telnet, and unencrypted HTTP should not be exposed",
+      "why_matters": "Insecure protocols can be easily intercepted and exploited",
+      "kind": "auto",
+      "read_only": true,
+      "script_controlled": true,
+      "info": {
+        "what_it_means": "Detection of insecure network protocols that transmit data in plaintext or have known security vulnerabilities.",
+        "why_it_matters": "Insecure protocols can be easily intercepted, allowing attackers to steal credentials and sensitive data.",
+        "law_refs": ["Art. 17 - Vulnerability Management", "NU-49-MDED-2025 §8.4"],
+        "priority": "must",
+        "resources": [
+          {"title": "Secure Protocol Migration Guide", "url": "https://example.com/secure-protocols"}
+        ]
+      }
+    },
+    {
+      "id": "development-environment-exposure-024",
+      "title": "Development Environment Exposure",
+      "description": "Development and staging environments are not publicly accessible",
+      "category": "Vulnerability Management",
+      "required": true,
+      "scope": "asset",
+      "recommendation": "Ensure development environments are not accessible from the public internet",
+      "help_text": "Development environments often contain sensitive information and should be protected",
+      "why_matters": "Prevents information disclosure and reduces attack surface",
+      "kind": "auto",
+      "read_only": true,
+      "script_controlled": true,
+      "info": {
+        "what_it_means": "Detection of development, staging, and test environments that are inadvertently exposed to the public internet.",
+        "why_it_matters": "Development environments often contain sensitive information, debug data, and may have weaker security controls.",
+        "law_refs": ["Art. 17 - Vulnerability Management", "NU-49-MDED-2025 §8.4"],
+        "priority": "should",
+        "resources": [
+          {"title": "Environment Security Guide", "url": "https://example.com/env-security"}
+        ]
+      }
+    },
+    {
+      "id": "high-risk-port-exposure-025",
+      "title": "High-Risk Port Exposure",
+      "description": "High-risk ports (RDP, SMB, database) are not exposed to the internet",
+      "category": "Vulnerability Management",
+      "required": true,
+      "scope": "asset",
+      "recommendation": "High-risk services should never be directly accessible from the internet",
+      "help_text": "Services like RDP, SMB, and databases should be protected behind VPN or firewall",
+      "why_matters": "High-risk services are frequently targeted by attackers",
+      "kind": "auto",
+      "read_only": true,
+      "script_controlled": true,
+      "info": {
+        "what_it_means": "Detection of high-risk network services that are commonly targeted by attackers and should not be directly accessible from the internet.",
+        "why_it_matters": "Services like RDP, SMB, and database ports are frequently targeted in automated attacks and should be protected by VPN or other secure access methods.",
+        "law_refs": ["Art. 17 - Vulnerability Management", "NU-49-MDED-2025 §8.4"],
+        "priority": "must",
+        "resources": [
+          {"title": "Network Security Architecture", "url": "https://example.com/network-security"}
+        ]
+      }
+    }
+  ]
+}

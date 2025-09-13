@@ -15,6 +15,7 @@ type AppConfig struct {
 	Scanner    ScannerConfig    `json:"scanner"`
 	Recontool  RecontoolConfig  `json:"recontool"`
 	Monitoring MonitoringConfig `json:"monitoring"`
+	MinIO      MinIOConfig      `json:"minio"`
 }
 
 // ServerConfig holds HTTP server configuration
@@ -62,6 +63,17 @@ type MonitoringConfig struct {
 	MetricsPort       int    `json:"metrics_port"`
 }
 
+// MinIOConfig holds MinIO/S3-compatible storage configuration
+type MinIOConfig struct {
+	Endpoint        string        `json:"endpoint"`
+	AccessKeyID     string        `json:"access_key_id"`
+	SecretAccessKey string        `json:"secret_access_key"`
+	UseSSL          bool          `json:"use_ssl"`
+	BucketName      string        `json:"bucket_name"`
+	Region          string        `json:"region"`
+	PresignDuration time.Duration `json:"presign_duration"`
+}
+
 // NewConfigFromEnv creates a new configuration from environment variables
 func NewConfigFromEnv() (*AppConfig, error) {
 	config := &AppConfig{
@@ -83,7 +95,7 @@ func NewConfigFromEnv() (*AppConfig, error) {
 			BackupInterval:  getEnvDuration("STORAGE_BACKUP_INTERVAL", 1*time.Hour),
 		},
 		Scanner: ScannerConfig{
-			ScriptsDir:        getEnvString("SCANNER_SCRIPTS_DIR", "./scripts"),
+			ScriptsDir:        getEnvString("SCANNER_SCRIPTS_DIR", "../scripts"),
 			MaxConcurrent:     getEnvInt("SCANNER_MAX_CONCURRENT", 10),
 			DefaultTimeout:    getEnvDuration("SCANNER_DEFAULT_TIMEOUT", 5*time.Minute),
 			EnableScriptCache: getEnvBool("SCANNER_ENABLE_SCRIPT_CACHE", true),
@@ -99,6 +111,15 @@ func NewConfigFromEnv() (*AppConfig, error) {
 			LogLevel:          getEnvString("MONITORING_LOG_LEVEL", "info"),
 			EnableMetrics:     getEnvBool("MONITORING_ENABLE_METRICS", false),
 			MetricsPort:       getEnvInt("MONITORING_METRICS_PORT", 9090),
+		},
+		MinIO: MinIOConfig{
+			Endpoint:        getEnvString("MINIO_ENDPOINT", "localhost:9000"),
+			AccessKeyID:     getEnvString("MINIO_ACCESS_KEY_ID", "minioadmin"),
+			SecretAccessKey: getEnvString("MINIO_SECRET_ACCESS_KEY", "minioadmin"),
+			UseSSL:          getEnvBool("MINIO_USE_SSL", false),
+			BucketName:      getEnvString("MINIO_BUCKET_NAME", "compliance-evidence"),
+			Region:          getEnvString("MINIO_REGION", "us-east-1"),
+			PresignDuration: getEnvDuration("MINIO_PRESIGN_DURATION", 1*time.Hour),
 		},
 	}
 
@@ -140,6 +161,23 @@ func (c *AppConfig) Validate() error {
 	validLogLevels := []string{"debug", "info", "warn", "error"}
 	if !contains(validLogLevels, c.Monitoring.LogLevel) {
 		return fmt.Errorf("invalid log level: %s (must be one of: %s)", c.Monitoring.LogLevel, strings.Join(validLogLevels, ", "))
+	}
+
+	// Validate MinIO configuration
+	if c.MinIO.Endpoint == "" {
+		return fmt.Errorf("MinIO endpoint cannot be empty")
+	}
+	if c.MinIO.AccessKeyID == "" {
+		return fmt.Errorf("MinIO access key ID cannot be empty")
+	}
+	if c.MinIO.SecretAccessKey == "" {
+		return fmt.Errorf("MinIO secret access key cannot be empty")
+	}
+	if c.MinIO.BucketName == "" {
+		return fmt.Errorf("MinIO bucket name cannot be empty")
+	}
+	if c.MinIO.PresignDuration <= 0 {
+		return fmt.Errorf("MinIO presign duration must be positive")
 	}
 
 	return nil

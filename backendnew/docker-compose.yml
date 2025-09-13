@@ -10,11 +10,20 @@ services:
       - SERVER_HOST=0.0.0.0
       - STORAGE_DATA_DIR=/app/data
       - SCANNER_SCRIPTS_DIR=/app/scripts
+      # MinIO configuration
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY_ID=minioadmin
+      - MINIO_SECRET_ACCESS_KEY=minioadmin
+      - MINIO_USE_SSL=false
+      - MINIO_BUCKET_NAME=compliance-evidence
+      - MINIO_REGION=us-east-1
       # RECONTOOL_BINARY_PATH is no longer needed - functionality is integrated
     volumes:
       - ./data:/app/data
       - ./scripts:/app/scripts
       # ../recontool mount no longer needed - functionality is integrated
+    depends_on:
+      - minio
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
@@ -22,6 +31,24 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
   # Optional: Add a reverse proxy
   nginx:
@@ -40,4 +67,6 @@ services:
 
 volumes:
   scanner_data:
+    driver: local
+  minio_data:
     driver: local
