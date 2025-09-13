@@ -154,7 +154,7 @@ export class IncidentsStore {
 
   // Utility methods
   getIncidentSummary(incident: IncidentRecord): string {
-    return incident.details.initial?.summary?.substring(0, 50) || 'Untitled Incident';
+    return incident.details.initial?.title || 'Untitled Incident';
   }
 
   getIncidentStatusColor(stage: IncidentStage): string {

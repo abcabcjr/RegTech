@@ -38,6 +38,7 @@
   
   // Form states
   let initialData = $state<Partial<InitialDetails>>({
+    title: '',
     summary: '',
     detectedAt: '',
     suspectedIllegal: false,
@@ -79,6 +80,7 @@
         
         // Set initial data
         if (editIncident.details.initial) {
+          initialData.title = editIncident.details.initial.title || '';
           initialData.summary = editIncident.details.initial.summary || '';
           initialData.detectedAt = editIncident.details.initial.detectedAt || '';
           initialData.suspectedIllegal = editIncident.details.initial.suspectedIllegal || false;
@@ -119,6 +121,7 @@
     currentStep = 1;
     incidentId = null;
     initialData = {
+      title: '',
       summary: '',
       detectedAt: '',
       suspectedIllegal: false,
@@ -147,7 +150,7 @@
   function handleNext() {
     if (currentStep === 1) {
       // Validate and save initial data
-      if (!initialData.summary || !initialData.detectedAt) {
+      if (!initialData.title || !initialData.summary || !initialData.detectedAt) {
         alert('Please fill in all required fields.');
         return;
       }
@@ -209,8 +212,8 @@
     // For forward navigation, validate all previous steps
     if (targetStep > currentStep) {
       // Always check Step 1 requirements when moving forward
-      if (!initialData.summary || !initialData.detectedAt) {
-        alert('Please complete Step 1 required fields (Incident Summary and Detected At) before proceeding.');
+      if (!initialData.title || !initialData.summary || !initialData.detectedAt) {
+        alert('Please complete Step 1 required fields (Incident Title, Summary, and Detected At) before proceeding.');
         return;
       }
       
@@ -308,10 +311,19 @@
         </Card.Header>
         <Card.Content class="space-y-6">
           <div class="space-y-2">
+            <Label for="title" class="text-sm font-medium">Incident Title *</Label>
+            <Input
+              id="title"
+              placeholder="Short descriptive title for the incident..."
+              bind:value={initialData.title}
+            />
+          </div>
+          
+          <div class="space-y-2">
             <Label for="summary" class="text-sm font-medium">Incident Summary *</Label>
             <textarea
               id="summary"
-              placeholder="Brief description of what happened..."
+              placeholder="Detailed description of what happened..."
               bind:value={initialData.summary}
               class="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             ></textarea>
@@ -431,11 +443,12 @@
 
           <div>
             <Label for="corrections">Interim Actions Taken</Label>
-            <Textarea
+            <textarea
               id="corrections"
               placeholder="What immediate actions were taken to contain the incident..."
               bind:value={updateData.corrections}
-            />
+              class="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            ></textarea>
           </div>
 
           <div class="flex items-center space-x-4">

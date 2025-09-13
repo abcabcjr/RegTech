@@ -3,6 +3,7 @@ export type IncidentStage = 'initial' | 'update' | 'final';
 export type CauseTag = 'phishing' | 'vuln_exploit' | 'misconfig' | 'malware' | 'other';
 
 export interface InitialDetails {
+  title: string;
   summary: string;
   detectedAt: string;
   suspectedIllegal?: boolean;
