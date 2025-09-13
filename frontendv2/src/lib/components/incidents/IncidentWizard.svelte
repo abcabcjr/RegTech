@@ -116,7 +116,7 @@
 </script>
 
 <Dialog.Root bind:open>
-  <Dialog.Content class="w-[90vw] max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
+  <Dialog.Content class="!max-w-[90vw] max-h-[90vh] overflow-y-auto">
     <!-- Header -->
     <div class="flex items-center justify-between px-8 py-6 border-b">
       <h2 class="text-2xl font-semibold">Report Incident</h2>
