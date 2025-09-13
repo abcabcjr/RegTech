@@ -600,11 +600,11 @@ const docTemplate = `{
                 }
             }
         },
-        "/files/upload/initiate": {
+        "/files/upload": {
             "post": {
-                "description": "Create a file attachment record and get a pre-signed upload URL",
+                "description": "Upload a file directly as part of a checklist item",
                 "consumes": [
-                    "application/json"
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -612,23 +612,34 @@ const docTemplate = `{
                 "tags": [
                     "files"
                 ],
-                "summary": "Initiate file upload",
+                "summary": "Upload file",
                 "parameters": [
                     {
-                        "description": "Upload initiation request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.InitiateUploadRequest"
-                        }
+                        "type": "string",
+                        "description": "Checklist key (e.g., global:item1)",
+                        "name": "checklist_key",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "File description",
+                        "name": "description",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "File to upload",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/model.PresignedUploadResponse"
+                            "$ref": "#/definitions/model.FileUploadResponse"
                         }
                     },
                     "400": {
@@ -741,69 +752,16 @@ const docTemplate = `{
                 }
             }
         },
-        "/files/{fileId}/confirm": {
-            "post": {
-                "description": "Verify that a file upload was completed and update the file status",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "files"
-                ],
-                "summary": "Confirm file upload",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "File ID",
-                        "name": "fileId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v1.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v1.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v1.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/files/{fileId}/download": {
             "get": {
-                "description": "Generate a pre-signed download URL for a file attachment",
+                "description": "Download a file attachment directly",
                 "produces": [
-                    "application/json"
+                    "application/octet-stream"
                 ],
                 "tags": [
                     "files"
                 ],
-                "summary": "Generate download URL",
+                "summary": "Download file",
                 "parameters": [
                     {
                         "type": "string",
@@ -815,9 +773,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "File content",
                         "schema": {
-                            "$ref": "#/definitions/model.PresignedDownloadResponse"
+                            "type": "file"
                         }
                     },
                     "400": {
@@ -904,37 +862,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "handler.InitiateUploadRequest": {
-            "type": "object",
-            "required": [
-                "checklist_key",
-                "file_name",
-                "file_size"
-            ],
-            "properties": {
-                "checklist_key": {
-                    "type": "string",
-                    "example": "global:item1"
-                },
-                "content_type": {
-                    "type": "string",
-                    "example": "application/pdf"
-                },
-                "description": {
-                    "type": "string",
-                    "example": "Evidence for compliance check"
-                },
-                "file_name": {
-                    "type": "string",
-                    "example": "evidence.pdf"
-                },
-                "file_size": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "example": 1024
-                }
-            }
-        },
         "handler.SetStatusRequest": {
             "type": "object",
             "properties": {
@@ -1001,6 +928,44 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ChecklistItemInfo": {
+            "type": "object",
+            "properties": {
+                "law_refs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "priority": {
+                    "description": "\"must\", \"should\", \"may\"",
+                    "type": "string"
+                },
+                "resources": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ChecklistItemResource"
+                    }
+                },
+                "what_it_means": {
+                    "type": "string"
+                },
+                "why_it_matters": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ChecklistItemResource": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
         "model.ChecklistItemTemplate": {
             "type": "object",
             "properties": {
@@ -1024,8 +989,22 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.EvidenceRule"
                     }
                 },
+                "help_text": {
+                    "description": "Extended metadata fields for rich UI display",
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
+                },
+                "info": {
+                    "$ref": "#/definitions/model.ChecklistItemInfo"
+                },
+                "kind": {
+                    "description": "\"manual\" or \"auto\"",
+                    "type": "string"
+                },
+                "read_only": {
+                    "type": "boolean"
                 },
                 "recommendation": {
                     "type": "string"
@@ -1042,6 +1021,9 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "title": {
+                    "type": "string"
+                },
+                "why_matters": {
                     "type": "string"
                 }
             }
@@ -1088,12 +1070,26 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.EvidenceRule"
                     }
                 },
+                "help_text": {
+                    "description": "Extended metadata fields for rich UI display",
+                    "type": "string"
+                },
                 "id": {
+                    "type": "string"
+                },
+                "info": {
+                    "$ref": "#/definitions/model.ChecklistItemInfo"
+                },
+                "kind": {
+                    "description": "\"manual\" or \"auto\"",
                     "type": "string"
                 },
                 "notes": {
                     "description": "From manual assignment",
                     "type": "string"
+                },
+                "read_only": {
+                    "type": "boolean"
                 },
                 "recommendation": {
                     "type": "string"
@@ -1122,6 +1118,9 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "description": "From manual assignment",
+                    "type": "string"
+                },
+                "why_matters": {
                     "type": "string"
                 }
             }
@@ -1153,10 +1152,6 @@ const docTemplate = `{
                     "description": "Optional: links to specific asset",
                     "type": "string"
                 },
-                "bucket_name": {
-                    "description": "Storage metadata",
-                    "type": "string"
-                },
                 "checklist_key": {
                     "description": "Compliance context",
                     "type": "string"
@@ -1171,21 +1166,17 @@ const docTemplate = `{
                     "description": "Error message if status is \"failed\"",
                     "type": "string"
                 },
-                "etag": {
-                    "description": "MinIO ETag for integrity",
+                "file_name": {
                     "type": "string"
                 },
-                "file_name": {
+                "file_path": {
+                    "description": "Storage metadata",
                     "type": "string"
                 },
                 "file_size": {
                     "type": "integer"
                 },
                 "id": {
-                    "type": "string"
-                },
-                "object_key": {
-                    "description": "Full path in MinIO",
                     "type": "string"
                 },
                 "original_name": {
@@ -1233,16 +1224,13 @@ const docTemplate = `{
                 }
             }
         },
-        "model.PresignedDownloadResponse": {
+        "model.FileUploadResponse": {
             "type": "object",
             "properties": {
                 "content_type": {
                     "type": "string"
                 },
-                "download_url": {
-                    "type": "string"
-                },
-                "expires_at": {
+                "file_id": {
                     "type": "string"
                 },
                 "file_name": {
@@ -1250,30 +1238,11 @@ const docTemplate = `{
                 },
                 "file_size": {
                     "type": "integer"
-                }
-            }
-        },
-        "model.PresignedUploadResponse": {
-            "type": "object",
-            "properties": {
-                "expires_at": {
+                },
+                "status": {
                     "type": "string"
                 },
-                "fields": {
-                    "description": "Additional form fields for POST uploads",
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "file_id": {
-                    "type": "string"
-                },
-                "method": {
-                    "description": "\"PUT\" or \"POST\"",
-                    "type": "string"
-                },
-                "upload_url": {
+                "uploaded_at": {
                     "type": "string"
                 }
             }

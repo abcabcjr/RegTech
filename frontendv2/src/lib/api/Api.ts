@@ -10,22 +10,6 @@
  * ---------------------------------------------------------------
  */
 
-export interface HandlerInitiateUploadRequest {
-  /** @example "global:item1" */
-  checklist_key: string;
-  /** @example "application/pdf" */
-  content_type?: string;
-  /** @example "Evidence for compliance check" */
-  description?: string;
-  /** @example "evidence.pdf" */
-  file_name: string;
-  /**
-   * @min 1
-   * @example 1024
-   */
-  file_size: number;
-}
-
 export interface HandlerSetStatusRequest {
   /**
    * Asset ID (empty for global items)
@@ -64,6 +48,20 @@ export interface ModelAssetCoverage {
   updated_at?: string;
 }
 
+export interface ModelChecklistItemInfo {
+  law_refs?: string[];
+  /** "must", "should", "may" */
+  priority?: string;
+  resources?: ModelChecklistItemResource[];
+  what_it_means?: string;
+  why_it_matters?: string;
+}
+
+export interface ModelChecklistItemResource {
+  title?: string;
+  url?: string;
+}
+
 export interface ModelChecklistItemTemplate {
   /** Applicable asset types if scope is "asset" */
   asset_types?: string[];
@@ -71,7 +69,13 @@ export interface ModelChecklistItemTemplate {
   description?: string;
   /** Rules for auto-derivation */
   evidence_rules?: ModelEvidenceRule[];
+  /** Extended metadata fields for rich UI display */
+  help_text?: string;
   id?: string;
+  info?: ModelChecklistItemInfo;
+  /** "manual" or "auto" */
+  kind?: string;
+  read_only?: boolean;
   recommendation?: string;
   required?: boolean;
   /** "global" or "asset" */
@@ -79,6 +83,7 @@ export interface ModelChecklistItemTemplate {
   /** Can be controlled by Lua scripts */
   script_controlled?: boolean;
   title?: string;
+  why_matters?: string;
 }
 
 export interface ModelDerivedChecklistItem {
@@ -94,9 +99,15 @@ export interface ModelDerivedChecklistItem {
   evidence?: Record<string, any>;
   /** Rules for auto-derivation */
   evidence_rules?: ModelEvidenceRule[];
+  /** Extended metadata fields for rich UI display */
+  help_text?: string;
   id?: string;
+  info?: ModelChecklistItemInfo;
+  /** "manual" or "auto" */
+  kind?: string;
   /** From manual assignment */
   notes?: string;
+  read_only?: boolean;
   recommendation?: string;
   required?: boolean;
   /** "global" or "asset" */
@@ -110,6 +121,7 @@ export interface ModelDerivedChecklistItem {
   title?: string;
   /** From manual assignment */
   updated_at?: string;
+  why_matters?: string;
 }
 
 export interface ModelEvidenceRule {
@@ -126,21 +138,17 @@ export interface ModelEvidenceRule {
 export interface ModelFileAttachment {
   /** Optional: links to specific asset */
   asset_id?: string;
-  /** Storage metadata */
-  bucket_name?: string;
   /** Compliance context */
   checklist_key?: string;
   content_type?: string;
   description?: string;
   /** Error message if status is "failed" */
   error?: string;
-  /** MinIO ETag for integrity */
-  etag?: string;
   file_name?: string;
+  /** Storage metadata */
+  file_path?: string;
   file_size?: number;
   id?: string;
-  /** Full path in MinIO */
-  object_key?: string;
   original_name?: string;
   /** Status */
   status?: string;
@@ -160,22 +168,13 @@ export interface ModelFileAttachmentSummary {
   uploaded_at?: string;
 }
 
-export interface ModelPresignedDownloadResponse {
+export interface ModelFileUploadResponse {
   content_type?: string;
-  download_url?: string;
-  expires_at?: string;
+  file_id?: string;
   file_name?: string;
   file_size?: number;
-}
-
-export interface ModelPresignedUploadResponse {
-  expires_at?: string;
-  /** Additional form fields for POST uploads */
-  fields?: Record<string, string>;
-  file_id?: string;
-  /** "PUT" or "POST" */
-  method?: string;
-  upload_url?: string;
+  status?: string;
+  uploaded_at?: string;
 }
 
 export interface V1AssetCatalogueResponse {
@@ -870,22 +869,32 @@ export class Api<
       }),
 
     /**
-     * @description Create a file attachment record and get a pre-signed upload URL
+     * @description Upload a file directly as part of a checklist item
      *
      * @tags files
-     * @name UploadInitiateCreate
-     * @summary Initiate file upload
-     * @request POST:/files/upload/initiate
+     * @name UploadCreate
+     * @summary Upload file
+     * @request POST:/files/upload
      */
-    uploadInitiateCreate: (
-      request: HandlerInitiateUploadRequest,
+    uploadCreate: (
+      data: {
+        /** Checklist key (e.g., global:item1) */
+        checklist_key: string;
+        /** File description */
+        description?: string;
+        /**
+         * File to upload
+         * @format binary
+         */
+        file: File;
+      },
       params: RequestParams = {},
     ) =>
-      this.request<ModelPresignedUploadResponse, V1ErrorResponse>({
-        path: `/files/upload/initiate`,
+      this.request<ModelFileUploadResponse, V1ErrorResponse>({
+        path: `/files/upload`,
         method: "POST",
-        body: request,
-        type: ContentType.Json,
+        body: data,
+        type: ContentType.FormData,
         format: "json",
         ...params,
       }),
@@ -923,35 +932,17 @@ export class Api<
       }),
 
     /**
-     * @description Verify that a file upload was completed and update the file status
-     *
-     * @tags files
-     * @name ConfirmCreate
-     * @summary Confirm file upload
-     * @request POST:/files/{fileId}/confirm
-     */
-    confirmCreate: (fileId: string, params: RequestParams = {}) =>
-      this.request<Record<string, string>, V1ErrorResponse>({
-        path: `/files/${fileId}/confirm`,
-        method: "POST",
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Generate a pre-signed download URL for a file attachment
+     * @description Download a file attachment directly
      *
      * @tags files
      * @name DownloadList
-     * @summary Generate download URL
+     * @summary Download file
      * @request GET:/files/{fileId}/download
      */
     downloadList: (fileId: string, params: RequestParams = {}) =>
-      this.request<ModelPresignedDownloadResponse, V1ErrorResponse>({
+      this.request<File, V1ErrorResponse>({
         path: `/files/${fileId}/download`,
         method: "GET",
-        format: "json",
         ...params,
       }),
   };

@@ -1,95 +1,56 @@
 # File Upload Quick Start Guide
 
-This guide shows how to quickly test the MinIO-based file upload functionality for compliance evidence.
+This guide shows how to quickly test the local file upload functionality for compliance evidence.
 
-## 1. Start MinIO
-
-Run the provided script to start MinIO:
-
-```bash
-./start-minio.sh
-```
-
-Or manually with docker-compose:
-
-```bash
-docker-compose -f docker-compose.minio.yml up -d
-```
-
-MinIO will be available at:
-- **API**: http://localhost:9000
-- **Console**: http://localhost:9001
-- **Username**: minioadmin
-- **Password**: minioadmin
-
-## 2. Start the Backend
+## 1. Start the Backend
 
 ```bash
 go run ./cmd/scanner
 ```
 
 The application will automatically:
-- Try to connect to MinIO
-- Create the `compliance-evidence` bucket if MinIO is available
-- Initialize the file service (gracefully degrades if MinIO is unavailable)
+- Create the `data/files/` directory for file storage
+- Initialize the file service for local storage
+- Set up all necessary directories
 
-**Note**: If MinIO is not running, the backend will still start successfully but file upload operations will return errors until MinIO becomes available.
+## 2. Test File Upload API
 
-## 3. Test File Upload API
+### Direct File Upload
 
-### Step 1: Initiate Upload
+Upload files directly using multipart form data:
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/files/upload/initiate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "checklist_key": "global:security-policy",
-    "file_name": "security-policy.pdf",
-    "content_type": "application/pdf",
-    "file_size": 1024000,
-    "description": "Company security policy document"
-  }'
+curl -X POST http://localhost:8080/api/v1/files/upload \
+  -F "checklist_key=global:security-policy" \
+  -F "description=Company security policy document" \
+  -F "file=@security-policy.pdf"
 ```
 
 Response:
 ```json
 {
   "file_id": "file_123456",
-  "upload_url": "http://localhost:9000/compliance-evidence/compliance/global%3Asecurity-policy/file_123456_security-policy.pdf?X-Amz-Algorithm=...",
-  "expires_at": "2025-01-13T15:23:12Z",
-  "method": "PUT"
+  "file_name": "security-policy.pdf",
+  "content_type": "application/pdf",
+  "file_size": 1024000,
+  "uploaded_at": "2025-01-13T15:23:12Z",
+  "status": "uploaded"
 }
 ```
 
-### Step 2: Upload File
-
-Use the returned `upload_url` to upload your file:
+### Download File
 
 ```bash
-curl -X PUT "http://localhost:9000/compliance-evidence/..." \
-  -H "Content-Type: application/pdf" \
-  --data-binary @your-file.pdf
+curl http://localhost:8080/api/v1/files/file_123456/download \
+  --output downloaded-file.pdf
 ```
 
-### Step 3: Confirm Upload
-
-```bash
-curl -X POST http://localhost:8080/api/v1/files/file_123456/confirm
-```
-
-### Step 4: Generate Download URL
-
-```bash
-curl http://localhost:8080/api/v1/files/file_123456/download
-```
-
-## 4. API Endpoints
+## 3. API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/v1/files/upload/initiate` | Create upload URL |
-| POST | `/api/v1/files/{fileId}/confirm` | Confirm upload |
-| GET | `/api/v1/files/{fileId}/download` | Get download URL |
+| POST | `/api/v1/files/upload` | Upload file directly |
+| GET | `/api/v1/files/{fileId}/download` | Download file |
 | GET | `/api/v1/files/{fileId}` | Get file info |
 | GET | `/api/v1/files?checklistKey=...` | List files for checklist |
 | DELETE | `/api/v1/files/{fileId}` | Delete file |
@@ -97,20 +58,23 @@ curl http://localhost:8080/api/v1/files/file_123456/download
 | GET | `/api/v1/files/limits` | Get upload limits |
 | GET | `/api/v1/files/status` | Get file service status |
 
-## 5. File Storage Structure
+## 4. File Storage Structure
 
-Files are stored in MinIO with this structure:
+Files are stored locally in the data directory:
 ```
-compliance-evidence/
-├── compliance/
-│   ├── global:item1/
+data/
+├── files/
+│   ├── global_item1/
 │   │   ├── file_123_document.pdf
 │   │   └── file_456_screenshot.png
-│   └── asset:asset123:item2/
+│   └── asset_asset123_item2/
 │       └── file_789_evidence.docx
+├── assets.json
+├── checklist_statuses.json
+└── file_attachments.json
 ```
 
-## 6. Checklist Integration
+## 5. Checklist Integration
 
 Files are automatically linked to checklist items. When you retrieve checklist status:
 
@@ -130,7 +94,7 @@ The response includes file attachments:
 }
 ```
 
-## 7. Supported File Types
+## 6. Supported File Types
 
 - **Images**: JPEG, PNG, GIF, WebP
 - **Documents**: PDF, Word, Excel, Text, CSV
@@ -139,20 +103,14 @@ The response includes file attachments:
 
 Maximum file size: **50MB**
 
-## 8. Environment Variables
+## 7. Environment Variables
 
 ```bash
-# MinIO Configuration
-MINIO_ENDPOINT=localhost:9000
-MINIO_ACCESS_KEY_ID=minioadmin
-MINIO_SECRET_ACCESS_KEY=minioadmin
-MINIO_USE_SSL=false
-MINIO_BUCKET_NAME=compliance-evidence
-MINIO_REGION=us-east-1
-MINIO_PRESIGN_DURATION=1h
+# Storage Configuration
+STORAGE_DATA_DIR=/app/data
 ```
 
-## 9. Troubleshooting
+## 8. Troubleshooting
 
 ### Check File Service Status
 ```bash
@@ -160,42 +118,55 @@ MINIO_PRESIGN_DURATION=1h
 curl http://localhost:8080/api/v1/files/status
 ```
 
-Response when MinIO is unavailable:
+Response:
 ```json
 {
-  "available": false,
-  "endpoint": "localhost:9000",
-  "bucket": "compliance-evidence",
-  "error": "MinIO service is not accessible"
+  "available": true,
+  "files_dir": "/app/data/files",
+  "storage_type": "local_filesystem"
 }
-```
-
-### MinIO Connection Issues
-```bash
-# Check if MinIO is running
-curl http://localhost:9000/minio/health/live
-
-# View MinIO logs
-docker-compose -f docker-compose.minio.yml logs minio
 ```
 
 ### File Upload Failures
 - Check file service status first: `GET /api/v1/files/status`
 - Check file size (max 50MB)
 - Verify content type is supported
-- Ensure MinIO bucket exists
-- Check presigned URL hasn't expired
+- Ensure data directory is writable
 
 ### Storage Issues
-- Files are stored in `./data/file_attachments.json`
-- MinIO data is persisted in Docker volume `minio_data`
+- Files are stored in `./data/file_attachments.json` (metadata)
+- Actual files are stored in `./data/files/` directory
+- Ensure the data directory has proper write permissions
+
+## 9. Docker Usage
+
+When using Docker, ensure the data directory is properly mounted:
+
+```yaml
+services:
+  asset-scanner:
+    build: .
+    volumes:
+      - ./data:/app/data  # Files will be stored here
+    environment:
+      - STORAGE_DATA_DIR=/app/data
+```
 
 ## 10. Clean Up
 
 ```bash
-# Stop MinIO
-docker-compose -f docker-compose.minio.yml down
+# Remove uploaded files
+rm -rf data/files/
 
-# Remove MinIO data (optional)
-docker-compose -f docker-compose.minio.yml down -v
+# Or just remove specific checklist files
+rm -rf data/files/global_security-policy/
 ```
+
+## Migration from MinIO
+
+If you were previously using MinIO-based file storage:
+
+1. **No migration needed** - the new system uses a separate storage mechanism
+2. **Update your client code** to use the new single-step upload API
+3. **Remove MinIO dependencies** from your deployment
+4. **Files are now stored locally** in the data directory instead of object storage
