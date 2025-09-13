@@ -13,8 +13,11 @@
   import Clock from '@lucide/svelte/icons/clock';
   import Download from '@lucide/svelte/icons/download';
   import Printer from '@lucide/svelte/icons/printer';
+  import Edit from '@lucide/svelte/icons/edit';
+  import Trash2 from '@lucide/svelte/icons/trash-2';
 
   let wizardOpen = $state(false);
+  let editingIncident = $state<IncidentRecord | null>(null);
 
   // Reactive references to store state
   let incidents = $derived(incidentsStore.incidents);
@@ -22,6 +25,7 @@
   let loading = $derived(incidentsStore.loading);
 
   function handleNewIncident() {
+    editingIncident = null; // Clear edit mode
     wizardOpen = true;
   }
 
@@ -51,6 +55,24 @@
         `);
         printWindow.document.close();
         printWindow.print();
+      }
+    }
+  }
+
+  function handleEditIncident() {
+    if (selectedIncident) {
+      editingIncident = selectedIncident;
+      wizardOpen = true;
+    }
+  }
+
+  function handleDeleteIncident() {
+    if (selectedIncident) {
+      const confirmed = confirm(`Are you sure you want to delete incident ${selectedIncident.id}? This action cannot be undone.`);
+      if (confirmed) {
+        incidentsStore.deleteIncident(selectedIncident.id);
+        // Clear selection since the incident was deleted
+        incidentsStore.selectIncident(null);
       }
     }
   }
@@ -281,7 +303,16 @@
               {/if}
 
               <!-- Actions -->
-              <div class="flex space-x-2 pt-4 border-t">
+              <div class="flex flex-wrap gap-2 pt-4 border-t">
+                <Button variant="outline" size="sm" onclick={handleEditIncident}>
+                  <Edit class="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+                <Button variant="outline" size="sm" onclick={handleDeleteIncident} class="text-destructive hover:bg-destructive hover:text-destructive-foreground">
+                  <Trash2 class="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+                <div class="flex-1"></div>
                 <Button variant="outline" size="sm" onclick={handleExportJSON}>
                   <Download class="h-4 w-4 mr-2" />
                   Export JSON
@@ -314,5 +345,5 @@
 </div>
 
 <!-- Modals -->
-<IncidentWizard bind:open={wizardOpen} />
+<IncidentWizard bind:open={wizardOpen} editIncident={editingIncident} />
 
