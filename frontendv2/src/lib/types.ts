@@ -1,4 +1,12 @@
 // Core types for CyberCare compliance system
+export interface InfoBlock {
+  whatItMeans: string;
+  whyItMatters: string;
+  lawRefs: string[];        // e.g., ["Art. 11", "NU-49-MDED-2025 §…"]
+  priority?: 'must' | 'should';
+  resources?: { title: string; url: string }[];
+}
+
 export interface ChecklistItem {
   id: string;
   title: string;
@@ -12,6 +20,9 @@ export interface ChecklistItem {
   evidence?: string;
   lastUpdated?: string;
   recommendation?: string;
+  kind: 'manual' | 'auto';
+  readOnly?: boolean;
+  info?: InfoBlock;
 }
 
 export interface ChecklistSection {

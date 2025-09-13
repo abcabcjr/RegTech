@@ -3,20 +3,23 @@
 	import { StatusBadge } from '$lib/components/ui/status-badge';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
-	import { Select } from '$lib/components/ui/select';
+	import Select from '$lib/components/ui/select/select.svelte';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Input } from '$lib/components/ui/input';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Tooltip } from '$lib/components/ui/tooltip';
+	import InfoPanel from './InfoPanel.svelte';
 
 	interface Props {
 		item: ChecklistItem;
 		onUpdate: (updates: Partial<ChecklistItem>) => void;
+		readOnly?: boolean;
 	}
 
-	let { item, onUpdate }: Props = $props();
+	let { item, onUpdate, readOnly = false }: Props = $props();
 
 	let isExpanded = $state(true);
+	let infoPanelOpen = $state(false);
 
 	function handleStatusChange(event: CustomEvent<{ value: string }>) {
 		const status = event.detail.value as 'yes' | 'no' | 'na';
@@ -38,7 +41,7 @@
 		onUpdate({ evidence: target.value, lastUpdated: new Date().toISOString() });
 	}
 
-	let isDisplayOnly = $derived(item.category === "web" || item.category === "vulnerability");
+	let isDisplayOnly = $derived(item.category === "web" || item.category === "vulnerability" || readOnly);
 	
 	// Generate unique IDs for form controls
 	const statusId = `status-${item.id}`;
@@ -63,17 +66,21 @@
 			</div>
 			<div class="flex items-center space-x-2">
 				<StatusBadge status={item.status} />
-				<Tooltip content={item.whyMatters}>
-					<Button 
-						variant="ghost" 
-						size="sm"
-						slot="trigger"
-					>
-						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-						</svg>
-					</Button>
-				</Tooltip>
+				{#if item.kind === 'auto'}
+					<Badge variant="outline">
+						Auto-scan
+					</Badge>
+				{/if}
+				<Button 
+					variant="ghost" 
+					size="sm"
+					onclick={() => infoPanelOpen = true}
+					title="Detailed Information"
+				>
+					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+					</svg>
+				</Button>
 				<Button 
 					variant="ghost" 
 					size="sm"
@@ -107,6 +114,7 @@
 						<Select
 							id={statusId}
 							value={item.status}
+							placeholder="Select status"
 							onchange={handleStatusChange}
 						>
 							<option value="yes">Yes - Compliant</option>
@@ -170,3 +178,11 @@
 		</Card.Content>
 	{/if}
 </Card.Root>
+
+<!-- Info Panel -->
+<InfoPanel 
+	open={infoPanelOpen}
+	title={item.title}
+	info={item.info}
+	onClose={() => infoPanelOpen = false}
+/>
