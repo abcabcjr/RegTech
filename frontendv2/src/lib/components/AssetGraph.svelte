@@ -628,6 +628,74 @@
 		return `${layoutMode}-${physicsEnabled}-${manualMode}-${edgeOpacity}-${nodeSpacing}-${clusteringEnabled}-${filterByType}-${filterByTag}-${filterByStatus}-${searchQuery}`;
 	}
 
+	// Create a hash of assets data to detect content changes
+	function getAssetsHash(): string {
+		return assets.map(asset => `${asset.id}-${asset.status}-${asset.scan_count}-${JSON.stringify(assetStore.assetDetails[asset.id]?.tags || [])}`).join('|');
+	}
+
+	// Update existing network data without destroying it
+	function updateNetworkData() {
+		if (!network) return;
+		
+		// Store current view position and node positions before updating
+		const currentViewState = storeNetworkView();
+		const nodePositions = storeNodePositions();
+		
+		// Temporarily disable physics to prevent movement during update
+		const wasPhysicsEnabled = physicsEnabled && !manualMode;
+		if (wasPhysicsEnabled) {
+			network.setOptions({ physics: { enabled: false } });
+		}
+		
+		const data = createNetworkData();
+		
+		try {
+			// Update nodes and edges without destroying the network
+			network.setData(data);
+			
+			// Restore node positions immediately if available
+			if (nodePositions) {
+				// Try immediate restoration first
+				Object.entries(nodePositions).forEach(([nodeId, position]: [string, any]) => {
+					try {
+						network!.moveNode(nodeId, position.x, position.y);
+					} catch (e) {
+						// Silently ignore errors for individual nodes
+					}
+				});
+			}
+			
+			// Restore view state immediately if available
+			if (currentViewState) {
+				try {
+					network.moveTo({
+						position: currentViewState.position,
+						scale: currentViewState.scale,
+						animation: false
+					});
+				} catch (e) {
+					// Fallback to delayed restoration
+					restoreNetworkView(currentViewState);
+				}
+			}
+			
+			// Re-enable physics if it was enabled before
+			if (wasPhysicsEnabled) {
+				setTimeout(() => {
+					network!.setOptions({ physics: { enabled: true } });
+				}, 5);
+			}
+		} catch (error) {
+			console.error('Failed to update network data, falling back to reinitialize:', error);
+			// Re-enable physics before fallback
+			if (wasPhysicsEnabled) {
+				network.setOptions({ physics: { enabled: true } });
+			}
+			// Fallback to full reinitialize if update fails
+			initializeNetwork();
+		}
+	}
+
 	// Get spacing parameters based on current settings
 	function getSpringLength(): number {
 		const baseLength = layoutMode === 'clustered' ? 250 : 180;
@@ -683,20 +751,55 @@
 	function restoreNetworkView(viewState: any) {
 		if (!network || !viewState) return;
 		try {
+			// Reduce delay and use immediate restoration when possible
 			setTimeout(() => {
 				network!.moveTo({
 					position: viewState.position,
 					scale: viewState.scale,
 					animation: false
 				});
-			}, 100);
+			}, 5); // Much shorter delay
 		} catch (e) {
-			// Ignore errors in view restoration
+			console.error('Failed to restore view state:', e);
 		}
 	}
 
-	let previousAssetsLength = 0;
-	let previousFilterHash = $state('');
+	// Store and restore node positions
+	function storeNodePositions() {
+		if (!network) return null;
+		try {
+			const positions = network.getPositions();
+			return positions;
+		} catch (e) {
+			return null;
+		}
+	}
+
+	function restoreNodePositions(nodePositions: any) {
+		if (!network || !nodePositions) return;
+		try {
+			setTimeout(() => {
+				// Move nodes individually to their stored positions
+				Object.entries(nodePositions).forEach(([nodeId, position]: [string, any]) => {
+					try {
+						network!.moveNode(nodeId, position.x, position.y);
+					} catch (e) {
+						// Silently ignore errors for individual nodes (e.g., if node no longer exists)
+					}
+				});
+			}, 5); // Much shorter delay
+		} catch (e) {
+			console.error('Failed to restore node positions:', e);
+		}
+	}
+
+	// Use a more persistent way to store previous values that won't reset on re-renders
+	let networkState = $state({
+		previousAssetsLength: 0,
+		previousFilterHash: '',
+		previousAssetsHash: '',
+		initialized: false
+	});
 
 	let discoverListString = $state('');
 
@@ -722,20 +825,25 @@
 
 	// Effect to initialize network when container and assets are available
 	$effect(() => {
-		if (container && assets.length > 0 && assets.length !== previousAssetsLength) {
-			initializeNetwork();
-			previousAssetsLength = assets.length;
-			previousFilterHash = getFilterHash(); // Initialize filter hash
-		}
-	});
-
-	// Effect to reinitialize network when view settings change
-	$effect(() => {
 		if (container && assets.length > 0) {
+			const currentAssetsHash = getAssetsHash();
 			const currentFilterHash = getFilterHash();
-			if (currentFilterHash !== previousFilterHash) {
-				previousFilterHash = currentFilterHash;
+			
+			// Full reinitialize only if: no network exists, filter settings changed, or first time
+			const shouldReinitialize = !network || !networkState.initialized || currentFilterHash !== networkState.previousFilterHash;
+			
+			if (shouldReinitialize) {
 				initializeNetwork();
+				networkState.previousAssetsLength = assets.length;
+				networkState.previousFilterHash = currentFilterHash;
+				networkState.previousAssetsHash = currentAssetsHash;
+				networkState.initialized = true;
+			}
+			// Update data for any other changes (length changes, content changes, etc.)
+			else if (currentAssetsHash !== networkState.previousAssetsHash || assets.length !== networkState.previousAssetsLength) {
+				updateNetworkData();
+				networkState.previousAssetsLength = assets.length;
+				networkState.previousAssetsHash = currentAssetsHash;
 			}
 		}
 	});
@@ -1087,6 +1195,7 @@
 	}
 
 	.overlay-card {
+	    max-width: 25rem;
 		pointer-events: auto;
 		background: rgba(255, 255, 255, 0.85);
 		backdrop-filter: saturate(1.2) blur(6px);

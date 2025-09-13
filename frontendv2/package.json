@@ -46,6 +46,8 @@
 	},
 	"dependencies": {
 		"@sveltejs/adapter-static": "^3.0.9",
+		"html2canvas": "^1.4.1",
+		"jspdf": "^3.0.2",
 		"vis-network": "^10.0.1"
 	}
 }
