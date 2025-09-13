@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ChecklistItem } from '$lib/types';
+	import type { ChecklistItem, FileAttachment } from '$lib/types';
 	import { StatusBadge } from '$lib/components/ui/status-badge';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
@@ -9,6 +9,8 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Tooltip } from '$lib/components/ui/tooltip';
 	import InfoPanel from './InfoPanel.svelte';
+	import FileUpload from './FileUpload.svelte';
+	import { apiClient } from '$lib/api/client';
 
 	interface Props {
 		item: ChecklistItem;
@@ -20,6 +22,8 @@
 
 	let isExpanded = $state(true);
 	let infoPanelOpen = $state(false);
+	let attachments = $state<FileAttachment[]>([]);
+	let loadingAttachments = $state(false);
 
 	function handleStatusChange(event: CustomEvent<{ value: string }>) {
 		const status = event.detail.value as 'yes' | 'no' | 'na';
@@ -41,6 +45,62 @@
 		onUpdate({ evidence: target.value, lastUpdated: new Date().toISOString() });
 	}
 
+	// Generate checklist key for this item
+	let checklistKey = $derived(() => {
+		// For global items, use format: global:{itemId}
+		// For asset items, would be: asset:{assetId}:{itemId}
+		return `global:${item.id}`;
+	});
+
+	// Load file attachments for this checklist item
+	async function loadAttachments() {
+		if (readOnly || isDisplayOnly) return; // Don't load attachments for read-only items
+		
+		loadingAttachments = true;
+		try {
+			const response = await fetch(`${apiClient.baseUrl}/files?checklistKey=${encodeURIComponent(checklistKey())}`);
+			if (response.ok) {
+				const attachmentSummaries = await response.json();
+				attachments = attachmentSummaries;
+			} else {
+				console.warn('Failed to load attachments:', response.statusText);
+				attachments = [];
+			}
+		} catch (error) {
+			console.error('Failed to load attachments:', error);
+			attachments = [];
+		} finally {
+			loadingAttachments = false;
+		}
+	}
+
+	function handleFileUploaded(attachment: FileAttachment) {
+		attachments = [...attachments, attachment];
+		
+		// Update the item's attachments list
+		const currentAttachments = item.attachments || [];
+		onUpdate({ 
+			attachments: [...currentAttachments, attachment.id],
+			lastUpdated: new Date().toISOString()
+		});
+	}
+
+	function handleFileDeleted(fileId: string) {
+		attachments = attachments.filter(a => a.id !== fileId);
+		
+		// Update the item's attachments list
+		const currentAttachments = item.attachments || [];
+		onUpdate({ 
+			attachments: currentAttachments.filter(id => id !== fileId),
+			lastUpdated: new Date().toISOString()
+		});
+	}
+
+	// Load attachments when component mounts or item changes
+	$effect(() => {
+		loadAttachments();
+	});
+
 	let isDisplayOnly = $derived(item.category === "web" || item.category === "vulnerability" || readOnly);
 	
 	// Generate unique IDs for form controls
@@ -58,19 +118,16 @@
 					{#if item.required}
 						<Badge variant="outline" class="text-xs">Required</Badge>
 					{/if}
-					{#if isDisplayOnly}
-						<Badge variant="secondary" class="text-xs">Auto-checked</Badge>
+					{#if item.info?.priority === 'must'}
+						<Badge variant="destructive" class="text-xs">Must</Badge>
+					{:else if item.info?.priority === 'should'}
+						<Badge variant="secondary" class="text-xs">Should</Badge>
 					{/if}
 				</div>
 				<p class="text-sm text-muted-foreground">{item.description}</p>
 			</div>
 			<div class="flex items-center space-x-2">
 				<StatusBadge status={item.status} />
-				{#if item.kind === 'auto'}
-					<Badge variant="outline">
-						Auto-scan
-					</Badge>
-				{/if}
 				{#if item.coveredAssets && item.coveredAssets.length > 0}
 					<Badge variant="outline">
 						{item.coveredAssets.length} asset{item.coveredAssets.length !== 1 ? 's' : ''}
@@ -144,22 +201,26 @@
 					{/if}
 
 					<div>
-						<label for={evidenceId} class="text-sm font-medium mb-2 block">Evidence</label>
-						<div class="flex items-center space-x-2">
-							<svg class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-							</svg>
+						<FileUpload
+							checklistKey={checklistKey()}
+							{attachments}
+							onFileUploaded={handleFileUploaded}
+							onFileDeleted={handleFileDeleted}
+							readOnly={isDisplayOnly}
+						/>
+					</div>
+
+					{#if item.evidence}
+						<div>
+							<label for={evidenceId} class="text-sm font-medium mb-2 block">Additional Notes</label>
 							<Input
 								id={evidenceId}
-								placeholder="Upload evidence file or enter reference..."
+								placeholder="Additional evidence notes or references..."
 								value={item.evidence || ""}
 								onchange={handleEvidenceChange}
 							/>
 						</div>
-						<p class="text-xs text-muted-foreground mt-1">
-							In a real implementation, this would allow file uploads
-						</p>
-					</div>
+					{/if}
 				</div>
 			{/if}
 
