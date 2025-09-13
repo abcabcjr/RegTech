@@ -19,6 +19,9 @@
 	let backendGlobalChecklist: any[] = $state([]);
 	let templatesLoading: boolean = $state(false);
 	let globalChecklistLoading: boolean = $state(false);
+	let uploading: boolean = $state(false);
+	let uploadSuccess: string | null = $state(null);
+	let uploadError: string | null = $state(null);
 	
 	// Convert backend templates to sections format, filtered by type
 	let displaySections = $derived(() => {
@@ -237,6 +240,67 @@
 	});
 
 
+	// Handle file upload for templates
+	async function handleTemplateUpload(event: Event) {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+		
+		if (!file) return;
+		
+		// Clear previous messages
+		uploadSuccess = null;
+		uploadError = null;
+		
+		try {
+			uploading = true;
+			
+			// Read and parse the JSON file
+			const fileContent = await file.text();
+			let templatesData;
+			
+			try {
+				templatesData = JSON.parse(fileContent);
+			} catch (parseError) {
+				throw new Error('Invalid JSON file. Please check the file format.');
+			}
+			
+			// Ensure the JSON has the expected structure
+			let templates = templatesData.templates || templatesData;
+			if (!Array.isArray(templates)) {
+				throw new Error('JSON file must contain a "templates" array or be an array of templates.');
+			}
+			
+			console.log(`Uploading ${templates.length} templates...`);
+			
+			// Upload to backend
+			const response = await apiClient.checklist.templatesUploadCreate({
+				templates: templates
+			});
+			
+			console.log('Upload response:', response);
+			
+			// Reload templates after successful upload
+			await loadBackendTemplates();
+			await loadBackendGlobalChecklist();
+			
+			uploadSuccess = `Successfully uploaded ${templates.length} templates!`;
+			
+			// Clear the input
+			input.value = '';
+			
+			// Auto-dismiss success message after 5 seconds
+			setTimeout(() => {
+				uploadSuccess = null;
+			}, 5000);
+			
+		} catch (error) {
+			console.error('Template upload failed:', error);
+			uploadError = error instanceof Error ? error.message : 'Upload failed. Please try again.';
+		} finally {
+			uploading = false;
+		}
+	}
+
 	onMount(() => {
 		checklistState = loadChecklistState();
 		loadBackendTemplates(); // Load templates from backend
@@ -246,7 +310,68 @@
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 	<div class="mb-8">
-		<h1 class="text-3xl font-bold text-foreground mb-4">Compliance Checklist</h1>
+		<div class="flex items-center justify-between mb-4">
+			<h1 class="text-3xl font-bold text-foreground">Compliance Checklist</h1>
+			<div class="flex items-center gap-4">
+				<!-- Template Upload Button -->
+				<div class="relative">
+					<input
+						type="file"
+						accept=".json"
+						onchange={handleTemplateUpload}
+						class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+						disabled={uploading}
+					/>
+					<Button variant="outline" disabled={uploading}>
+						{#if uploading}
+							<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+							Uploading...
+						{:else}
+							<svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+							</svg>
+							Upload Templates
+						{/if}
+					</Button>
+				</div>
+			</div>
+		</div>
+		
+		<!-- Upload Status Messages -->
+		{#if uploadSuccess}
+			<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+				<div class="flex items-center">
+					<svg class="h-4 w-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+					</svg>
+					<span class="text-green-800 text-sm font-medium">{uploadSuccess}</span>
+				</div>
+			</div>
+		{/if}
+		
+		{#if uploadError}
+			<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center">
+						<svg class="h-4 w-4 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+						</svg>
+						<span class="text-red-800 text-sm font-medium">{uploadError}</span>
+					</div>
+					<button
+						onclick={() => uploadError = null}
+						class="text-red-600 hover:text-red-800 ml-4"
+						title="Dismiss"
+						aria-label="Dismiss error message"
+					>
+						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+						</svg>
+					</button>
+				</div>
+			</div>
+		{/if}
+		
 		<p class="text-muted-foreground mb-6">
 			Track your compliance with Moldova's Cybersecurity Law requirements. 
 			Complete the checklist items below and upload evidence where applicable.
