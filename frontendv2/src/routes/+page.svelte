@@ -23,15 +23,8 @@
 	</div>
 {/if}
 
-{#if assetStore.data?.assets && assetStore.data.assets.length > 0}
-	<AssetGraph assets={assetStore.data.assets} />
-{:else if !assetStore.loading}
-	<div class="fullscreen-overlay">
-		<div class="overlay-card">
-			<p class="text-lg">No assets found</p>
-			<p class="text-sm text-gray-600">Start discovery to visualize assets.</p>
-		</div>
-	</div>
+{#if !assetStore.loading}
+	<AssetGraph assets={assetStore.data?.assets || []} />
 {/if}
 
 {#if assetStore.loading}

@@ -296,6 +296,16 @@
 <div class="asset-graph-root">
 	<div bind:this={container} class="network-container"></div>
 
+	<!-- Empty state message -->
+	{#if assets.length === 0}
+		<div class="empty-state">
+			<div class="empty-state-card">
+				<h3 class="empty-state-title">No assets found</h3>
+				<p class="empty-state-description">Start discovery to visualize your network assets.</p>
+			</div>
+		</div>
+	{/if}
+
 	<div class="overlay overlay-top-left">
 		<div class="overlay-card">
 			<h2 class="overlay-title">Asset Network Graph</h2>
@@ -618,4 +628,39 @@
 	pre.error { background: #fef2f2; }
 
 	.live-indicator { margin-top: 0.25rem; font-size: 0.8rem; color: #2563eb; }
+
+	/* Empty state styles */
+	.empty-state {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(250, 250, 250, 0.9);
+		z-index: 10;
+	}
+
+	.empty-state-card {
+		background: white;
+		border: 1px solid rgba(0, 0, 0, 0.06);
+		border-radius: 12px;
+		padding: 2rem;
+		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+		text-align: center;
+		max-width: 400px;
+	}
+
+	.empty-state-title {
+		font-size: 1.5rem;
+		font-weight: 600;
+		color: #111827;
+		margin: 0 0 0.5rem 0;
+	}
+
+	.empty-state-description {
+		font-size: 1rem;
+		color: #6b7280;
+		margin: 0;
+		line-height: 1.5;
+	}
 </style>
