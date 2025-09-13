@@ -40,6 +40,30 @@ The Asset Management System provides comprehensive functionality for discovering
 - **`ip`**: IP address (e.g., `192.168.1.1`)
 - **`service`**: Network service (e.g., `192.168.1.1:80`)
 
+#### Automatic HTTP Service Generation
+
+For proxied assets (such as Cloudflare-proxied domains/IPs), the system automatically creates HTTP service assets since traditional port scanning is not possible:
+
+- **Proxied IPs**: When an IP is detected as proxied, HTTP (port 80) and HTTPS (port 443) service assets are automatically created
+- **Proxied Domains/Subdomains**: When domains or subdomains have the `cf-proxied` tag, corresponding HTTP service assets are generated
+- **Auto-Generated Tags**: These services receive `cf-proxied`, `auto-generated`, and `http`/`https` tags
+- **Parent References**: Services include `parent_ip` or `parent_domain` properties linking back to the original asset
+
+This ensures that proxied assets can still be scanned for HTTP-based vulnerabilities and configurations even when direct port scanning is blocked.
+
+**Example of Automatic Service Generation:**
+
+When discovering `example.com` that resolves to a Cloudflare-proxied IP `104.21.1.1`, the system will create:
+
+1. **Domain Asset**: `example.com` (type: domain, tags: ["cf-proxied"])
+2. **IP Asset**: `104.21.1.1` (type: ip, properties: {"proxied": true})
+3. **Auto-Generated HTTP Service**: `example.com:80` (type: service, tags: ["cf-proxied", "auto-generated", "http"])
+4. **Auto-Generated HTTPS Service**: `example.com:443` (type: service, tags: ["cf-proxied", "auto-generated", "https"])
+5. **Auto-Generated HTTP Service**: `104.21.1.1:80` (type: service, tags: ["cf-proxied", "auto-generated", "http"])
+6. **Auto-Generated HTTPS Service**: `104.21.1.1:443` (type: service, tags: ["cf-proxied", "auto-generated", "https"])
+
+This allows HTTP-based scanning scripts to target these service assets even though traditional port scanning would fail.
+
 ### Asset Status Values
 
 - **`discovered`**: Asset has been found but not yet scanned

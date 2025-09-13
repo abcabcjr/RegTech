@@ -1,6 +1,7 @@
 package model
 
 import (
+	"assetscanner/internal/util"
 	"time"
 )
 
@@ -160,6 +161,7 @@ func (jp *JobProgress) GetPercentage() float64 {
 // NewAsset creates a new asset with default values
 func NewAsset(assetType, value string) *Asset {
 	return &Asset{
+		ID:           util.GenerateAssetID(assetType, value),
 		Type:         assetType,
 		Value:        value,
 		DiscoveredAt: time.Now(),

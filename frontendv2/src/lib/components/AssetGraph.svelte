@@ -4,15 +4,44 @@
 	import type { V1ScanResult, ModelDerivedChecklistItem } from '$lib/api/Api';
 	import { Button } from './ui/button';
 	import * as Dialog from '$lib/components/ui/dialog';
+	import * as Select from './ui/select';
+	import * as Card from './ui/card';
 	import Input from './ui/input/input.svelte';
 	import { assetStore } from '$lib/stores/assets.svelte';
 	import { checklistStore } from '$lib/stores/checklist.svelte';
-	import * as Drawer from '$lib/components/ui/drawer';
+	import AssetDetailsModal from './AssetDetailsModal.svelte';
+	
+	// Lucide Icons
+	import Globe from '@lucide/svelte/icons/globe';
+	import NetworkIcon from '@lucide/svelte/icons/network';
+	import Server from '@lucide/svelte/icons/server';
+	import Wifi from '@lucide/svelte/icons/wifi';
+	import Shield from '@lucide/svelte/icons/shield';
+	import Lock from '@lucide/svelte/icons/lock';
+	import Unlock from '@lucide/svelte/icons/unlock';
+	import Cloud from '@lucide/svelte/icons/cloud';
+	import Terminal from '@lucide/svelte/icons/terminal';
+	import Database from '@lucide/svelte/icons/database';
+	import Mail from '@lucide/svelte/icons/mail';
+	import FileText from '@lucide/svelte/icons/file-text';
 
 	let { assets = [] }: { assets: V1AssetSummary[] } = $props();
 
 	let container: HTMLDivElement;
 	let network: Network | null = null;
+
+	// View and filter controls
+	let layoutMode = $state<'force' | 'hierarchical' | 'clustered'>('force');
+	let physicsEnabled = $state(true);
+	let manualMode = $state(false);
+	let edgeOpacity = $state(0.6);
+	let nodeSpacing = $state('normal');
+	let filterByType = $state<string>('all');
+	let filterByTag = $state<string>('all');
+	let filterByStatus = $state<string>('all');
+	let searchQuery = $state('');
+	let showControls = $state(false);
+	let clusteringEnabled = $state(false);
 
 	// Extract domain from subdomain or service
 	function extractDomain(value: string, type: string): string | null {
@@ -40,143 +69,389 @@
 		return null;
 	}
 
+	// Filter assets based on current filter settings
+	function getFilteredAssets(): V1AssetSummary[] {
+		let filtered = assets;
+
+		// Filter by type
+		if (filterByType !== 'all') {
+			filtered = filtered.filter(asset => asset.type === filterByType);
+		}
+
+		// Filter by tag - use asset details if available
+		if (filterByTag !== 'all') {
+			filtered = filtered.filter(asset => {
+				const assetDetails = assetStore.assetDetails[asset.id];
+				const tags = assetDetails?.tags || [];
+				return tags.includes(filterByTag);
+			});
+		}
+
+		// Filter by status
+		if (filterByStatus !== 'all') {
+			filtered = filtered.filter(asset => asset.status === filterByStatus);
+		}
+
+		// Filter by search query
+		if (searchQuery.trim()) {
+			const query = searchQuery.toLowerCase().trim();
+			filtered = filtered.filter(asset => {
+				const assetDetails = assetStore.assetDetails[asset.id];
+				const tags = assetDetails?.tags || [];
+				return asset.value.toLowerCase().includes(query) ||
+					asset.type.toLowerCase().includes(query) ||
+					tags.some((tag: string) => tag.toLowerCase().includes(query));
+			});
+		}
+
+		return filtered;
+	}
+
+	// Get unique tags from all assets
+	function getAllTags(): string[] {
+		const tagSet = new Set<string>();
+		assets.forEach(asset => {
+			const assetDetails = assetStore.assetDetails[asset.id];
+			const tags = assetDetails?.tags || [];
+			tags.forEach((tag: string) => tagSet.add(tag));
+		});
+		return Array.from(tagSet).sort();
+	}
+
+	// Get unique asset types
+	function getAssetTypes(): string[] {
+		const typeSet = new Set<string>();
+		assets.forEach(asset => typeSet.add(asset.type));
+		return Array.from(typeSet).sort();
+	}
+
+	// Get unique statuses
+	function getAssetStatuses(): string[] {
+		const statusSet = new Set<string>();
+		assets.forEach(asset => statusSet.add(asset.status));
+		return Array.from(statusSet).sort();
+	}
+
+	// Get icon and color for asset based on type and tags
+	function getAssetIconInfo(asset: V1AssetSummary): { icon: string; color: string; bgColor: string } {
+		const assetDetails = assetStore.assetDetails[asset.id];
+		const tags = assetDetails?.tags || [];
+		
+		// Check for special tag-based icons first
+		if (tags.includes('cf-proxied')) {
+			return { icon: 'cloud', color: '#FF6B35', bgColor: '#FFF4F0' }; // Cloudflare orange
+		}
+		
+		if (tags.includes('ssh')) {
+			return { icon: 'terminal', color: '#000000', bgColor: '#F5F5F5' }; // SSH terminal
+		}
+		
+		if (tags.includes('mail-server') || tags.includes('mx')) {
+			return { icon: 'mail', color: '#4285F4', bgColor: '#E8F0FE' }; // Mail blue
+		}
+		
+		if (tags.includes('database') || tags.includes('db')) {
+			return { icon: 'database', color: '#34A853', bgColor: '#E8F5E8' }; // Database green
+		}
+
+		if (tags.includes('https') || tags.includes('ssl')) {
+			return { icon: 'lock', color: '#0F9D58', bgColor: '#E8F5E8' }; // HTTPS green
+		}
+		
+		if (tags.includes('http')) {
+			return { icon: 'unlock', color: '#EA4335', bgColor: '#FCE8E6' }; // HTTP red
+		}
+
+		// Default icons based on asset type
+		switch (asset.type) {
+			case 'domain':
+				return { icon: 'globe', color: '#4CAF50', bgColor: '#E8F5E8' }; // Green
+			case 'subdomain':
+				return { icon: 'network', color: '#2196F3', bgColor: '#E3F2FD' }; // Blue
+			case 'ip':
+				return { icon: 'server', color: '#FF9800', bgColor: '#FFF3E0' }; // Orange
+			case 'service':
+				if (tags.includes('web') || tags.includes('http') || tags.includes('https')) {
+					return { icon: 'wifi', color: '#9C27B0', bgColor: '#F3E5F5' }; // Purple for web services
+				}
+				return { icon: 'shield', color: '#9C27B0', bgColor: '#F3E5F5' }; // Purple
+			default:
+				return { icon: 'file-text', color: '#666666', bgColor: '#F5F5F5' }; // Gray
+		}
+	}
+
+	// Create SVG icon string for vis-network
+	function createIconSvg(iconType: string, color: string, bgColor: string, size: number = 24): string {
+		const iconMap: Record<string, string> = {
+			'globe': `<circle cx="12" cy="12" r="10" stroke="${color}" stroke-width="2" fill="none"/><path d="m2 12 20 0" stroke="${color}" stroke-width="2"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="${color}" stroke-width="2" fill="none"/>`,
+			'network': `<path d="m3 16 4-4-4-4" stroke="${color}" stroke-width="2" fill="none"/><path d="m21 20-4-4 4-4" stroke="${color}" stroke-width="2" fill="none"/><path d="M6.5 12h11" stroke="${color}" stroke-width="2"/>`,
+			'server': `<rect width="20" height="8" x="2" y="2" rx="2" ry="2" stroke="${color}" stroke-width="2" fill="none"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2" stroke="${color}" stroke-width="2" fill="none"/><line x1="6" x2="6.01" y1="6" y2="6" stroke="${color}" stroke-width="2"/><line x1="6" x2="6.01" y1="18" y2="18" stroke="${color}" stroke-width="2"/>`,
+			'wifi': `<path d="M5 12.55a11 11 0 0 1 14.08 0" stroke="${color}" stroke-width="2" fill="none"/><path d="M1.42 9a16 16 0 0 1 21.16 0" stroke="${color}" stroke-width="2" fill="none"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0" stroke="${color}" stroke-width="2" fill="none"/><line x1="12" x2="12.01" y1="20" y2="20" stroke="${color}" stroke-width="2"/>`,
+			'shield': `<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" stroke="${color}" stroke-width="2" fill="none"/>`,
+			'lock': `<rect width="18" height="11" x="3" y="11" rx="2" ry="2" stroke="${color}" stroke-width="2" fill="none"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="${color}" stroke-width="2" fill="none"/>`,
+			'unlock': `<rect width="18" height="11" x="3" y="11" rx="2" ry="2" stroke="${color}" stroke-width="2" fill="none"/><path d="M7 11V7a5 5 0 0 1 9.9-1" stroke="${color}" stroke-width="2" fill="none"/>`,
+			'cloud': `<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" stroke="${color}" stroke-width="2" fill="none"/>`,
+			'terminal': `<polyline points="4,17 10,11 4,5" stroke="${color}" stroke-width="2" fill="none"/><line x1="12" x2="20" y1="19" y2="19" stroke="${color}" stroke-width="2"/>`,
+			'database': `<ellipse cx="12" cy="5" rx="9" ry="3" stroke="${color}" stroke-width="2" fill="none"/><path d="M3 5v14c0 3 4 6 9 6s9-3 9-6V5" stroke="${color}" stroke-width="2" fill="none"/>`,
+			'mail': `<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="${color}" stroke-width="2" fill="none"/><polyline points="22,6 12,13 2,6" stroke="${color}" stroke-width="2" fill="none"/>`,
+			'file-text': `<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" stroke="${color}" stroke-width="2" fill="none"/><path d="M14 2v4a2 2 0 0 0 2 2h4" stroke="${color}" stroke-width="2" fill="none"/><path d="M10 9H8" stroke="${color}" stroke-width="2"/><path d="M16 13H8" stroke="${color}" stroke-width="2"/><path d="M16 17H8" stroke="${color}" stroke-width="2"/>`
+		};
+
+		const iconPath = iconMap[iconType] || iconMap['file-text'];
+		
+		return `
+			<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+				<circle cx="12" cy="12" r="11" fill="${bgColor}" stroke="${color}" stroke-width="1.5"/>
+				<g transform="translate(2,2) scale(0.83)">
+					${iconPath}
+				</g>
+			</svg>
+		`;
+	}
+
 	function createNetworkData(): { nodes: any[]; edges: any[] } {
 		const nodes: any[] = [];
 		const edges: any[] = [];
 		const nodeMap = new Map<string, boolean>();
+		const filteredAssets = getFilteredAssets();
 
-		// Create nodes for all assets
-		assets.forEach((asset) => {
+		// Create nodes for filtered assets
+		filteredAssets.forEach((asset) => {
 			if (!nodeMap.has(asset.id)) {
-				let color: string;
-				let shape: string;
-				let size: number;
-
-				switch (asset.type) {
-					case 'domain':
-						color = '#4CAF50'; // Green
-						shape = 'diamond';
-						size = 30;
-						break;
-					case 'subdomain':
-						color = '#2196F3'; // Blue
-						shape = 'dot';
-						size = 20;
-						break;
-					case 'ip':
-						color = '#FF9800'; // Orange
-						shape = 'square';
-						size = 25;
-						break;
-					case 'service':
-						color = '#9C27B0'; // Purple
-						shape = 'triangle';
-						size = 15;
-						break;
-					default:
-						color = '#757575'; // Gray
-						shape = 'dot';
-						size = 15;
-				}
-
-				// Add status indicator
-				if (asset.status === 'scanned') {
-					color = color + 'DD'; // Make it slightly more opaque
-				} else if (asset.status === 'scanning') {
+				const iconInfo = getAssetIconInfo(asset);
+				let { color, bgColor } = iconInfo;
+				
+				// Modify colors based on status
+				if (asset.status === 'scanning') {
 					color = '#FFC107'; // Yellow for scanning
+					bgColor = '#FFF8E1';
 				} else if (asset.status === 'error') {
 					color = '#F44336'; // Red for error
+					bgColor = '#FFEBEE';
 				}
+				
+				const iconSvg = createIconSvg(iconInfo.icon, color, bgColor, 40);
+				
+				// Convert SVG to data URL for vis-network
+				const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
+
+				// Get tags for tooltip
+				const assetDetails = assetStore.assetDetails[asset.id];
+				const tags = assetDetails?.tags || [];
+				const tagsText = tags.length > 0 ? `\nTags: ${tags.join(', ')}` : '';
 
 				nodes.push({
 					id: asset.id,
 					label: asset.value,
-					title: `${asset.type.toUpperCase()}: ${asset.value}\nStatus: ${asset.status}\nScans: ${asset.scan_count}`,
-					color: color,
-					shape: shape,
-					size: size,
+					title: `${asset.type.toUpperCase()}: ${asset.value}\nStatus: ${asset.status}\nScans: ${asset.scan_count}${tagsText}`,
+					shape: 'image',
+					image: svgDataUrl,
+					size: 40,
+					borderWidth: 2,
+					color: {
+						border: color,
+						background: bgColor,
+						highlight: {
+							border: color,
+							background: bgColor
+						},
+						hover: {
+							border: color,
+							background: bgColor
+						}
+					},
 					font: {
-						size: 12,
-						color: '#333333'
+						size: 11,
+						color: '#333333',
+						face: 'Inter, system-ui, sans-serif',
+						strokeWidth: 3,
+						strokeColor: '#ffffff'
+					},
+					chosen: {
+						node: function(values: any, id: string, selected: boolean, hovering: boolean) {
+							if (hovering || selected) {
+								values.borderWidth = 3;
+								values.size = 44;
+							}
+						}
 					}
 				});
 				nodeMap.set(asset.id, true);
 			}
 		});
 
-		// Create edges based on relationships
-		assets.forEach((asset) => {
-			if (asset.type === 'subdomain') {
-				// Connect subdomain to its parent domain
-				const parentDomain = extractDomain(asset.value, 'subdomain');
-				if (parentDomain) {
-					const domainAsset = assets.find((a) => a.type === 'domain' && a.value === parentDomain);
-					if (domainAsset) {
-						edges.push({
-							from: domainAsset.id,
-							to: asset.id,
-							color: { color: '#2196F3', opacity: 0.6 },
-							width: 2,
-							arrows: 'to'
-						});
-					}
-				}
-			} else if (asset.type === 'service') {
-				// Connect service to its IP
-				const serviceIP = extractIPFromService(asset.value);
-				const ipAsset = assets.find((a) => a.type === 'ip' && a.value === serviceIP);
-				if (ipAsset) {
-					edges.push({
-						from: ipAsset.id,
-						to: asset.id,
-						color: { color: '#9C27B0', opacity: 0.6 },
-						width: 2,
-						arrows: 'to'
-					});
-				}
-			}
-		});
-
-		// Try to connect IPs to domains/subdomains based on common patterns
-		// This is a heuristic approach - in reality you'd use DNS data
-		const ipAssets = assets.filter((a) => a.type === 'ip');
-		const domainAssets = assets.filter((a) => a.type === 'domain' || a.type === 'subdomain');
-
-		// For demonstration, we'll create some logical connections
-		// You might want to implement more sophisticated logic here
-		ipAssets.forEach((ipAsset) => {
-			// Check if this IP has services
-			const hasServices = assets.some(
-				(a) => a.type === 'service' && a.value.startsWith(ipAsset.value)
-			);
-			if (!hasServices) {
-				// Try to find a domain that might be related (this is very basic logic)
-				const possibleDomain = domainAssets.find((d) => {
-					// Very basic heuristic - you'd want more sophisticated matching
-					return Math.random() < 0.3; // Random connection for demo
-				});
-
-				if (
-					possibleDomain &&
-					!edges.some((e) => e.from === possibleDomain.id && e.to === ipAsset.id)
-				) {
-					edges.push({
-						from: possibleDomain.id,
-						to: ipAsset.id,
-						color: { color: '#FF9800', opacity: 0.4 },
-						width: 1,
-						arrows: 'to',
-						dashes: true // Dashed line to indicate uncertain relationship
-					});
-				}
-			}
-		});
+		// Create edges based on relationships - supporting multiple parents
+		createMultiParentEdges(filteredAssets, edges);
 
 		return { nodes, edges };
 	}
 
+	// Create edges supporting multiple parent relationships
+	function createMultiParentEdges(filteredAssets: V1AssetSummary[], edges: any[]) {
+		// Create maps for efficient lookups
+		const assetsByType = {
+			domain: filteredAssets.filter(a => a.type === 'domain'),
+			subdomain: filteredAssets.filter(a => a.type === 'subdomain'),
+			ip: filteredAssets.filter(a => a.type === 'ip'),
+			service: filteredAssets.filter(a => a.type === 'service')
+		};
+
+		const assetsByValue = new Map<string, V1AssetSummary>();
+		filteredAssets.forEach(asset => assetsByValue.set(asset.value, asset));
+
+		// 1. Connect subdomains to their parent domains
+		assetsByType.subdomain.forEach(subdomain => {
+			const parentDomain = extractDomain(subdomain.value, 'subdomain');
+			if (parentDomain) {
+				const domainAsset = assetsByValue.get(parentDomain);
+				if (domainAsset) {
+					addEdgeIfNotExists(edges, domainAsset.id, subdomain.id, {
+						color: { color: '#2196F3', opacity: edgeOpacity },
+						width: 2,
+						arrows: 'to',
+						title: 'Domain → Subdomain'
+					});
+				}
+			}
+		});
+
+		// 2. Connect services to their host IPs
+		assetsByType.service.forEach(service => {
+			const serviceIP = extractIPFromService(service.value);
+			const ipAsset = assetsByValue.get(serviceIP);
+			if (ipAsset) {
+				addEdgeIfNotExists(edges, ipAsset.id, service.id, {
+					color: { color: '#9C27B0', opacity: edgeOpacity },
+					width: 2,
+					arrows: 'to',
+					title: 'IP → Service'
+				});
+			}
+		});
+
+		// 3. Use DNS records to connect domains/subdomains to IPs (multiple relationships)
+		[...assetsByType.domain, ...assetsByType.subdomain].forEach(domainAsset => {
+			const assetDetails = assetStore.assetDetails[domainAsset.id];
+			if (assetDetails?.dns_records) {
+				const dnsRecords = assetDetails.dns_records;
+				
+				// Connect to A records (IPv4)
+				dnsRecords.a?.forEach((ip: string) => {
+					const ipAsset = assetsByValue.get(ip);
+					if (ipAsset) {
+						addEdgeIfNotExists(edges, domainAsset.id, ipAsset.id, {
+							color: { color: '#4CAF50', opacity: edgeOpacity * 0.8 },
+							width: 2,
+							arrows: 'to',
+							title: 'DNS A Record',
+							dashes: false
+						});
+					}
+				});
+
+				// Connect to AAAA records (IPv6)
+				dnsRecords.aaaa?.forEach((ip: string) => {
+					const ipAsset = assetsByValue.get(ip);
+					if (ipAsset) {
+						addEdgeIfNotExists(edges, domainAsset.id, ipAsset.id, {
+							color: { color: '#4CAF50', opacity: 0.5 },
+							width: 1,
+							arrows: 'to',
+							title: 'DNS AAAA Record',
+							dashes: [5, 5]
+						});
+					}
+				});
+
+				// Connect CNAME chains
+				dnsRecords.cname?.forEach((cname: string) => {
+					const cnameAsset = assetsByValue.get(cname);
+					if (cnameAsset) {
+						addEdgeIfNotExists(edges, domainAsset.id, cnameAsset.id, {
+							color: { color: '#FF9800', opacity: 0.6 },
+							width: 1,
+							arrows: 'to',
+							title: 'CNAME Record',
+							dashes: [10, 5]
+						});
+					}
+				});
+			}
+		});
+
+		// 4. Connect based on service relationships and properties
+		assetsByType.service.forEach(service => {
+			const assetDetails = assetStore.assetDetails[service.id];
+			if (assetDetails?.properties) {
+				// Connect services that share the same source IP to domains
+				const sourceIP = assetDetails.properties.source_ip;
+				if (sourceIP && typeof sourceIP === 'string') {
+					// Find domains that resolve to this source IP
+					[...assetsByType.domain, ...assetsByType.subdomain].forEach(domainAsset => {
+						const domainDetails = assetStore.assetDetails[domainAsset.id];
+						if (domainDetails?.dns_records?.a?.includes(sourceIP)) {
+							addEdgeIfNotExists(edges, domainAsset.id, service.id, {
+								color: { color: '#673AB7', opacity: 0.5 },
+								width: 1,
+								arrows: 'to',
+								title: 'Domain → Service (via IP)',
+								dashes: [3, 3]
+							});
+						}
+					});
+				}
+			}
+		});
+
+		// 5. Create reverse relationships for IPs that host multiple domains
+		assetsByType.ip.forEach(ipAsset => {
+			const relatedDomains: V1AssetSummary[] = [];
+			
+			// Find all domains that resolve to this IP
+			[...assetsByType.domain, ...assetsByType.subdomain].forEach(domainAsset => {
+				const domainDetails = assetStore.assetDetails[domainAsset.id];
+				if (domainDetails?.dns_records?.a?.includes(ipAsset.value)) {
+					relatedDomains.push(domainAsset);
+				}
+			});
+
+			// If this IP hosts multiple domains, create connections between them
+			if (relatedDomains.length > 1) {
+				relatedDomains.forEach(domain1 => {
+					relatedDomains.forEach(domain2 => {
+						if (domain1.id !== domain2.id) {
+							addEdgeIfNotExists(edges, domain1.id, domain2.id, {
+								color: { color: '#795548', opacity: 0.3 },
+								width: 1,
+								arrows: 'none',
+								title: 'Shared IP Host',
+								dashes: [2, 8]
+							});
+						}
+					});
+				});
+			}
+		});
+	}
+
+	// Helper function to avoid duplicate edges
+	function addEdgeIfNotExists(edges: any[], from: string, to: string, edgeProps: any) {
+		const exists = edges.some(edge => edge.from === from && edge.to === to);
+		if (!exists) {
+			edges.push({
+				from,
+				to,
+				...edgeProps
+			});
+		}
+	}
+
 	function initializeNetwork() {
-		if (!container || assets.length === 0) return;
+		const filteredAssets = getFilteredAssets();
+		if (!container || filteredAssets.length === 0) return;
+
+		// Store current view position before destroying network
+		const currentViewState = storeNetworkView();
 
 		// Destroy existing network if it exists
 		if (network) {
@@ -193,37 +468,68 @@
 				font: {
 					size: 12,
 					color: '#333333'
+				},
+				scaling: {
+					min: 10,
+					max: 30
 				}
 			},
 			edges: {
 				width: 2,
 				shadow: true,
 				smooth: {
-					type: 'continuous'
+					type: layoutMode === 'hierarchical' ? 'cubicBezier' : 'continuous',
+					forceDirection: layoutMode === 'hierarchical' ? 'vertical' : 'none',
+					roundness: 0.4
 				}
 			},
 			physics: {
-				enabled: true,
-				stabilization: { iterations: 100 },
+				enabled: physicsEnabled && !manualMode,
+				stabilization: { 
+					iterations: layoutMode === 'hierarchical' ? 300 : 150,
+					updateInterval: 50
+				},
 				barnesHut: {
-					gravitationalConstant: -2000,
-					centralGravity: 0.3,
-					springLength: 95,
-					springConstant: 0.04,
-					damping: 0.09,
-					avoidOverlap: 0.1
-				}
+					gravitationalConstant: getGravitationalConstant(),
+					centralGravity: layoutMode === 'clustered' ? 0.05 : 0.1,
+					springLength: getSpringLength(),
+					springConstant: manualMode ? 0.001 : 0.02,
+					damping: manualMode ? 0.9 : 0.15,
+					avoidOverlap: getAvoidOverlap()
+				},
+				maxVelocity: manualMode ? 5 : 20,
+				minVelocity: 0.75,
+				solver: 'barnesHut',
+				timestep: manualMode ? 0.1 : 0.35
 			},
 			interaction: {
 				hover: true,
 				tooltipDelay: 200,
-				hideEdgesOnDrag: false,
-				hideNodesOnDrag: false
+				hideEdgesOnDrag: manualMode,
+				hideNodesOnDrag: false,
+				zoomView: true,
+				dragView: true,
+				dragNodes: true,
+				selectConnectedEdges: false,
+				multiselect: manualMode,
+				keyboard: {
+					enabled: true,
+					speed: { x: 10, y: 10, zoom: 0.02 },
+					bindToWindow: false
+				}
 			},
 			layout: {
 				improvedLayout: true,
 				hierarchical: {
-					enabled: false
+					enabled: layoutMode === 'hierarchical',
+					direction: 'UD',
+					sortMethod: 'directed',
+					levelSeparation: 150,
+					nodeSpacing: 100,
+					treeSpacing: 200,
+					blockShifting: true,
+					edgeMinimization: true,
+					parentCentralization: true
 				}
 			}
 		};
@@ -236,9 +542,12 @@
 				const nodeId = params.nodes[0];
 				const asset = assets.find((a) => a.id === nodeId);
 				if (asset) {
+					// Batch state updates to prevent multiple reactivity triggers
 					selectedAsset = asset;
 					selectedAssetId = asset.id;
-					drawerOpen = true;
+					selectedAssetDetails = assetStore.assetDetails[asset.id] || null;
+					modalOpen = true;
+					// Load asset details asynchronously
 					assetStore.loadAssetDetails(asset.id);
 				}
 			}
@@ -251,16 +560,132 @@
 		network.on('blurNode', (params: any) => {
 			container.style.cursor = 'default';
 		});
+
+		// Apply clustering if enabled
+		if (clusteringEnabled && layoutMode === 'clustered') {
+			applyNetworkClustering();
+		}
+
+		// Restore previous view state if it exists
+		if (currentViewState) {
+			restoreNetworkView(currentViewState);
+		}
+	}
+
+	function applyNetworkClustering() {
+		if (!network) return;
+
+		const filteredAssets = getFilteredAssets();
+		
+		// Cluster by asset type
+		const assetTypes = getAssetTypes();
+		assetTypes.forEach(type => {
+			const typeAssets = filteredAssets.filter(asset => asset.type === type);
+			if (typeAssets.length > 1) {
+				const nodeIds = typeAssets.map(asset => asset.id);
+				network!.cluster({
+					joinCondition: (childOptions: any) => nodeIds.includes(childOptions.id),
+					clusterNodeProperties: {
+						label: `${type.toUpperCase()}\n(${typeAssets.length})`,
+						shape: 'box',
+						color: getClusterColor(type),
+						font: { size: 14, color: 'white' },
+						borderWidth: 3
+					}
+				});
+			}
+		});
+	}
+
+	function getClusterColor(type: string): string {
+		switch (type) {
+			case 'domain': return '#4CAF50';
+			case 'subdomain': return '#2196F3';
+			case 'ip': return '#FF9800';
+			case 'service': return '#9C27B0';
+			default: return '#666666';
+		}
+	}
+
+	// Create a hash of current filter settings to detect changes
+	function getFilterHash(): string {
+		return `${layoutMode}-${physicsEnabled}-${manualMode}-${edgeOpacity}-${nodeSpacing}-${clusteringEnabled}-${filterByType}-${filterByTag}-${filterByStatus}-${searchQuery}`;
+	}
+
+	// Get spacing parameters based on current settings
+	function getSpringLength(): number {
+		const baseLength = layoutMode === 'clustered' ? 250 : 180;
+		const spacingMultiplier = {
+			'tight': 0.7,
+			'normal': 1.0,
+			'loose': 1.5,
+			'very-loose': 2.0
+		}[nodeSpacing] || 1.0;
+		
+		return baseLength * spacingMultiplier;
+	}
+
+	function getGravitationalConstant(): number {
+		const baseConstant = layoutMode === 'clustered' ? -12000 : -4000;
+		const spacingMultiplier = {
+			'tight': 1.5,
+			'normal': 1.0,
+			'loose': 0.6,
+			'very-loose': 0.3
+		}[nodeSpacing] || 1.0;
+		
+		return baseConstant * spacingMultiplier;
+	}
+
+	function getAvoidOverlap(): number {
+		const baseOverlap = layoutMode === 'clustered' ? 0.5 : 0.3;
+		const spacingMultiplier = {
+			'tight': 0.5,
+			'normal': 1.0,
+			'loose': 1.5,
+			'very-loose': 2.0
+		}[nodeSpacing] || 1.0;
+		
+		return baseOverlap * spacingMultiplier;
+	}
+
+	// Store and restore network view position
+	function storeNetworkView() {
+		if (!network) return null;
+		try {
+			const position = network.getViewPosition();
+			const scale = network.getScale();
+			return { position, scale };
+		} catch (e) {
+			return null;
+		}
+	}
+
+	function restoreNetworkView(viewState: any) {
+		if (!network || !viewState) return;
+		try {
+			setTimeout(() => {
+				network!.moveTo({
+					position: viewState.position,
+					scale: viewState.scale,
+					animation: false
+				});
+			}, 100);
+		} catch (e) {
+			// Ignore errors in view restoration
+		}
 	}
 
 	let previousAssetsLength = 0;
+	let previousFilterHash = $state('');
 
 	let discoverListString = $state('');
 
-	// Drawer state and selected asset
-	let drawerOpen = $state(false);
+	// Modal state and selected asset
+	let modalOpen = $state(false);
 	let selectedAsset: V1AssetSummary | null = $state(null);
 	let selectedAssetId: string | null = $state(null);
+	let selectedAssetDetails: any = $state(null);
 	let discoveryOpen = $state(false);
 	let discoveryHosts = $state('');
 	let assetChecklistItems: ModelDerivedChecklistItem[] = $state([]);
@@ -279,6 +704,18 @@
 		if (container && assets.length > 0 && assets.length !== previousAssetsLength) {
 			initializeNetwork();
 			previousAssetsLength = assets.length;
+			previousFilterHash = getFilterHash(); // Initialize filter hash
+		}
+	});
+
+	// Effect to reinitialize network when view settings change
+	$effect(() => {
+		if (container && assets.length > 0) {
+			const currentFilterHash = getFilterHash();
+			if (currentFilterHash !== previousFilterHash) {
+				previousFilterHash = currentFilterHash;
+				initializeNetwork();
+			}
 		}
 	});
 
@@ -287,17 +724,15 @@
 		if (selectedAssetId && assets.length > 0) {
 			const updatedAsset = assets.find((a) => a.id === selectedAssetId);
 			if (updatedAsset) {
-				console.log('Updating selected asset:', updatedAsset.id, 'drawerOpen:', drawerOpen);
-				// Always update the selected asset to get the latest data
+				// Only update the selected asset data, don't modify modal state
 				selectedAsset = updatedAsset;
-				// Ensure drawer stays open if we have a selected asset
-				if (!drawerOpen) {
-					console.log('Reopening drawer for selected asset');
-					drawerOpen = true;
-				}
+				selectedAssetDetails = assetStore.assetDetails[selectedAssetId] || null;
 			} else if (selectedAssetId) {
 				// Asset not found - it might have been removed
-				console.warn(`Selected asset ${selectedAssetId} not found in updated assets list`);
+				selectedAsset = null;
+				selectedAssetId = null;
+				selectedAssetDetails = null;
+				modalOpen = false;
 			}
 		}
 	});
@@ -339,23 +774,222 @@
 
 	<div class="overlay overlay-top-left">
 		<div class="overlay-card">
-			<h2 class="overlay-title">Asset Network Graph</h2>
+			<div class="flex items-center justify-between mb-2">
+				<h2 class="overlay-title">Asset Network Graph</h2>
+				<Button 
+					variant="outline" 
+					size="sm"
+					onclick={() => showControls = !showControls}
+				>
+					{showControls ? 'Hide' : 'Show'} Controls
+				</Button>
+			</div>
+
+			{#if showControls}
+				<Card.Root class="mb-4 p-3 bg-white/95">
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+						<!-- Layout Mode -->
+						<div>
+							<label for="layout-select" class="text-xs font-medium text-gray-700 mb-1 block">Layout</label>
+							<select 
+								id="layout-select"
+								bind:value={layoutMode} 
+								class="h-8 text-xs px-2 border border-gray-300 rounded-md bg-white"
+							>
+								<option value="force">Force-directed</option>
+								<option value="hierarchical">Hierarchical</option>
+								<option value="clustered">Clustered</option>
+							</select>
+						</div>
+
+						<!-- Filter by Type -->
+						<div>
+							<label for="type-select" class="text-xs font-medium text-gray-700 mb-1 block">Asset Type</label>
+							<select 
+								id="type-select"
+								bind:value={filterByType} 
+								class="h-8 text-xs px-2 border border-gray-300 rounded-md bg-white"
+							>
+								<option value="all">All Types</option>
+								{#each getAssetTypes() as type}
+									<option value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
+								{/each}
+							</select>
+						</div>
+
+						<!-- Filter by Tag -->
+						<div>
+							<label for="tag-select" class="text-xs font-medium text-gray-700 mb-1 block">Tag</label>
+							<select 
+								id="tag-select"
+								bind:value={filterByTag} 
+								class="h-8 text-xs px-2 border border-gray-300 rounded-md bg-white"
+							>
+								<option value="all">All Tags</option>
+								{#each getAllTags() as tag}
+									<option value={tag}>{tag}</option>
+								{/each}
+							</select>
+						</div>
+
+						<!-- Filter by Status -->
+						<div>
+							<label for="status-select" class="text-xs font-medium text-gray-700 mb-1 block">Status</label>
+							<select 
+								id="status-select"
+								bind:value={filterByStatus} 
+								class="h-8 text-xs px-2 border border-gray-300 rounded-md bg-white"
+							>
+								<option value="all">All Statuses</option>
+								{#each getAssetStatuses() as status}
+									<option value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+								{/each}
+							</select>
+						</div>
+					</div>
+
+					<!-- Search -->
+					<div class="mb-3">
+						<label for="search-input" class="text-xs font-medium text-gray-700 mb-1 block">Search</label>
+						<Input 
+							id="search-input"
+							bind:value={searchQuery} 
+							placeholder="Search assets..." 
+							class="h-8 text-xs"
+						/>
+					</div>
+
+					<!-- Spacing and Visual Controls -->
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+						<!-- Node Spacing -->
+						<div>
+							<label for="spacing-select" class="text-xs font-medium text-gray-700 mb-1 block">Node Spacing</label>
+							<select 
+								id="spacing-select"
+								bind:value={nodeSpacing} 
+								class="h-8 text-xs px-2 border border-gray-300 rounded-md bg-white"
+							>
+								<option value="tight">Tight</option>
+								<option value="normal">Normal</option>
+								<option value="loose">Loose</option>
+								<option value="very-loose">Very Loose</option>
+							</select>
+						</div>
+
+						<!-- Edge Opacity -->
+						<div>
+							<label for="opacity-range" class="text-xs font-medium text-gray-700 mb-1 block">Edge Opacity</label>
+							<div class="flex items-center gap-2">
+								<input 
+									id="opacity-range"
+									type="range" 
+									min="0.1" 
+									max="1" 
+									step="0.1" 
+									bind:value={edgeOpacity}
+									class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+								>
+								<span class="text-xs text-gray-600 w-8">{Math.round(edgeOpacity * 100)}%</span>
+							</div>
+						</div>
+					</div>
+
+					<!-- Toggle Controls -->
+					<div class="flex items-center gap-4 text-xs">
+						<label class="flex items-center gap-1">
+							<input 
+								type="checkbox" 
+								bind:checked={physicsEnabled} 
+								class="rounded border-gray-300"
+							>
+							<span>Physics</span>
+						</label>
+						<label class="flex items-center gap-1">
+							<input 
+								type="checkbox" 
+								bind:checked={manualMode}
+								class="rounded border-gray-300"
+							>
+							<span>Manual Mode</span>
+						</label>
+						<label class="flex items-center gap-1">
+							<input 
+								type="checkbox" 
+								bind:checked={clusteringEnabled}
+								disabled={layoutMode !== 'clustered'}
+								class="rounded border-gray-300"
+							>
+							<span>Clustering</span>
+						</label>
+					</div>
+				</Card.Root>
+			{/if}
+
 			<div class="legend">
 				<div class="legend-item">
-					<div class="legend-icon legend-domain"></div>
+					<Globe class="legend-icon" size={16} color="#4CAF50" />
 					<span>Domains</span>
 				</div>
 				<div class="legend-item">
-					<div class="legend-icon legend-subdomain"></div>
+					<NetworkIcon class="legend-icon" size={16} color="#2196F3" />
 					<span>Subdomains</span>
 				</div>
 				<div class="legend-item">
-					<div class="legend-icon legend-ip"></div>
+					<Server class="legend-icon" size={16} color="#FF9800" />
 					<span>IP Addresses</span>
 				</div>
 				<div class="legend-item">
-					<div class="legend-icon legend-service"></div>
+					<Shield class="legend-icon" size={16} color="#9C27B0" />
 					<span>Services</span>
+				</div>
+			</div>
+			
+			<!-- Extended legend for tag-based icons -->
+			<div class="legend mt-2 text-xs">
+				<div class="legend-item">
+					<Cloud class="legend-icon" size={14} color="#FF6B35" />
+					<span>Cloudflare</span>
+				</div>
+				<div class="legend-item">
+					<Lock class="legend-icon" size={14} color="#0F9D58" />
+					<span>HTTPS</span>
+				</div>
+				<div class="legend-item">
+					<Unlock class="legend-icon" size={14} color="#EA4335" />
+					<span>HTTP</span>
+				</div>
+				<div class="legend-item">
+					<Terminal class="legend-icon" size={14} color="#000000" />
+					<span>SSH</span>
+				</div>
+				<div class="legend-item">
+					<Mail class="legend-icon" size={14} color="#4285F4" />
+					<span>Mail</span>
+				</div>
+			</div>
+			
+			<!-- Relationship legend -->
+			<div class="legend mt-2 text-xs border-t border-gray-200 pt-2">
+				<div class="text-xs font-medium text-gray-600 mb-1">Relationships:</div>
+				<div class="legend-item">
+					<div class="w-4 h-0 border-t-2 border-blue-500"></div>
+					<span>Hierarchy</span>
+				</div>
+				<div class="legend-item">
+					<div class="w-4 h-0 border-t-2 border-green-500"></div>
+					<span>DNS Records</span>
+				</div>
+				<div class="legend-item">
+					<div class="w-4 h-0 border-t-2 border-purple-500"></div>
+					<span>Services</span>
+				</div>
+				<div class="legend-item">
+					<div class="w-4 h-0 border-t-2 border-orange-500 border-dashed"></div>
+					<span>CNAME</span>
+				</div>
+				<div class="legend-item">
+					<div class="w-4 h-0 border-t border-brown-500 border-dotted"></div>
+					<span>Shared Host</span>
 				</div>
 			</div>
 			<Dialog.Root>
@@ -375,237 +1009,27 @@
 				</Dialog.Content>
 			</Dialog.Root>
 
-			<!-- Asset details drawer -->
-			<Drawer.Root direction="right" open={drawerOpen} onOpenChange={(v: boolean) => {
-				console.log('Drawer onOpenChange:', v, 'current selectedAssetId:', selectedAssetId);
-				drawerOpen = v;
-				if (!v) {
-					selectedAssetId = null;
-					selectedAsset = null;
-				}
-			}}>
-				<Drawer.Content style="max-height: 85vh; overflow: auto;">
-					<Drawer.Header>
-						<Drawer.Title>Asset details</Drawer.Title>
-						<Drawer.Description>
-							{selectedAsset ? `${selectedAsset.type.toUpperCase()} • ${selectedAsset.value}` : 'No asset selected'}
-						</Drawer.Description>
-					</Drawer.Header>
-					<div class="drawer-body">
-						{#if selectedAsset}
-							<div class="asset-details">
-								<div><strong>ID:</strong> {selectedAsset.id}</div>
-								<div><strong>Type:</strong> {selectedAsset.type}</div>
-								<div><strong>Value:</strong> {selectedAsset.value}</div>
-								<div><strong>Status:</strong> {selectedAsset.status || 'n/a'}</div>
-								<div><strong>Scans:</strong> {selectedAsset.scan_count}</div>
-								{#if selectedAsset.last_scanned_at}
-									<div><strong>Last scanned:</strong> {selectedAsset.last_scanned_at}</div>
-								{/if}
-							</div>
-
-							<!-- Asset Tags -->
-							{#if assetStore.assetDetails[selectedAsset.id]?.tags?.length}
-								<div class="asset-tags">
-									<h4>Tags</h4>
-									<div class="tags-container">
-										{#each assetStore.assetDetails[selectedAsset.id].tags as tag}
-											<span class="tag">{tag}</span>
-										{/each}
-									</div>
-								</div>
-							{/if}
-
-							<!-- DNS Records -->
-							{#if assetStore.assetDetails[selectedAsset.id]?.dns_records}
-								{@const dnsRecords = assetStore.assetDetails[selectedAsset.id].dns_records}
-								<div class="dns-records">
-									<h4>DNS Records</h4>
-									<div class="dns-container">
-										{#if dnsRecords.a?.length}
-											<div class="dns-record-type">
-												<strong>A Records:</strong>
-												<div class="dns-values">
-													{#each dnsRecords.a as record}
-														<code class="dns-value">{record}</code>
-													{/each}
-												</div>
-											</div>
-										{/if}
-										{#if dnsRecords.aaaa?.length}
-											<div class="dns-record-type">
-												<strong>AAAA Records:</strong>
-												<div class="dns-values">
-													{#each dnsRecords.aaaa as record}
-														<code class="dns-value">{record}</code>
-													{/each}
-												</div>
-											</div>
-										{/if}
-										{#if dnsRecords.cname?.length}
-											<div class="dns-record-type">
-												<strong>CNAME Records:</strong>
-												<div class="dns-values">
-													{#each dnsRecords.cname as record}
-														<code class="dns-value">{record}</code>
-													{/each}
-												</div>
-											</div>
-										{/if}
-										{#if dnsRecords.mx?.length}
-											<div class="dns-record-type">
-												<strong>MX Records:</strong>
-												<div class="dns-values">
-													{#each dnsRecords.mx as record}
-														<code class="dns-value">{record}</code>
-													{/each}
-												</div>
-											</div>
-										{/if}
-										{#if dnsRecords.txt?.length}
-											<div class="dns-record-type">
-												<strong>TXT Records:</strong>
-												<div class="dns-values">
-													{#each dnsRecords.txt as record}
-														<code class="dns-value txt-record">{record}</code>
-													{/each}
-												</div>
-											</div>
-										{/if}
-										{#if dnsRecords.ns?.length}
-											<div class="dns-record-type">
-												<strong>NS Records:</strong>
-												<div class="dns-values">
-													{#each dnsRecords.ns as record}
-														<code class="dns-value">{record}</code>
-													{/each}
-												</div>
-											</div>
-										{/if}
-									</div>
-								</div>
-							{/if}
-
-							<!-- Live job indicator for this asset -->
-							{#if assetStore.jobRunning && assetStore.currentScanAssetId === selectedAsset.id}
-								<div class="live-indicator">Updating results…</div>
-							{/if}
-
-							<!-- Latest scan results -->
-							{#if sortedScanResults().length}
-								<div class="results">
-									<h3>Latest results</h3>
-									{#each sortedScanResults() as r (r.id)}
-										<div class="result-item">
-											<div class="result-head">
-												<span class="script">{r.script_name}</span>
-												<span class="status" data-ok={r.success}>{r.success ? 'ok' : 'fail'}</span>
-												<span class="decision" data-decision={(r as any)?.decision ?? (r.success ? 'pass' : (r.error ? 'reject' : 'na'))}>
-													{(r as any)?.decision ?? (r.success ? 'pass' : (r.error ? 'reject' : 'na'))}
-												</span>
-											</div>
-											<div class="meta">
-												<span>{r.executed_at}</span>
-												<span>{r.duration}</span>
-											</div>
-											{#if r.error}
-												<pre class="error">{r.error}</pre>
-											{/if}
-											{#if r.output?.length}
-												<pre class="output">{r.output.join('\n')}</pre>
-											{/if}
-											{#if r.metadata}
-												<pre class="metadata">{JSON.stringify(r.metadata, null, 2)}</pre>
-											{/if}
-										</div>
-									{/each}
-								</div>
-							{:else}
-								<div class="results empty">No results yet.</div>
-							{/if}
-
-							<!-- Checklist section -->
-							{#if assetChecklistItems.length > 0}
-								<div class="mt-6">
-									<h3 class="text-sm font-semibold text-gray-900 mb-3">Compliance Checklist</h3>
-									<div class="space-y-3">
-										{#each assetChecklistItems as item (item.id)}
-											<div class="border border-gray-200 rounded-lg p-3 bg-white">
-												<div class="flex items-start justify-between mb-2">
-													<div class="flex-1">
-														<div class="flex items-center gap-2 mb-1">
-															<span class="font-medium text-gray-900 text-sm">{item.title}</span>
-															<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {checklistStore.getStatusColor(item.status)}">
-																{checklistStore.getStatusLabel(item.status)}
-															</span>
-															<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-																{checklistStore.getSourceLabel(item.source)}
-															</span>
-														</div>
-														{#if item.required}
-															<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200">
-																Required
-															</span>
-														{/if}
-													</div>
-												</div>
-												{#if item.description}
-													<div class="text-sm text-gray-600 mb-2">{item.description}</div>
-												{/if}
-												{#if item.notes}
-													<div class="text-sm text-gray-700 mb-2">
-														<span class="font-medium">Notes:</span> {item.notes}
-													</div>
-												{/if}
-												{#if item.evidence && Object.keys(item.evidence).length > 0}
-													<div class="text-sm mb-2">
-														<span class="font-medium text-gray-700">Evidence:</span>
-														<pre class="mt-1 text-xs bg-gray-50 p-2 rounded border overflow-auto max-h-32">{JSON.stringify(item.evidence, null, 2)}</pre>
-													</div>
-												{/if}
-												{#if item.recommendation}
-													<div class="text-sm text-gray-700">
-														<span class="font-medium">Recommendation:</span> {item.recommendation}
-													</div>
-												{/if}
-											</div>
-										{/each}
-									</div>
-								</div>
-							{:else if checklistStore.assetLoading[selectedAsset?.id || '']}
-								<div class="mt-6">
-									<h3 class="text-sm font-semibold text-gray-900 mb-3">Compliance Checklist</h3>
-									<div class="text-sm text-gray-500">Loading checklist items...</div>
-								</div>
-							{:else}
-								<div class="mt-6">
-									<h3 class="text-sm font-semibold text-gray-900 mb-3">Compliance Checklist</h3>
-									<div class="text-sm text-gray-500">No checklist items for this asset type.</div>
-								</div>
-							{/if}
-
-							<div class="drawer-actions">
-								<Button onclick={() => selectedAsset && assetStore.scanAsset(selectedAsset.id)}>
-									Start scan
-								</Button>
-								<Button variant="outline" onclick={() => selectedAsset && assetStore.loadAssetDetails(selectedAsset.id)}>
-									Refresh
-								</Button>
-								<Drawer.Close>Close</Drawer.Close>
-							</div>
-						{/if}
-					</div>
-					<Drawer.Footer />
-				</Drawer.Content>
-			</Drawer.Root>
+		<!-- Asset Details Modal -->
+		<AssetDetailsModal 
+			bind:open={modalOpen}
+			bind:asset={selectedAsset}
+			bind:assetDetails={selectedAssetDetails}
+			bind:checklistItems={assetChecklistItems}
+		/>
 		</div>
 	</div>
 
 	<div class="overlay overlay-bottom">
 		<div class="overlay-card">
 			<div class="overlay-info">
-				<span>Total Assets: {assets.length}</span>
-				<span>Click nodes to view details. Drag to explore.</span>
+				<span>Showing: {getFilteredAssets().length} of {assets.length} assets</span>
+				<span>Layout: {layoutMode === 'force' ? 'Force-directed' : layoutMode === 'hierarchical' ? 'Hierarchical' : 'Clustered'}</span>
+				<span>Spacing: {nodeSpacing.charAt(0).toUpperCase() + nodeSpacing.slice(1).replace('-', ' ')}</span>
+				{#if manualMode}
+					<span class="text-blue-600 font-medium">Manual Mode: Physics disabled for precise positioning</span>
+				{:else}
+					<span>Click nodes to view details. Drag to explore.</span>
+				{/if}
 			</div>
 		</div>
 	</div>
@@ -680,32 +1104,9 @@
 	}
 
 	.legend-icon {
-		width: 14px;
-		height: 14px;
-		border-radius: 4px;
+		flex-shrink: 0;
 	}
 
-	.legend-domain {
-		background: #4caf50;
-		clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-		border-radius: 0;
-	}
-
-	.legend-subdomain {
-		background: #2196f3;
-		border-radius: 999px;
-	}
-
-	.legend-ip {
-		background: #ff9800;
-		border-radius: 2px;
-	}
-
-	.legend-service {
-		background: #9c27b0;
-		clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-		border-radius: 0;
-	}
 
 	.overlay-info {
 		display: flex;

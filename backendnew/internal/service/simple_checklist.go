@@ -280,3 +280,51 @@ func (s *SimpleChecklistService) getScriptControlledStatus(ctx context.Context, 
 	// TODO: Implement global script-controlled checklist logic if needed
 	return nil
 }
+
+// ProcessScanResultsForChecklists processes scan results and updates checklist statuses
+// This should be called after a scan completes to update checklist items based on script results
+func (s *SimpleChecklistService) ProcessScanResultsForChecklists(ctx context.Context, assetID string, scanResults []*model.ScanResult) error {
+	// Get all templates to know which ones are script-controlled
+	templates, err := s.storage.ListChecklistTemplates(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get checklist templates: %w", err)
+	}
+
+	// Process each scan result for checklist updates
+	for _, scanResult := range scanResults {
+		if scanResult.Metadata != nil {
+			if checklistResults, ok := scanResult.Metadata["checklist_results"].(map[string]interface{}); ok {
+				// Process each checklist result in this scan
+				for checklistID, result := range checklistResults {
+					if resultMap, ok := result.(map[string]interface{}); ok {
+						status, hasStatus := resultMap["status"].(string)
+						reason, _ := resultMap["reason"].(string)
+
+						if hasStatus {
+							// Find the template to make sure it's script-controlled
+							var isScriptControlled bool
+							for _, template := range templates {
+								if template.ID == checklistID && template.ScriptControlled {
+									isScriptControlled = true
+									break
+								}
+							}
+
+							if isScriptControlled {
+								// Update the checklist status
+								err := s.SetStatus(ctx, checklistID, assetID, status, reason)
+								if err != nil {
+									fmt.Printf("Warning: Failed to update checklist status for %s: %v\n", checklistID, err)
+								} else {
+									fmt.Printf("Updated checklist %s for asset %s: %s (%s)\n", checklistID, assetID, status, reason)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
