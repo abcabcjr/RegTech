@@ -9,9 +9,13 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import * as Tabs from '$lib/components/ui/tabs';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import { Input } from '$lib/components/ui/input';
 	import { Badge } from '$lib/components/ui/badge';
 	import { ProgressBar } from '$lib/components/ui/progress-bar';
 	import ChecklistItemComponent from '$lib/components/compliance/checklist-item.svelte';
+	import { assetStore } from '$lib/stores/assets.svelte';
+	import { Radar, Upload } from '@lucide/svelte';
 
 	let checklistState: ChecklistState = $state(loadChecklistState());
 	let activeView: 'manual' | 'scanner' = $state('manual');
@@ -22,6 +26,10 @@
 	let uploading: boolean = $state(false);
 	let uploadSuccess: string | null = $state(null);
 	let uploadError: string | null = $state(null);
+	
+	// Scan dialog state
+	let scanDialogOpen: boolean = $state(false);
+	let discoverListString: string = $state('');
 	
 	// Convert backend templates to sections format, filtered by type
 	let displaySections = $derived(() => {
@@ -59,10 +67,28 @@
 	function convertTemplatesToSections(templates: any[]) {
 		if (!templates || templates.length === 0) return [];
 		
+		// Sort templates by priority (must first), then category, then title
+		const sortedTemplates = [...templates].sort((a, b) => {
+			// Priority order: "must" comes before "should", then others
+			const priorityA = a.info?.priority || 'other';
+			const priorityB = b.info?.priority || 'other';
+			const priorityOrder: Record<string, number> = { 'must': 0, 'should': 1, 'other': 2 };
+			
+			const priorityComparison = (priorityOrder[priorityB] || 2) - (priorityOrder[priorityA] || 2);
+			if (priorityComparison !== 0) return priorityComparison;
+			
+			// Then by category
+			const categoryComparison = (a.category || 'Other').localeCompare(b.category || 'Other');
+			if (categoryComparison !== 0) return categoryComparison;
+			
+			// Finally by title
+			return a.title.localeCompare(b.title);
+		});
+		
 		// Group templates by category
 		const categoryMap = new Map();
 		
-		templates.forEach(template => {
+		sortedTemplates.forEach(template => {
 			const category = template.category || 'Other';
 			if (!categoryMap.has(category)) {
 				categoryMap.set(category, {
@@ -99,17 +125,48 @@
 			categoryMap.get(category).items.push(item);
 		});
 		
-		return Array.from(categoryMap.values());
+		// Convert to array and sort categories by priority (categories with "must" items first)
+		const sections = Array.from(categoryMap.values()).sort((a, b) => {
+			// Check if section has any "must" priority items
+			const aHasMust = a.items.some((item: any) => item.info?.priority === 'must');
+			const bHasMust = b.items.some((item: any) => item.info?.priority === 'must');
+			
+			if (aHasMust && !bHasMust) return -1;
+			if (!aHasMust && bHasMust) return 1;
+			
+			// If both have must items or both don't, sort by category name
+			return a.title.localeCompare(b.title);
+		});
+		
+		return sections;
 	}
 
 	// Convert global checklist items (with asset coverage) to frontend sections format
 	function convertGlobalChecklistToSections(checklistItems: any[]) {
 		if (!checklistItems || checklistItems.length === 0) return [];
 		
+		// Sort checklist items by priority (must first), then category, then title
+		const sortedItems = [...checklistItems].sort((a, b) => {
+			// Priority order: "must" comes before "should", then others
+			const priorityA = a.info?.priority || 'other';
+			const priorityB = b.info?.priority || 'other';
+			const priorityOrder: Record<string, number> = { 'must': 0, 'should': 1, 'other': 2 };
+			
+			const priorityComparison = (priorityOrder[priorityB] || 2) - (priorityOrder[priorityA] || 2);
+			if (priorityComparison !== 0) return priorityComparison;
+			
+			// Then by category
+			const categoryComparison = (a.category || 'Other').localeCompare(b.category || 'Other');
+			if (categoryComparison !== 0) return categoryComparison;
+			
+			// Finally by title
+			return a.title.localeCompare(b.title);
+		});
+		
 		// Group checklist items by category
 		const categoryMap = new Map();
 		
-		checklistItems.forEach(item => {
+		sortedItems.forEach(item => {
 			const category = item.category || 'Other';
 			if (!categoryMap.has(category)) {
 				categoryMap.set(category, {
@@ -149,7 +206,20 @@
 			categoryMap.get(category).items.push(frontendItem);
 		});
 		
-		return Array.from(categoryMap.values());
+		// Convert to array and sort categories by priority (categories with "must" items first)
+		const sections = Array.from(categoryMap.values()).sort((a, b) => {
+			// Check if section has any "must" priority items
+			const aHasMust = a.items.some((item: any) => item.info?.priority === 'must');
+			const bHasMust = b.items.some((item: any) => item.info?.priority === 'must');
+			
+			if (aHasMust && !bHasMust) return -1;
+			if (!aHasMust && bHasMust) return 1;
+			
+			// If both have must items or both don't, sort by category name
+			return a.title.localeCompare(b.title);
+		});
+		
+		return sections;
 	}
 
 	// Load backend templates
@@ -242,6 +312,20 @@
 	});
 
 
+	// Handle scan discovery
+	async function handleScanDiscovery() {
+		try {
+			const hosts = discoverListString.split(',').map(host => host.trim()).filter(host => host.length > 0);
+			if (hosts.length === 0) return;
+			
+			await assetStore.discover(hosts);
+			scanDialogOpen = false;
+			discoverListString = '';
+		} catch (error) {
+			console.error('Failed to start discovery:', error);
+		}
+	}
+
 	// Handle file upload for templates
 	async function handleTemplateUpload(event: Event) {
 		const input = event.target as HTMLInputElement;
@@ -303,10 +387,18 @@
 		}
 	}
 
-	onMount(() => {
+	onMount(async () => {
 		checklistState = loadChecklistState();
-		loadBackendTemplates(); // Load templates from backend
-		loadBackendGlobalChecklist(); // Load global checklist with asset coverage
+		await loadBackendTemplates(); // Load templates from backend
+		await loadBackendGlobalChecklist(); // Load global checklist with asset coverage
+		
+		// Load assets and auto-open scan dialog if no assets exist
+		await assetStore.load();
+		
+		// Check if no assets exist and auto-open scan dialog
+		if (!assetStore.data?.assets || assetStore.data.assets.length === 0) {
+			scanDialogOpen = true;
+		}
 	});
 </script>
 
@@ -315,26 +407,31 @@
 		<div class="flex items-center justify-between mb-4">
 			<h1 class="text-3xl font-bold text-foreground">Compliance Checklist</h1>
 			<div class="flex items-center gap-4">
-				<!-- Template Upload Button -->
-				<div class="relative">
-					<input
-						type="file"
-						accept=".json"
-						onchange={handleTemplateUpload}
-						class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-						disabled={uploading}
-					/>
-					<Button variant="outline" disabled={uploading}>
-						{#if uploading}
-							<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-							Uploading...
-						{:else}
-							<svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-							</svg>
-							Upload Templates
-						{/if}
+				<div class="flex gap-2">
+                    <!-- Scan Button -->
+					<Button variant="default" onclick={() => scanDialogOpen = true}>
+						<Radar />
+						Scan
 					</Button>
+					<!-- Template Upload Button -->
+					<div class="relative">
+						<input
+							type="file"
+							accept=".json"
+							onchange={handleTemplateUpload}
+							class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+							disabled={uploading}
+						/>
+						<Button variant="outline" disabled={uploading}>
+							{#if uploading}
+								<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+								Uploading...
+							{:else}
+								<Upload />
+								Upload Templates
+							{/if}
+						</Button>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -561,3 +658,25 @@
 		</div>
 		</div>
 </div>
+
+<!-- Scan Discovery Dialog -->
+<Dialog.Root bind:open={scanDialogOpen}>
+	<Dialog.Content>
+		<Dialog.Header>
+			<Dialog.Title>Scan assets</Dialog.Title>
+			<Dialog.Description>Enter domains & hosts, separated by comma.</Dialog.Description>
+		</Dialog.Header>
+		<Input 
+			bind:value={discoverListString} 
+			placeholder="example.com, example2.com, 1.1.1.1"
+		/>
+		<Dialog.Footer>
+			<Button variant="outline" onclick={() => scanDialogOpen = false}>
+				Cancel
+			</Button>
+			<Button onclick={handleScanDiscovery} disabled={!discoverListString.trim()}>
+				Scan
+			</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
