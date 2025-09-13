@@ -273,13 +273,17 @@ if redirect_ok and redirect_info then
     if redirect_info.redirect_to_https then
         hsts_score = hsts_score + 1
         log("HTTP properly redirects to HTTPS (+1 point)")
+        pass_checklist("http-to-https-redirect-022", "HTTP traffic properly redirected to HTTPS")
     elseif redirect_info.has_redirect then
         table.insert(hsts_issues, "HTTP redirects but not to HTTPS")
+        fail_checklist("http-to-https-redirect-022", "HTTP redirects but not to HTTPS - insecure redirection")
     else
         table.insert(hsts_issues, "HTTP does not redirect to HTTPS")
+        fail_checklist("http-to-https-redirect-022", "HTTP traffic not redirected to HTTPS - security vulnerability")
     end
 else
     table.insert(hsts_issues, "Could not test HTTP redirect behavior")
+    fail_checklist("http-to-https-redirect-022", "HTTP to HTTPS redirect testing failed")
 end
 
 -- Set HSTS issues if any

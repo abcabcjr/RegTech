@@ -1,8 +1,10 @@
--- @title HTTP Security Headers Analysis
--- @description Validates comprehensive HTTP security headers for web applications
+-- @title HTTP Security Headers Analysis (Article 11 Compliance)
+-- @description Validates comprehensive HTTP security headers for web applications in compliance with Moldovan Cybersecurity Law Article 11 (Security Measures)
 -- @category Web Security
+-- @compliance_article Article 11 - Security Measures
+-- @moldovan_law Law no. 142/2023
 -- @author RegTech Scanner
--- @version 1.0
+-- @version 1.1
 -- @asset_types service
 -- @requires_passed http_probe.lua
 
