@@ -4,15 +4,13 @@ import (
 	v1 "assetscanner/api/v1"
 	"assetscanner/internal/errors"
 	"assetscanner/internal/model"
+	"assetscanner/internal/recon"
 	"assetscanner/internal/scanner"
 	"assetscanner/internal/storage"
 	"assetscanner/internal/util"
-	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -24,8 +22,7 @@ import (
 type AssetsHandler struct {
 	storage         storage.Storage
 	scanner         *scanner.LuaScanner
-	recontoolPath   string
-	enableSudo      bool
+	reconService    *recon.ReconService
 	enableScanning  bool
 	enableStreaming bool
 	jobs            map[string]*model.Job
@@ -33,12 +30,11 @@ type AssetsHandler struct {
 }
 
 // NewAssetsHandler creates a new assets handler
-func NewAssetsHandler(storage storage.Storage, scanner *scanner.LuaScanner, recontoolPath string, enableSudo, enableScanning, enableStreaming bool) *AssetsHandler {
+func NewAssetsHandler(storage storage.Storage, scanner *scanner.LuaScanner, reconService *recon.ReconService, enableScanning, enableStreaming bool) *AssetsHandler {
 	return &AssetsHandler{
 		storage:         storage,
 		scanner:         scanner,
-		recontoolPath:   recontoolPath,
-		enableSudo:      enableSudo,
+		reconService:    reconService,
 		enableScanning:  enableScanning,
 		enableStreaming: enableStreaming,
 		jobs:            make(map[string]*model.Job),
@@ -47,7 +43,7 @@ func NewAssetsHandler(storage storage.Storage, scanner *scanner.LuaScanner, reco
 
 // DiscoverAssets starts asset discovery for the given hosts
 // @Summary Discover assets
-// @Description Start asset discovery for a list of hosts using recontool
+// @Description Start asset discovery for a list of hosts using integrated recon service
 // @Tags assets
 // @Accept json
 // @Produce json
@@ -431,11 +427,11 @@ func (h *AssetsHandler) runDiscovery(jobID string, hosts []string) {
 		return
 	}
 
-	// Run recontool for each host
+	// Run integrated recon service for each host
 	var allAssets []*model.Asset
 	for i, host := range hosts {
 		fmt.Printf("[AssetsHandler] Processing host %d/%d: %s\n", i+1, len(hosts), host)
-		assets, err := h.runRecontoolDiscoveryWithJob(ctx, host, jobID)
+		assets, err := h.runIntegratedDiscoveryWithJob(ctx, host, jobID)
 		if err != nil {
 			fmt.Printf("[AssetsHandler] Discovery failed for host %s: %v\n", host, err)
 			job.Error = fmt.Sprintf("Discovery failed for %s: %v", host, err)
@@ -475,126 +471,49 @@ func (h *AssetsHandler) runDiscovery(jobID string, hosts []string) {
 	h.jobsMu.Unlock()
 }
 
-func (h *AssetsHandler) runRecontoolDiscoveryWithJob(ctx context.Context, host string, jobID string) ([]*model.Asset, error) {
-	// Build recontool command
-	args := []string{}
-	if h.enableSudo {
-		args = append(args, "sudo")
-	}
-
-	args = append(args, h.recontoolPath)
-
-	if h.enableStreaming {
-		args = append(args, "--stream")
-	}
-	if h.enableScanning {
-		args = append(args, "--scan")
-	}
-
-	args = append(args, host)
-
-	fmt.Printf("[AssetsHandler] Executing recontool command: %s\n", strings.Join(args, " "))
+func (h *AssetsHandler) runIntegratedDiscoveryWithJob(ctx context.Context, host string, jobID string) ([]*model.Asset, error) {
+	fmt.Printf("[AssetsHandler] Starting integrated discovery for host: %s\n", host)
 
 	// Create context with timeout
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
-	// Execute recontool
-	cmd := exec.CommandContext(ctxWithTimeout, args[0], args[1:]...)
-	stdout, err := cmd.StdoutPipe()
+	// Configure recon options
+	options := &recon.ReconOptions{
+		Hosts:           []string{host},
+		EnableScanning:  h.enableScanning,
+		EnableStreaming: h.enableStreaming,
+		Timeout:         5 * time.Minute,
+		Verbose:         true, // Enable verbose for debugging
+	}
+
+	// Start asset discovery
+	assetChan, err := h.reconService.DiscoverAssets(ctxWithTimeout, options)
 	if err != nil {
-		fmt.Printf("[AssetsHandler] Failed to create stdout pipe: %v\n", err)
-		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
+		fmt.Printf("[AssetsHandler] Failed to start integrated discovery: %v\n", err)
+		return nil, fmt.Errorf("failed to start integrated discovery: %w", err)
 	}
 
-	// Also capture stderr for debugging
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		fmt.Printf("[AssetsHandler] Failed to create stderr pipe: %v\n", err)
-		return nil, fmt.Errorf("failed to create stderr pipe: %w", err)
-	}
-
-	if err := cmd.Start(); err != nil {
-		fmt.Printf("[AssetsHandler] Failed to start recontool: %v\n", err)
-		return nil, fmt.Errorf("failed to start recontool: %w", err)
-	}
-
-	fmt.Printf("[AssetsHandler] recontool started successfully, reading output...\n")
-
-	// Read stderr in background for debugging
-	go func() {
-		stderrScanner := bufio.NewScanner(stderr)
-		for stderrScanner.Scan() {
-			fmt.Printf("[AssetsHandler] recontool stderr: %s\n", stderrScanner.Text())
-		}
-	}()
+	fmt.Printf("[AssetsHandler] Integrated discovery started successfully, reading assets...\n")
 
 	// Parse streaming output
 	var assets []*model.Asset
-	scanner := bufio.NewScanner(stdout)
-	lineCount := 0
+	assetCount := 0
 
-	// Set a reasonable buffer size for large JSON lines
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for reconAsset := range assetChan {
+		assetCount++
+		fmt.Printf("[AssetsHandler] Asset %d: %s (type: %s)\n", assetCount, reconAsset.Value, reconAsset.Type)
 
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		lineCount++
-		fmt.Printf("[AssetsHandler] Line %d: %s\n", lineCount, line)
-
-		if line == "" {
-			continue
-		}
-
-		// Skip non-JSON lines (verbose output)
-		if !strings.HasPrefix(line, "{") {
-			fmt.Printf("[AssetsHandler] Skipping non-JSON line: %s\n", line)
-			continue
-		}
-
-		// Parse JSON asset - try the actual recontool Asset structure
-		var recontoolAsset model.Asset
-		var asset *model.Asset
-
-		if err := json.Unmarshal([]byte(line), &recontoolAsset); err != nil {
-			fmt.Printf("[AssetsHandler] Failed to parse as Asset JSON: %v\n", err)
-
-			// Try a simpler structure
-			var simpleAsset struct {
-				ID    string `json:"id"`
-				Type  string `json:"type"`
-				Value string `json:"value"`
-			}
-
-			if err2 := json.Unmarshal([]byte(line), &simpleAsset); err2 != nil {
-				fmt.Printf("[AssetsHandler] Failed to parse as simple JSON: %v\n", err2)
-				continue // Skip invalid JSON
-			}
-
-			// Create asset from simple structure
-			asset = model.NewAsset(simpleAsset.Type, simpleAsset.Value)
-			if simpleAsset.ID != "" {
-				asset.ID = simpleAsset.ID
-			}
-		} else {
-			// Successfully parsed as full Asset
-			fmt.Printf("[AssetsHandler] Parsed asset: %s (type: %s)\n", recontoolAsset.Value, recontoolAsset.Type)
-
-			// Ensure the asset has an ID
-			if recontoolAsset.ID == "" {
-				recontoolAsset.ID = util.GenerateID()
-			}
-
-			asset = &recontoolAsset
-		}
+		// Convert recon.Asset to model.Asset
+		asset := h.convertReconAssetToModelAsset(reconAsset)
 
 		// Immediately save asset to storage (streaming persistence)
-		if err := h.storage.CreateAsset(ctx, asset); err != nil {
+		if err := h.storage.CreateAsset(ctxWithTimeout, asset); err != nil {
 			fmt.Printf("[AssetsHandler] Failed to save asset %s during streaming: %v\n", asset.Value, err)
 			// Try to update if it already exists
-			if existingAsset, getErr := h.storage.GetAsset(ctx, asset.ID); getErr == nil {
+			if existingAsset, getErr := h.storage.GetAsset(ctxWithTimeout, asset.ID); getErr == nil {
 				existingAsset.DiscoveredAt = asset.DiscoveredAt
-				if updateErr := h.storage.UpdateAsset(ctx, existingAsset); updateErr != nil {
+				if updateErr := h.storage.UpdateAsset(ctxWithTimeout, existingAsset); updateErr != nil {
 					fmt.Printf("[AssetsHandler] Failed to update existing asset %s: %v\n", asset.Value, updateErr)
 				} else {
 					fmt.Printf("[AssetsHandler] Updated existing asset %s\n", asset.Value)
@@ -607,34 +526,24 @@ func (h *AssetsHandler) runRecontoolDiscoveryWithJob(ctx context.Context, host s
 		assets = append(assets, asset)
 
 		// Update job progress in real-time
-		if currentJob, jobErr := h.storage.GetJob(ctx, jobID); jobErr == nil {
+		if currentJob, jobErr := h.storage.GetJob(ctxWithTimeout, jobID); jobErr == nil {
 			currentJob.Progress.Completed = len(assets)
 			currentJob.Metadata["assets_found_so_far"] = len(assets)
 			currentJob.Metadata["current_host"] = host
-			h.storage.UpdateJob(ctx, currentJob)
+			h.storage.UpdateJob(ctxWithTimeout, currentJob)
 			fmt.Printf("[AssetsHandler] Updated job %s progress: %d assets found\n", jobID, len(assets))
 		}
 	}
 
-	fmt.Printf("[AssetsHandler] Processed %d lines from recontool output\n", lineCount)
+	fmt.Printf("[AssetsHandler] Processed %d assets from integrated discovery\n", assetCount)
 
-	if err := cmd.Wait(); err != nil {
-		fmt.Printf("[AssetsHandler] recontool command failed: %v\n", err)
-
-		// Update job status to failed if recontool fails
-		if currentJob, jobErr := h.storage.GetJob(ctx, jobID); jobErr == nil {
-			currentJob.Status = model.JobStatusFailed
-			currentJob.Error = fmt.Sprintf("recontool execution failed: %v", err)
-			now := time.Now()
-			currentJob.CompletedAt = &now
-			h.storage.UpdateJob(ctx, currentJob)
-			fmt.Printf("[AssetsHandler] Updated job %s status to failed\n", jobID)
-		}
-
-		return assets, fmt.Errorf("recontool execution failed: %w", err)
+	// Check if context was cancelled
+	if ctxWithTimeout.Err() != nil {
+		fmt.Printf("[AssetsHandler] Discovery context cancelled: %v\n", ctxWithTimeout.Err())
+		return assets, fmt.Errorf("discovery cancelled: %w", ctxWithTimeout.Err())
 	}
 
-	fmt.Printf("[AssetsHandler] recontool completed successfully, found %d assets\n", len(assets))
+	fmt.Printf("[AssetsHandler] Integrated discovery completed successfully, found %d assets\n", len(assets))
 
 	// Final job progress update for this host
 	if currentJob, jobErr := h.storage.GetJob(ctx, jobID); jobErr == nil {
@@ -646,6 +555,65 @@ func (h *AssetsHandler) runRecontoolDiscoveryWithJob(ctx context.Context, host s
 	}
 
 	return assets, nil
+}
+
+// convertReconAssetToModelAsset converts a recon.Asset to model.Asset
+func (h *AssetsHandler) convertReconAssetToModelAsset(reconAsset recon.Asset) *model.Asset {
+	asset := model.NewAsset(reconAsset.Type, reconAsset.Value)
+	
+	// Use the recon asset ID if available, otherwise keep the generated one
+	if reconAsset.ID != "" {
+		asset.ID = reconAsset.ID
+	}
+
+	// Copy additional properties as needed
+	if len(reconAsset.IPs) > 0 {
+		// Store IPs in Properties for compatibility with existing model
+		if asset.Properties == nil {
+			asset.Properties = make(map[string]interface{})
+		}
+		asset.Properties["ips"] = reconAsset.IPs
+		asset.Properties["asn"] = reconAsset.ASN
+		asset.Properties["asn_org"] = reconAsset.ASNOrg
+		
+		if reconAsset.Proxied != nil {
+			asset.Properties["proxied"] = *reconAsset.Proxied
+		}
+		
+		if reconAsset.DNSRecords != nil {
+			asset.Properties["dns_records"] = reconAsset.DNSRecords
+		}
+		
+		if len(reconAsset.Subdomains) > 0 {
+			asset.Properties["subdomains"] = reconAsset.Subdomains
+		}
+		
+		if len(reconAsset.ServiceIDs) > 0 {
+			asset.Properties["service_ids"] = reconAsset.ServiceIDs
+		}
+		
+		// Service-specific properties
+		if reconAsset.Port != nil {
+			asset.Properties["port"] = *reconAsset.Port
+		}
+		if reconAsset.Protocol != "" {
+			asset.Properties["protocol"] = reconAsset.Protocol
+		}
+		if reconAsset.State != "" {
+			asset.Properties["state"] = reconAsset.State
+		}
+		if reconAsset.Service != "" {
+			asset.Properties["service"] = reconAsset.Service
+		}
+		if reconAsset.Version != "" {
+			asset.Properties["version"] = reconAsset.Version
+		}
+		if reconAsset.SourceIP != "" {
+			asset.Properties["source_ip"] = reconAsset.SourceIP
+		}
+	}
+
+	return asset
 }
 
 func (h *AssetsHandler) runAssetScan(jobID string, asset *model.Asset, scriptNames []string) {

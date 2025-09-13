@@ -10,11 +10,11 @@ services:
       - SERVER_HOST=0.0.0.0
       - STORAGE_DATA_DIR=/app/data
       - SCANNER_SCRIPTS_DIR=/app/scripts
-      - RECONTOOL_BINARY_PATH=/app/recontool/regtech
+      # RECONTOOL_BINARY_PATH is no longer needed - functionality is integrated
     volumes:
       - ./data:/app/data
       - ./scripts:/app/scripts
-      - ../recontool:/app/recontool:ro  # Mount recontool as read-only
+      # ../recontool mount no longer needed - functionality is integrated
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]

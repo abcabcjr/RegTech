@@ -1,10 +1,10 @@
 # Asset Scanner Backend
 
-A production-ready Go backend for asset discovery and scanning with Lua scripting support. This backend integrates with recontool for asset discovery and provides a comprehensive API for managing and scanning network assets.
+A production-ready Go backend for asset discovery and scanning with Lua scripting support. This backend includes integrated reconnaissance capabilities for asset discovery and provides a comprehensive API for managing and scanning network assets.
 
 ## 🚀 Features
 
-- **Asset Discovery**: Integration with recontool for comprehensive asset discovery
+- **Asset Discovery**: Integrated reconnaissance service for comprehensive asset discovery
 - **Lua Scripting**: Extensible scanning with custom Lua scripts
 - **RESTful API**: Clean, versioned API following production best practices
 - **JSON Storage**: File-based storage with automatic backups
@@ -44,7 +44,7 @@ backendnew/
 - Go 1.24.1 or later
 - Make (optional, for build automation)
 - Docker (optional, for containerized deployment)
-- Built recontool binary (../recontool/regtech)
+- Nmap (for port scanning, optional)
 
 ### 1. Development Setup
 
@@ -116,7 +116,7 @@ SCANNER_SCRIPTS_DIR=./scripts
 SCANNER_MAX_CONCURRENT=10
 
 # Recontool Integration
-RECONTOOL_BINARY_PATH=../recontool/regtech
+# RECONTOOL_BINARY_PATH is no longer needed - functionality is integrated
 RECONTOOL_ENABLE_SUDO=true
 ```
 
@@ -125,7 +125,7 @@ RECONTOOL_ENABLE_SUDO=true
 - **Server**: HTTP server settings, CORS, timeouts
 - **Storage**: File paths, backup settings
 - **Scanner**: Lua script execution settings
-- **Recontool**: Integration with recontool binary
+- **Recon Service**: Integrated reconnaissance and asset discovery
 - **Monitoring**: Health checks, logging, metrics
 
 ## 🎯 API Usage Examples
@@ -316,8 +316,8 @@ curl http://localhost:8080/api/v1/stats
 
 ### Common Issues
 
-1. **Recontool not found**: Check `RECONTOOL_BINARY_PATH` configuration
-2. **Permission denied**: Ensure sudo access for recontool
+1. **Nmap not found**: Install nmap for port scanning functionality
+2. **Permission denied**: Ensure proper permissions for nmap (if using port scanning)
 3. **Script loading errors**: Check script syntax and file permissions
 4. **Storage errors**: Verify data directory permissions
 
@@ -362,5 +362,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - Built with [Echo](https://echo.labstack.com/) web framework
 - Lua scripting powered by [gopher-lua](https://github.com/yuin/gopher-lua)
-- Integrates with recontool for asset discovery
+- Includes integrated reconnaissance service for asset discovery
 - Inspired by production Go backend patterns

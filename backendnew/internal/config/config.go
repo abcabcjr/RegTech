@@ -47,11 +47,9 @@ type ScannerConfig struct {
 	WorkerPoolSize    int           `json:"worker_pool_size"`
 }
 
-// RecontoolConfig holds recontool integration configuration
+// RecontoolConfig holds integrated recon service configuration
 type RecontoolConfig struct {
-	BinaryPath      string        `json:"binary_path"`
 	DefaultTimeout  time.Duration `json:"default_timeout"`
-	EnableSudo      bool          `json:"enable_sudo"`
 	EnableScanning  bool          `json:"enable_scanning"`
 	EnableStreaming bool          `json:"enable_streaming"`
 }
@@ -92,9 +90,7 @@ func NewConfigFromEnv() (*AppConfig, error) {
 			WorkerPoolSize:    getEnvInt("SCANNER_WORKER_POOL_SIZE", 5),
 		},
 		Recontool: RecontoolConfig{
-			BinaryPath:      getEnvString("RECONTOOL_BINARY_PATH", "../recontool/regtech"),
 			DefaultTimeout:  getEnvDuration("RECONTOOL_DEFAULT_TIMEOUT", 10*time.Minute),
-			EnableSudo:      getEnvBool("RECONTOOL_ENABLE_SUDO", true),
 			EnableScanning:  getEnvBool("RECONTOOL_ENABLE_SCANNING", true),
 			EnableStreaming: getEnvBool("RECONTOOL_ENABLE_STREAMING", true),
 		},
@@ -136,8 +132,8 @@ func (c *AppConfig) Validate() error {
 	}
 
 	// Validate recontool configuration
-	if c.Recontool.BinaryPath == "" {
-		return fmt.Errorf("recontool binary path cannot be empty")
+	if c.Recontool.DefaultTimeout <= 0 {
+		return fmt.Errorf("recontool default timeout must be positive")
 	}
 
 	// Validate monitoring configuration

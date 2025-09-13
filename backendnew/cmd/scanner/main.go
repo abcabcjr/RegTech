@@ -4,6 +4,7 @@ import (
 	"assetscanner/internal/config"
 	"assetscanner/internal/handler"
 	"assetscanner/internal/middleware"
+	"assetscanner/internal/recon"
 	"assetscanner/internal/scanner"
 	"assetscanner/internal/service"
 	"assetscanner/internal/storage"
@@ -66,6 +67,15 @@ func main() {
 	}
 	defer luaScanner.Close()
 
+	// Initialize recon service
+	reconConfig := &recon.ReconConfig{
+		EnableScanning:  cfg.Recontool.EnableScanning,
+		EnableStreaming: cfg.Recontool.EnableStreaming,
+		DefaultTimeout:  cfg.Recontool.DefaultTimeout,
+		Verbose:         false, // Can be made configurable
+	}
+	reconService := recon.NewReconService(reconConfig)
+
 	// Initialize Echo
 	e := echo.New()
 	e.HideBanner = true
@@ -92,8 +102,7 @@ func main() {
 	assetsHandler := handler.NewAssetsHandler(
 		store,
 		luaScanner,
-		cfg.Recontool.BinaryPath,
-		cfg.Recontool.EnableSudo,
+		reconService,
 		cfg.Recontool.EnableScanning,
 		cfg.Recontool.EnableStreaming,
 	)
