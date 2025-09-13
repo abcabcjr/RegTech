@@ -15,10 +15,12 @@ export class AssetsStore {
 
 	async load() {
 		if (this.loading) return;
+		console.log('AssetStore.load() called - this will refresh asset catalogue');
 		this.loading = true;
 		try {
 			const response = await apiClient.assets.catalogueList({});
 			this.data = response.data;
+			console.log('Asset catalogue refreshed, found', this.data?.assets?.length || 0, 'assets');
 		} catch (error) {
 			console.error('Failed to load assets:', error);
 		} finally {
@@ -74,16 +76,22 @@ export class AssetsStore {
 				this.jobRunning = res.data.status === 'pending' || res.data.status === 'running';
 				// Refresh catalogue while job is active
 				if (this.jobRunning) {
-					void this.load();
-					if (this.currentScanAssetId) {
+					// Only refresh asset details during scanning, not the full catalogue
+					// This prevents the drawer from closing due to asset reference changes
+					if (this.currentScanAssetId && this.jobType === 'scan') {
 						void this.loadAssetDetails(this.currentScanAssetId);
+					} else if (this.jobType === 'discover') {
+						void this.load();
 					}
 				} else {
 					this.#stopJobPolling();
-					// One final refresh on completion
-					void this.load();
+					// Final refresh on completion - only refresh catalogue for discovery jobs
+					if (this.jobType === 'discover') {
+						void this.load();
+					}
 					if (this.currentScanAssetId) {
 						void this.loadAssetDetails(this.currentScanAssetId);
+						this.currentScanAssetId = null; // Clear after completion
 					}
 				}
 			} catch (error) {

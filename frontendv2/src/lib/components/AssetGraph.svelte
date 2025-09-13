@@ -237,6 +237,7 @@
 				const asset = assets.find((a) => a.id === nodeId);
 				if (asset) {
 					selectedAsset = asset;
+					selectedAssetId = asset.id;
 					drawerOpen = true;
 					assetStore.loadAssetDetails(asset.id);
 				}
@@ -259,6 +260,7 @@
 	// Drawer state and selected asset
 	let drawerOpen = $state(false);
 	let selectedAsset: V1AssetSummary | null = $state(null);
+	let selectedAssetId: string | null = $state(null);
 	let discoveryOpen = $state(false);
 	let discoveryHosts = $state('');
 	let assetChecklistItems: ModelDerivedChecklistItem[] = $state([]);
@@ -268,6 +270,26 @@
 		if (container && assets.length > 0 && assets.length !== previousAssetsLength) {
 			initializeNetwork();
 			previousAssetsLength = assets.length;
+		}
+	});
+
+	// Effect to maintain selected asset when assets are refreshed
+	$effect(() => {
+		if (selectedAssetId && assets.length > 0) {
+			const updatedAsset = assets.find((a) => a.id === selectedAssetId);
+			if (updatedAsset) {
+				console.log('Updating selected asset:', updatedAsset.id, 'drawerOpen:', drawerOpen);
+				// Always update the selected asset to get the latest data
+				selectedAsset = updatedAsset;
+				// Ensure drawer stays open if we have a selected asset
+				if (!drawerOpen) {
+					console.log('Reopening drawer for selected asset');
+					drawerOpen = true;
+				}
+			} else if (selectedAssetId) {
+				// Asset not found - it might have been removed
+				console.warn(`Selected asset ${selectedAssetId} not found in updated assets list`);
+			}
 		}
 	});
 
@@ -345,7 +367,14 @@
 			</Dialog.Root>
 
 			<!-- Asset details drawer -->
-			<Drawer.Root direction="right" open={drawerOpen} onOpenChange={(v: boolean) => (drawerOpen = v)}>
+			<Drawer.Root direction="right" open={drawerOpen} onOpenChange={(v: boolean) => {
+				console.log('Drawer onOpenChange:', v, 'current selectedAssetId:', selectedAssetId);
+				drawerOpen = v;
+				if (!v) {
+					selectedAssetId = null;
+					selectedAsset = null;
+				}
+			}}>
 				<Drawer.Content style="max-height: 85vh; overflow: auto;">
 					<Drawer.Header>
 						<Drawer.Title>Asset details</Drawer.Title>

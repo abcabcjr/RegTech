@@ -560,7 +560,7 @@ func (h *AssetsHandler) runIntegratedDiscoveryWithJob(ctx context.Context, host 
 // convertReconAssetToModelAsset converts a recon.Asset to model.Asset
 func (h *AssetsHandler) convertReconAssetToModelAsset(reconAsset recon.Asset) *model.Asset {
 	asset := model.NewAsset(reconAsset.Type, reconAsset.Value)
-	
+
 	// Use the recon asset ID if available, otherwise keep the generated one
 	if reconAsset.ID != "" {
 		asset.ID = reconAsset.ID
@@ -575,23 +575,23 @@ func (h *AssetsHandler) convertReconAssetToModelAsset(reconAsset recon.Asset) *m
 		asset.Properties["ips"] = reconAsset.IPs
 		asset.Properties["asn"] = reconAsset.ASN
 		asset.Properties["asn_org"] = reconAsset.ASNOrg
-		
+
 		if reconAsset.Proxied != nil {
 			asset.Properties["proxied"] = *reconAsset.Proxied
 		}
-		
+
 		if reconAsset.DNSRecords != nil {
 			asset.Properties["dns_records"] = reconAsset.DNSRecords
 		}
-		
+
 		if len(reconAsset.Subdomains) > 0 {
 			asset.Properties["subdomains"] = reconAsset.Subdomains
 		}
-		
+
 		if len(reconAsset.ServiceIDs) > 0 {
 			asset.Properties["service_ids"] = reconAsset.ServiceIDs
 		}
-		
+
 		// Service-specific properties
 		if reconAsset.Port != nil {
 			asset.Properties["port"] = *reconAsset.Port
