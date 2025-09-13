@@ -412,10 +412,52 @@
 
 	// Calculate counts for main tabs
 	let manualTemplatesCount = $derived(() => {
+		// Force reactivity to checklistState
+		const _ = checklistState.lastUpdated;
+		
 		if (!backendTemplates) return 0;
+		
+		// Get all manual templates and count those with status 'no' (non-compliant)
 		const manualTemplates = backendTemplates.filter((template) => template.kind === 'manual');
-		return manualTemplates.reduce((acc, template) => acc + 1, 0);
+		
+		return manualTemplates.reduce((count, template) => {
+			// Find saved state for this template
+			const savedSection = checklistState.sections.find((section) => {
+				const sectionId = (template.category || 'Other')
+					.toLowerCase()
+					.replace(/\s+/g, '-')
+					.replace(/[^a-z0-9-]/g, '');
+				return section.id === sectionId;
+			});
+			
+			const savedItem = savedSection?.items.find((item) => item.id === template.id);
+			const status = savedItem?.status || 'no'; // Default to 'no' if not set
+			
+			// Only count if status is 'no' (non-compliant)
+			return status === 'no' ? count + 1 : count;
+		}, 0);
 	});
+
+	// Helper function to count non-compliant items in a section
+	function getNonCompliantSectionCount(section: any): number {
+		if (activeView === 'scanner') {
+			// For scanner view, all displayed items are already non-compliant
+			return section.items.length;
+		} else {
+			// For manual view, count items with status 'no' or not set
+			const sectionState = checklistState.sections.find((s) => s.id === section.id);
+			if (!sectionState) {
+				// If no saved state, all items are non-compliant by default
+				return section.items.length;
+			}
+			
+			// Count items with status 'no' or not set
+			return sectionState.items.filter((item: any) => {
+				const status = item.status || 'no';
+				return status === 'no';
+			}).length;
+		}
+	}
 
 	let nonCompliantIssuesCount = $derived(() => {
 		if (!backendTemplates) return 0;
@@ -737,9 +779,11 @@
 						class="flex items-center gap-2 text-sm"
 					>
 						<span>Compliance Items</span>
-						<Badge variant="secondary" class="h-4 min-w-[16px] px-1 py-0 text-xs">
-							{manualTemplatesCount()}
-						</Badge>
+						{#if manualTemplatesCount() > 0}
+							<Badge variant="destructive" class="h-4 min-w-[16px] px-1 py-0 text-xs">
+								{manualTemplatesCount()}
+							</Badge>
+						{/if}
 					</Tabs.Trigger>
 					<Tabs.Trigger
 						value="scanner"
@@ -747,9 +791,11 @@
 						class="flex items-center gap-2 text-sm"
 					>
 						<span>Scanned Issues</span>
-						<Badge variant="destructive" class="h-4 min-w-[16px] px-1 py-0 text-xs">
-							{nonCompliantIssuesCount()}
-						</Badge>
+						{#if nonCompliantIssuesCount() > 0}
+							<Badge variant="destructive" class="h-4 min-w-[16px] px-1 py-0 text-xs">
+								{nonCompliantIssuesCount()}
+							</Badge>
+						{/if}
 					</Tabs.Trigger>
 				</Tabs.List>
 
@@ -805,9 +851,11 @@
 								{#each displaySections() as section}
 									<Tabs.Trigger value={section.id} class="flex items-center gap-1 p-1 text-xs">
 										<span>{section.title.split(' ')[0]}</span>
-										<Badge class="h-4 min-w-[16px] px-1 py-0 text-xs">
-											{section.items.length}
-										</Badge>
+										{#if getNonCompliantSectionCount(section) > 0}
+											<Badge variant="destructive" class="h-4 min-w-[16px] px-1 py-0 text-xs">
+												{getNonCompliantSectionCount(section)}
+											</Badge>
+										{/if}
 									</Tabs.Trigger>
 								{/each}
 							</Tabs.List>
@@ -873,9 +921,11 @@
 								{#each displaySections() as section}
 									<Tabs.Trigger value={section.id} class="flex items-center gap-1 p-1 text-xs">
 										<span>{section.title.split(' ')[0]}</span>
-										<Badge variant="destructive" class="h-4 min-w-[16px] px-1 py-0 text-xs">
-											{section.items.length}
-										</Badge>
+										{#if getNonCompliantSectionCount(section) > 0}
+											<Badge variant="destructive" class="h-4 min-w-[16px] px-1 py-0 text-xs">
+												{getNonCompliantSectionCount(section)}
+											</Badge>
+										{/if}
 									</Tabs.Trigger>
 								{/each}
 							</Tabs.List>

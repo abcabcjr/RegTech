@@ -1087,6 +1087,7 @@
 	}
 
 	.overlay-card {
+	    max-width: 25rem;
 		pointer-events: auto;
 		background: rgba(255, 255, 255, 0.85);
 		backdrop-filter: saturate(1.2) blur(6px);
