@@ -1,9 +1,8 @@
 import type {
 	ModelDerivedChecklistItem,
 	ModelChecklistItemTemplate,
-	ModelChecklistAssignment,
-	HandlerSetAssignmentRequest,
-	HandlerCreateTemplateRequest
+	HandlerSetStatusRequest,
+	HandlerUploadTemplatesRequest
 } from '$lib/api/Api';
 import { apiClient } from '$lib/api/client';
 
@@ -16,8 +15,8 @@ export class ChecklistStore {
 	assetItems: Record<string, ModelDerivedChecklistItem[]> = $state({});
 	assetLoading: Record<string, boolean> = $state({});
 
-	// Templates
-	templates: ModelChecklistItemTemplate[] = $state([]);
+	// Templates (now enhanced with covered assets)
+	templates: ModelDerivedChecklistItem[] = $state([]);
 	templatesLoading = $state(false);
 
 	// Load global checklist items
@@ -68,7 +67,7 @@ export class ChecklistStore {
 	}
 
 	// Set status (much simpler!)
-	async setStatus(itemId: string, assetId: string, status: string, notes: string = '') {
+	async setStatus(itemId: string, assetId: string, status: 'yes' | 'no' | 'na', notes: string = '') {
 		try {
 			const response = await apiClient.checklist.statusCreate({
 				item_id: itemId,
@@ -91,20 +90,6 @@ export class ChecklistStore {
 		}
 	}
 
-	// Create template
-	async createTemplate(template: HandlerCreateTemplateRequest) {
-		try {
-			const response = await apiClient.checklist.templatesCreate(template);
-
-			// Refresh templates
-			await this.loadTemplates();
-
-			return response.data;
-		} catch (error) {
-			console.error('Failed to create checklist template:', error);
-			throw error;
-		}
-	}
 
 	// Upload templates from JSON file (overwrites all existing)
 	async uploadTemplates(templates: ModelChecklistItemTemplate[]) {

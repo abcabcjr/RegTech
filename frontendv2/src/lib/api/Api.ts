@@ -759,15 +759,15 @@ export class Api<
       }),
 
     /**
-     * @description Retrieve all available checklist item templates
+     * @description Retrieve all available checklist item templates with non-compliant asset coverage
      *
      * @tags checklist
      * @name TemplatesList
-     * @summary List all checklist templates
+     * @summary List all checklist templates with non-compliant asset coverage
      * @request GET:/checklist/templates
      */
     templatesList: (params: RequestParams = {}) =>
-      this.request<ModelChecklistItemTemplate[], V1ErrorResponse>({
+      this.request<ModelDerivedChecklistItem[], V1ErrorResponse>({
         path: `/checklist/templates`,
         method: "GET",
         type: ContentType.Json,

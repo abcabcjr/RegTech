@@ -115,17 +115,17 @@ func (h *SimpleChecklistHandler) SetStatus(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"message": "Status updated successfully"})
 }
 
-// ListTemplates returns all templates
-// @Summary List all checklist templates
-// @Description Retrieve all available checklist item templates
+// ListTemplates returns all templates with covered assets for non-compliant ones
+// @Summary List all checklist templates with non-compliant asset coverage
+// @Description Retrieve all available checklist item templates with covered assets that are not compliant (status "no")
 // @Tags checklist
 // @Accept json
 // @Produce json
-// @Success 200 {array} model.ChecklistItemTemplate
+// @Success 200 {array} model.DerivedChecklistItem
 // @Failure 500 {object} v1.ErrorResponse
 // @Router /checklist/templates [get]
 func (h *SimpleChecklistHandler) ListTemplates(c echo.Context) error {
-	templates, err := h.checklistService.ListTemplates(c.Request().Context())
+	templates, err := h.checklistService.ListTemplatesWithCoverage(c.Request().Context())
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, v1.ErrorResponse{
 			Error:   "Failed to get templates",
@@ -135,6 +135,28 @@ func (h *SimpleChecklistHandler) ListTemplates(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, templates)
+}
+
+// GetAllAssetTemplates returns all asset-scoped templates with coverage
+// @Summary Get all asset-scoped templates with coverage
+// @Description Retrieve all asset-scoped checklist templates with their coverage across all assets
+// @Tags checklist
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.DerivedChecklistItem
+// @Failure 500 {object} v1.ErrorResponse
+// @Router /checklist/asset-templates [get]
+func (h *SimpleChecklistHandler) GetAllAssetTemplates(c echo.Context) error {
+	items, err := h.checklistService.GetAllAssetTemplates(c.Request().Context())
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, v1.ErrorResponse{
+			Error:   "Failed to get asset templates",
+			Code:    http.StatusInternalServerError,
+			Details: map[string]string{"error": err.Error()},
+		})
+	}
+
+	return c.JSON(http.StatusOK, items)
 }
 
 // UploadTemplatesRequest represents the request to upload templates

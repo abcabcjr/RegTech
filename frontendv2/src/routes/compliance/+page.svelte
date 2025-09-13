@@ -42,28 +42,28 @@
 		const _ = checklistState.lastUpdated;
 		
 		if (activeView === 'scanner') {
-			// For scanner view, use global checklist (with asset coverage) filtered for auto items
-			console.log('Scanner view - backendGlobalChecklist:', backendGlobalChecklist);
+			// For scanner view, use backend templates (now enhanced with covered assets) filtered for auto items
+			console.log('Scanner view - backendTemplates:', backendTemplates);
 			
-			// Try multiple filtering approaches to find auto items
-			const autoItems = backendGlobalChecklist.filter(item => 
-				item.kind === 'auto' || 
-				item.source === 'auto' || 
-				item.script_controlled === true ||
-				item.read_only === true ||
-				(item.scope === 'asset') // Asset-scoped items are often automatic
-			);
-			console.log('Filtered auto items:', autoItems);
-			console.log('Sample item structure:', backendGlobalChecklist[0]);
+			// Filter for automatic templates that are non-compliant and have covered assets
+			const autoTemplates = backendTemplates.filter(template => {
+				const isAutomatic = template.kind === 'auto' || 
+					template.source === 'auto' || 
+					template.script_controlled === true ||
+					template.read_only === true ||
+					(template.scope === 'asset'); // Asset-scoped items are often automatic
+				
+				const hasNonCompliantAssets = template.covered_assets && 
+					template.covered_assets.length > 0 &&
+					template.covered_assets.some((asset: any) => asset.status === 'no');
+				
+				return isAutomatic && hasNonCompliantAssets;
+			});
+			console.log('Filtered auto templates with non-compliant assets:', autoTemplates);
+			console.log('Sample template structure:', backendTemplates[0]);
 			
-			// If no auto items from global checklist, fall back to auto templates
-			if (autoItems.length === 0 && backendTemplates.length > 0) {
-				console.log('No auto items in global checklist, falling back to auto templates');
-				const autoTemplates = backendTemplates.filter(template => template.kind === 'auto');
-				return convertTemplatesToSections(autoTemplates);
-			}
-			
-			return convertGlobalChecklistToSections(autoItems);
+			// Use the enhanced template conversion that handles covered assets
+			return convertTemplatesToSections(autoTemplates);
 		} else {
 			// For manual view, show only manual templates
 			const manualTemplates = backendTemplates.filter(template => template.kind === 'manual');
@@ -123,10 +123,12 @@
 				status: savedItem?.status || "no", // Use saved status or default to "no"
 				recommendation: template.recommendation,
 				kind: template.kind || (template.scope === 'global' ? 'manual' : 'auto'),
+				scope: template.scope, // Add scope field
 				readOnly: template.read_only || false,
-				notes: savedItem?.notes || "", // Use saved notes
+				notes: savedItem?.notes || template.notes || "", // Use saved notes first, then template notes
 				lastUpdated: savedItem?.lastUpdated || template.updated_at,
-				attachments: savedItem?.attachments || [], // Use saved attachments
+				attachments: savedItem?.attachments || template.attachments || [], // Use saved attachments first, then template attachments
+				coveredAssets: template.covered_assets || [], // Templates now include covered assets from backend
 				info: template.info ? {
 					whatItMeans: template.info.what_it_means,
 					whyItMatters: template.info.why_it_matters,
@@ -207,6 +209,7 @@
 				status: savedItem?.status || item.status || "no", // Use saved status first, then backend status
 				recommendation: item.recommendation,
 				kind: item.kind || item.source || 'auto',
+				scope: item.scope, // Add scope field
 				readOnly: item.read_only || false, // Use actual read_only field from backend
 				notes: savedItem?.notes || item.notes, // Use saved notes first
 				lastUpdated: savedItem?.lastUpdated || item.updated_at,
@@ -358,6 +361,31 @@
 		return totalRequired > 0 ? Math.round((completedRequired / totalRequired) * 100) : 0;
 	});
 
+	// Calculate counts for main tabs
+	let manualTemplatesCount = $derived(() => {
+		if (!backendTemplates) return 0;
+		const manualTemplates = backendTemplates.filter(template => template.kind === 'manual');
+		return manualTemplates.reduce((acc, template) => acc + 1, 0);
+	});
+
+	let nonCompliantIssuesCount = $derived(() => {
+		if (!backendTemplates) return 0;
+		const autoTemplates = backendTemplates.filter(template => {
+			const isAutomatic = template.kind === 'auto' || 
+				template.source === 'auto' || 
+				template.script_controlled === true ||
+				template.read_only === true ||
+				(template.scope === 'asset');
+			
+			const hasNonCompliantAssets = template.covered_assets && 
+				template.covered_assets.length > 0 &&
+				template.covered_assets.some((asset: any) => asset.status === 'no');
+			
+			return isAutomatic && hasNonCompliantAssets;
+		});
+		return autoTemplates.length;
+	});
+
 
 	// Handle scan discovery
 	async function handleScanDiscovery() {
@@ -413,8 +441,8 @@
 			console.log('Upload response:', response);
 			
 			// Reload templates after successful upload
-			await loadBackendTemplates();
-			await loadBackendGlobalChecklist();
+			await loadBackendTemplates(); // This now includes covered assets
+			await loadBackendGlobalChecklist(); // Still needed for manual view
 			
 			uploadSuccess = `Successfully uploaded ${templates.length} templates!`;
 			
@@ -436,8 +464,8 @@
 
 	onMount(async () => {
 		checklistState = loadChecklistState();
-		await loadBackendTemplates(); // Load templates from backend
-		await loadBackendGlobalChecklist(); // Load global checklist with asset coverage
+		await loadBackendTemplates(); // Load enhanced templates from backend (now with covered assets)
+		await loadBackendGlobalChecklist(); // Load global checklist (still needed for manual view)
 		
 		// Load assets and auto-open scan dialog if no assets exist
 		await assetStore.load();
@@ -553,16 +581,22 @@
 					<Tabs.Trigger 
 						value="manual"
 						onclick={() => activeView = 'manual'}
-						class="text-sm"
+						class="text-sm flex items-center gap-2"
 					>
-						Manual Templates
+						<span>Compliance Items</span>
+						<Badge variant="secondary" class="text-xs px-1 py-0 h-4 min-w-[16px]">
+							{manualTemplatesCount()}
+						</Badge>
 					</Tabs.Trigger>
 					<Tabs.Trigger 
 						value="scanner"
 						onclick={() => activeView = 'scanner'}
-						class="text-sm"
+						class="text-sm flex items-center gap-2"
 					>
-						Automatic Templates
+						<span>Scanned Issues</span>
+						<Badge variant="destructive" class="text-xs px-1 py-0 h-4 min-w-[16px]">
+							{nonCompliantIssuesCount()}
+						</Badge>
 					</Tabs.Trigger>
 				</Tabs.List>
 
@@ -607,13 +641,16 @@
 						</div>
 					{:else if displaySections().length > 0}
 						<Tabs.Root value={displaySections()[0]?.id} class="w-full">
-							<Tabs.List class="grid w-full grid-cols-3 lg:grid-cols-9 mb-8">
+							<Tabs.List class="flex w-full justify-between">
 								{#each displaySections() as section}
 									<Tabs.Trigger 
 										value={section.id}
-										class="text-xs p-1"
+										class="text-xs p-1 flex items-center gap-1"
 									>
-										{section.title.split(' ')[0]}
+										<span>{section.title.split(' ')[0]}</span>
+										<Badge variant="tertiary" class="text-xs px-1 py-0 h-4 min-w-[16px]">
+											{section.items.length}
+										</Badge>
 									</Tabs.Trigger>
 								{/each}
 							</Tabs.List>
@@ -658,32 +695,35 @@
 				<Tabs.Content value="scanner">
 					<Card.Root class="mb-6">
 					<Card.Header>
-							<Card.Title>Automatic Compliance Templates</Card.Title>
+							<Card.Title>Non-Compliant Automatic Templates</Card.Title>
 						<Card.Description>
-								Automated compliance checks that can be performed by the scanner
+								Automatic compliance checks that have failed and require attention
 						</Card.Description>
 					</Card.Header>
 					<Card.Content>
 							<div class="text-sm text-muted-foreground p-4 bg-muted/30 rounded-md">
-								<strong>Note:</strong> These are automatic compliance checks that can be verified by the scanner. You can also manually update their status if needed.
+								<strong>Note:</strong> Only showing automatic compliance checks that have non-compliant assets. These require immediate attention to ensure compliance.
 							</div>
 					</Card.Content>
 				</Card.Root>
 
-					{#if globalChecklistLoading || templatesLoading}
+					{#if templatesLoading}
 						<div class="flex items-center justify-center p-8">
 							<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
 							<span class="ml-2">Loading automatic templates...</span>
 						</div>
 					{:else if displaySections().length > 0}
 						<Tabs.Root value={displaySections()[0]?.id} class="w-full">
-							<Tabs.List class="grid w-full grid-cols-3 lg:grid-cols-9 mb-8">
+							<Tabs.List class="flex w-full justify-between">
 								{#each displaySections() as section}
 									<Tabs.Trigger 
 										value={section.id}
-										class="text-xs p-1"
+										class="text-xs p-1 flex items-center gap-1"
 									>
-										{section.title.split(' ')[0]}
+										<span>{section.title.split(' ')[0]}</span>
+										<Badge variant="destructive" class="text-xs px-1 py-0 h-4 min-w-[16px]">
+											{section.items.length}
+										</Badge>
 									</Tabs.Trigger>
 								{/each}
 							</Tabs.List>
@@ -712,16 +752,18 @@
 						</Tabs.Root>
 					{:else}
 						<div class="text-center p-8 text-muted-foreground">
-							<p>No automatic templates available. Please ensure the backend is running and templates are loaded.</p>
+							<p>No non-compliant automatic templates found. This means either:</p>
+							<ul class="mt-2 text-sm space-y-1">
+								<li>• All automatic compliance checks are passing</li>
+								<li>• No assets have been scanned yet</li>
+								<li>• No automatic templates are configured</li>
+							</ul>
 							<Button 
 								variant="outline" 
 								class="mt-4" 
-								onclick={() => {
-									loadBackendGlobalChecklist();
-									loadBackendTemplates();
-								}}
+								onclick={loadBackendTemplates}
 							>
-								Retry
+								Refresh
 							</Button>
 						</div>
 					{/if}

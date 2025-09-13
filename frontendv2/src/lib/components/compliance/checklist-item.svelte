@@ -248,7 +248,7 @@
 
 			{#if item.coveredAssets && item.coveredAssets.length > 0}
 				<div class="mt-4">
-					<h4 class="text-sm font-medium mb-3">Asset Coverage</h4>
+					<h4 class="text-sm font-medium mb-3">Coverage</h4>
 					<div class="space-y-2">
 						{#each item.coveredAssets as asset}
 							<div class="flex items-center justify-between p-3 bg-muted/30 rounded-md">
@@ -258,17 +258,14 @@
 									</Badge>
 									<span class="font-mono text-sm">{asset.asset_value}</span>
 									{#if asset.notes}
-										<span class="text-xs text-muted-foreground">- {asset.notes}</span>
+										<span class="text-xs text-muted-foreground">{asset.notes}</span>
 									{/if}
 								</div>
-								<Badge variant={asset.status === 'yes' ? 'default' : 'destructive'} class="text-xs">
-									{asset.status.toUpperCase()}
-								</Badge>
 							</div>
 						{/each}
 					</div>
 				</div>
-			{:else if item.kind === 'auto'}
+			{:else if item.kind === 'auto' && item.scope === 'asset'}
 				<div class="text-sm text-muted-foreground p-3 bg-muted/20 rounded-md">
 					No assets currently covered by this compliance check
 				</div>
