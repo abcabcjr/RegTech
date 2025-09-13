@@ -1,6 +1,6 @@
-import type { 
-	ModelDerivedChecklistItem, 
-	ModelChecklistItemTemplate, 
+import type {
+	ModelDerivedChecklistItem,
+	ModelChecklistItemTemplate,
 	ModelChecklistAssignment,
 	HandlerSetAssignmentRequest,
 	HandlerCreateTemplateRequest
@@ -76,14 +76,14 @@ export class ChecklistStore {
 				status: status,
 				notes: notes
 			});
-			
+
 			// Refresh the relevant checklist items
 			if (!assetId) {
 				await this.loadGlobal();
 			} else {
 				await this.loadAsset(assetId);
 			}
-			
+
 			return response.data;
 		} catch (error) {
 			console.error('Failed to set checklist status:', error);
@@ -95,10 +95,10 @@ export class ChecklistStore {
 	async createTemplate(template: HandlerCreateTemplateRequest) {
 		try {
 			const response = await apiClient.checklist.templatesCreate(template);
-			
+
 			// Refresh templates
 			await this.loadTemplates();
-			
+
 			return response.data;
 		} catch (error) {
 			console.error('Failed to create checklist template:', error);
@@ -112,11 +112,11 @@ export class ChecklistStore {
 			const response = await apiClient.checklist.templatesUploadCreate({
 				templates: templates
 			});
-			
+
 			// Refresh templates and global items (asset items will refresh when accessed)
 			await this.loadTemplates();
 			await this.loadGlobal();
-			
+
 			return response.data;
 		} catch (error) {
 			console.error('Failed to upload checklist templates:', error);

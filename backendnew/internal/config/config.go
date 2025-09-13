@@ -95,7 +95,7 @@ func NewConfigFromEnv() (*AppConfig, error) {
 			BackupInterval:  getEnvDuration("STORAGE_BACKUP_INTERVAL", 1*time.Hour),
 		},
 		Scanner: ScannerConfig{
-			ScriptsDir:        getEnvString("SCANNER_SCRIPTS_DIR", "./scripts"),
+			ScriptsDir:        getEnvString("SCANNER_SCRIPTS_DIR", "../scripts"),
 			MaxConcurrent:     getEnvInt("SCANNER_MAX_CONCURRENT", 10),
 			DefaultTimeout:    getEnvDuration("SCANNER_DEFAULT_TIMEOUT", 5*time.Minute),
 			EnableScriptCache: getEnvBool("SCANNER_ENABLE_SCRIPT_CACHE", true),

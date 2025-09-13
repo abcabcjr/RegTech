@@ -7,6 +7,15 @@ export interface InfoBlock {
   resources?: { title: string; url: string }[];
 }
 
+export interface AssetCoverage {
+  asset_id: string;
+  asset_type: string;
+  asset_value: string;
+  status: "yes" | "no";
+  notes?: string;
+  updated_at?: string;
+}
+
 export interface ChecklistItem {
   id: string;
   title: string;
@@ -23,6 +32,8 @@ export interface ChecklistItem {
   kind: 'manual' | 'auto';
   readOnly?: boolean;
   info?: InfoBlock;
+  notes?: string;
+  coveredAssets?: AssetCoverage[];
 }
 
 export interface ChecklistSection {

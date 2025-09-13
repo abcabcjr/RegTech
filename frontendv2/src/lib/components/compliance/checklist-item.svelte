@@ -71,6 +71,11 @@
 						Auto-scan
 					</Badge>
 				{/if}
+				{#if item.coveredAssets && item.coveredAssets.length > 0}
+					<Badge variant="outline">
+						{item.coveredAssets.length} asset{item.coveredAssets.length !== 1 ? 's' : ''}
+					</Badge>
+				{/if}
 				<Button 
 					variant="ghost" 
 					size="sm"
@@ -167,6 +172,34 @@
 						<p class="text-sm font-medium text-warning">Recommendation</p>
 						<p class="text-sm text-warning/80">{item.recommendation}</p>
 					</div>
+				</div>
+			{/if}
+
+			{#if item.coveredAssets && item.coveredAssets.length > 0}
+				<div class="mt-4">
+					<h4 class="text-sm font-medium mb-3">Asset Coverage</h4>
+					<div class="space-y-2">
+						{#each item.coveredAssets as asset}
+							<div class="flex items-center justify-between p-3 bg-muted/30 rounded-md">
+								<div class="flex items-center gap-3">
+									<Badge variant="outline" class="text-xs">
+										{asset.asset_type}
+									</Badge>
+									<span class="font-mono text-sm">{asset.asset_value}</span>
+									{#if asset.notes}
+										<span class="text-xs text-muted-foreground">- {asset.notes}</span>
+									{/if}
+								</div>
+								<Badge variant={asset.status === 'yes' ? 'default' : 'destructive'} class="text-xs">
+									{asset.status.toUpperCase()}
+								</Badge>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{:else if item.kind === 'auto'}
+				<div class="text-sm text-muted-foreground p-3 bg-muted/20 rounded-md">
+					No assets currently covered by this compliance check
 				</div>
 			{/if}
 

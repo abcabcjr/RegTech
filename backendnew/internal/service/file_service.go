@@ -49,7 +49,7 @@ func NewFileService(minioConfig *config.MinIOConfig, storage storage.Storage) (*
 	// Try to ensure bucket exists
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
+
 	if err := service.ensureBucket(ctx); err != nil {
 		log.Printf("Warning: Failed to ensure MinIO bucket exists: %v. File operations will be unavailable.", err)
 		return service, nil // Return service but mark as unavailable
@@ -352,11 +352,11 @@ func (fs *FileService) GetServiceStatus() map[string]interface{} {
 		"endpoint":  fs.config.Endpoint,
 		"bucket":    fs.config.BucketName,
 	}
-	
+
 	if !fs.available {
 		status["error"] = "MinIO service is not accessible"
 	}
-	
+
 	return status
 }
 

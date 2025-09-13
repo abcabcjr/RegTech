@@ -185,3 +185,25 @@ func (h *SimpleChecklistHandler) UploadTemplates(c echo.Context) error {
 		"count":   count,
 	})
 }
+
+// GetComplianceCoverageSummary returns a summary of compliance coverage across all assets
+// @Summary Get compliance coverage summary
+// @Description Get a summary of compliance coverage showing which assets are covered by compliance checks
+// @Tags checklist
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} v1.ErrorResponse
+// @Router /checklist/coverage/summary [get]
+func (h *SimpleChecklistHandler) GetComplianceCoverageSummary(c echo.Context) error {
+	summary, err := h.checklistService.GetComplianceCoverageSummary(c.Request().Context())
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, v1.ErrorResponse{
+			Error:   "Failed to get compliance coverage summary",
+			Code:    http.StatusInternalServerError,
+			Details: map[string]string{"error": err.Error()},
+		})
+	}
+
+	return c.JSON(http.StatusOK, summary)
+}

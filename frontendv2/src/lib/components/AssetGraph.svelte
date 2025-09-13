@@ -737,6 +737,13 @@
 		}
 	});
 
+	// Effect to reactively update selectedAssetDetails when store data changes
+	$effect(() => {
+		if (selectedAssetId) {
+			selectedAssetDetails = assetStore.assetDetails[selectedAssetId] || null;
+		}
+	});
+
 	// Effect to load checklist items when selected asset changes
 	$effect(() => {
 		if (selectedAsset) {
@@ -1038,8 +1045,11 @@
 <style>
 	.asset-graph-root {
 		position: fixed;
-		inset: 0;
-		width: 100vw;
+		top: 0;
+		left: 4rem; /* 64px sidebar width */
+		right: 0;
+		bottom: 0;
+		width: calc(100vw - 4rem);
 		height: 100vh;
 		overflow: hidden;
 		z-index: 0;

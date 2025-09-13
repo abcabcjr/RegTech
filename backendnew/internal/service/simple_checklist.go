@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -81,6 +82,19 @@ func (s *SimpleChecklistService) GetGlobalChecklist(ctx context.Context) ([]*mod
 		return globalItems[i].ID < globalItems[j].ID
 	})
 
+	// Populate covered assets for each global item
+	for _, item := range globalItems {
+		// Temporarily disable to debug
+		// coveredAssets, err := s.getCoveredAssets(ctx, item.ID, item.Scope)
+		// if err != nil {
+		// 	// Log error but don't fail the entire request
+		// 	fmt.Printf("Warning: Failed to get covered assets for %s: %v\n", item.ID, err)
+		// } else {
+		// 	item.CoveredAssets = coveredAssets
+		// }
+		item.CoveredAssets = []model.AssetCoverage{} // Empty for now
+	}
+
 	return globalItems, nil
 }
 
@@ -152,6 +166,19 @@ func (s *SimpleChecklistService) GetAssetChecklist(ctx context.Context, assetID 
 	sort.Slice(assetItems, func(i, j int) bool {
 		return assetItems[i].ID < assetItems[j].ID
 	})
+
+	// Populate covered assets for each asset item
+	for _, item := range assetItems {
+		// Temporarily disable to debug
+		// coveredAssets, err := s.getCoveredAssets(ctx, item.ID, item.Scope)
+		// if err != nil {
+		// 	// Log error but don't fail the entire request
+		// 	fmt.Printf("Warning: Failed to get covered assets for %s: %v\n", item.ID, err)
+		// } else {
+		// 	item.CoveredAssets = coveredAssets
+		// }
+		item.CoveredAssets = []model.AssetCoverage{} // Empty for now
+	}
 
 	return assetItems, nil
 }
@@ -329,4 +356,194 @@ func (s *SimpleChecklistService) ProcessScanResultsForChecklists(ctx context.Con
 	}
 
 	return nil
+}
+
+// getCoveredAssets returns assets that have compliance status (YES/NO) for a specific checklist item
+func (s *SimpleChecklistService) getCoveredAssets(ctx context.Context, itemID string, scope string) ([]model.AssetCoverage, error) {
+	// Get all assets
+	assets, err := s.storage.ListAssets(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get assets: %w", err)
+	}
+
+	// Get all checklist statuses
+	statuses, err := s.storage.ListChecklistStatuses(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get checklist statuses: %w", err)
+	}
+
+	// Get the template to check asset type compatibility
+	template, err := s.storage.GetChecklistTemplate(ctx, itemID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get checklist template: %w", err)
+	}
+
+	var coveredAssets []model.AssetCoverage
+
+	// For global items, we don't check individual assets, but we can show
+	// if there are any asset-specific overrides
+	if scope == model.ChecklistScopeGlobal {
+		// Check if any assets have specific status overrides for this global item
+		for _, asset := range assets {
+			key := model.AssetChecklistKey(asset.ID, itemID)
+			if status, exists := statuses[key]; exists {
+				// Only include assets with YES/NO status (not N/A)
+				if status.Status == model.ChecklistStatusYes || status.Status == model.ChecklistStatusNo {
+					coveredAssets = append(coveredAssets, model.AssetCoverage{
+						AssetID:    asset.ID,
+						AssetType:  asset.Type,
+						AssetValue: asset.Value,
+						Status:     status.Status,
+						Notes:      status.Notes,
+						UpdatedAt:  &status.UpdatedAt,
+					})
+				}
+			}
+		}
+	} else {
+		// For asset-scoped items, check all compatible assets
+		for _, asset := range assets {
+			// Check if this template applies to this asset type
+			if s.templateAppliesToAsset(template, asset.Type) {
+				key := model.AssetChecklistKey(asset.ID, itemID)
+				if status, exists := statuses[key]; exists {
+					// Only include assets with YES/NO status (not N/A)
+					if status.Status == model.ChecklistStatusYes || status.Status == model.ChecklistStatusNo {
+						coveredAssets = append(coveredAssets, model.AssetCoverage{
+							AssetID:    asset.ID,
+							AssetType:  asset.Type,
+							AssetValue: asset.Value,
+							Status:     status.Status,
+							Notes:      status.Notes,
+							UpdatedAt:  &status.UpdatedAt,
+						})
+					}
+				} else {
+					// Check if there's script-controlled status
+					scriptStatus := s.getScriptControlledStatus(ctx, itemID, asset.ID)
+					if scriptStatus != nil && (scriptStatus.Status == model.ChecklistStatusYes || scriptStatus.Status == model.ChecklistStatusNo) {
+						coveredAssets = append(coveredAssets, model.AssetCoverage{
+							AssetID:    asset.ID,
+							AssetType:  asset.Type,
+							AssetValue: asset.Value,
+							Status:     scriptStatus.Status,
+							Notes:      scriptStatus.Reason,
+							UpdatedAt:  &scriptStatus.UpdatedAt,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	// Sort by asset type then by asset value for consistent ordering
+	sort.Slice(coveredAssets, func(i, j int) bool {
+		if coveredAssets[i].AssetType != coveredAssets[j].AssetType {
+			return coveredAssets[i].AssetType < coveredAssets[j].AssetType
+		}
+		return coveredAssets[i].AssetValue < coveredAssets[j].AssetValue
+	})
+
+	return coveredAssets, nil
+}
+
+// GetComplianceCoverageSummary returns a summary of compliance coverage across all assets
+func (s *SimpleChecklistService) GetComplianceCoverageSummary(ctx context.Context) (map[string]interface{}, error) {
+	// Get all assets
+	assets, err := s.storage.ListAssets(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get assets: %w", err)
+	}
+
+	// Get all templates
+	templates, err := s.storage.ListChecklistTemplates(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get checklist templates: %w", err)
+	}
+
+	// Get all statuses
+	statuses, err := s.storage.ListChecklistStatuses(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get checklist statuses: %w", err)
+	}
+
+	summary := map[string]interface{}{
+		"total_assets":                len(assets),
+		"total_compliance_checks":     len(templates),
+		"assets_with_compliance_data": 0,
+		"coverage_by_asset_type":      make(map[string]interface{}),
+		"coverage_by_check":           make(map[string]interface{}),
+	}
+
+	// Track assets with compliance data
+	assetsWithData := make(map[string]bool)
+
+	// Coverage by asset type
+	assetTypeCoverage := make(map[string]map[string]int)
+
+	// Coverage by check
+	checkCoverage := make(map[string]map[string]int)
+
+	// Initialize coverage maps
+	for _, template := range templates {
+		checkCoverage[template.ID] = map[string]int{
+			"yes_count":        0,
+			"no_count":         0,
+			"total_applicable": 0,
+		}
+	}
+
+	// Count compliance statuses
+	for key, status := range statuses {
+		if status.Status == model.ChecklistStatusYes || status.Status == model.ChecklistStatusNo {
+			// Extract asset ID and check ID from key
+			if strings.HasPrefix(key, "asset:") {
+				parts := strings.Split(key, ":")
+				if len(parts) >= 3 {
+					assetID := parts[1]
+					checkID := parts[2]
+
+					// Find the asset
+					for _, asset := range assets {
+						if asset.ID == assetID {
+							assetsWithData[assetID] = true
+
+							// Update asset type coverage
+							if assetTypeCoverage[asset.Type] == nil {
+								assetTypeCoverage[asset.Type] = map[string]int{
+									"yes_count":    0,
+									"no_count":     0,
+									"total_checks": 0,
+								}
+							}
+
+							assetTypeCoverage[asset.Type]["total_checks"]++
+							if status.Status == model.ChecklistStatusYes {
+								assetTypeCoverage[asset.Type]["yes_count"]++
+							} else {
+								assetTypeCoverage[asset.Type]["no_count"]++
+							}
+
+							// Update check coverage
+							if checkCoverage[checkID] != nil {
+								checkCoverage[checkID]["total_applicable"]++
+								if status.Status == model.ChecklistStatusYes {
+									checkCoverage[checkID]["yes_count"]++
+								} else {
+									checkCoverage[checkID]["no_count"]++
+								}
+							}
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
+	summary["assets_with_compliance_data"] = len(assetsWithData)
+	summary["coverage_by_asset_type"] = assetTypeCoverage
+	summary["coverage_by_check"] = checkCoverage
+
+	return summary, nil
 }

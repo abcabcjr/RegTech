@@ -144,6 +144,7 @@ func main() {
 	apiV1.POST("/checklist/status", simpleChecklistHandler.SetStatus)
 	apiV1.GET("/checklist/templates", simpleChecklistHandler.ListTemplates)
 	apiV1.POST("/checklist/templates/upload", simpleChecklistHandler.UploadTemplates)
+	apiV1.GET("/checklist/coverage/summary", simpleChecklistHandler.GetComplianceCoverageSummary)
 
 	// File upload/download routes
 	apiV1.POST("/files/upload/initiate", filesHandler.InitiateUpload)

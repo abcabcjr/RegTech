@@ -1,5 +1,28 @@
 basePath: /
 definitions:
+  handler.InitiateUploadRequest:
+    properties:
+      checklist_key:
+        example: global:item1
+        type: string
+      content_type:
+        example: application/pdf
+        type: string
+      description:
+        example: Evidence for compliance check
+        type: string
+      file_name:
+        example: evidence.pdf
+        type: string
+      file_size:
+        example: 1024
+        minimum: 1
+        type: integer
+    required:
+    - checklist_key
+    - file_name
+    - file_size
+    type: object
   handler.SetStatusRequest:
     properties:
       asset_id:
@@ -30,6 +53,22 @@ definitions:
         items:
           $ref: '#/definitions/model.ChecklistItemTemplate'
         type: array
+    type: object
+  model.AssetCoverage:
+    properties:
+      asset_id:
+        type: string
+      asset_type:
+        type: string
+      asset_value:
+        type: string
+      notes:
+        type: string
+      status:
+        description: '"yes", "no" (excludes "na")'
+        type: string
+      updated_at:
+        type: string
     type: object
   model.ChecklistItemTemplate:
     properties:
@@ -69,8 +108,18 @@ definitions:
         items:
           type: string
         type: array
+      attachments:
+        description: File attachment IDs
+        items:
+          type: string
+        type: array
       category:
         type: string
+      covered_assets:
+        description: Assets covered by this check
+        items:
+          $ref: '#/definitions/model.AssetCoverage'
+        type: array
       description:
         type: string
       evidence:
@@ -122,6 +171,96 @@ definitions:
         type: string
       value:
         description: Value for "eq", "regex", "gte_days_since"
+    type: object
+  model.FileAttachment:
+    properties:
+      asset_id:
+        description: 'Optional: links to specific asset'
+        type: string
+      bucket_name:
+        description: Storage metadata
+        type: string
+      checklist_key:
+        description: Compliance context
+        type: string
+      content_type:
+        type: string
+      description:
+        type: string
+      error:
+        description: Error message if status is "failed"
+        type: string
+      etag:
+        description: MinIO ETag for integrity
+        type: string
+      file_name:
+        type: string
+      file_size:
+        type: integer
+      id:
+        type: string
+      object_key:
+        description: Full path in MinIO
+        type: string
+      original_name:
+        type: string
+      status:
+        description: Status
+        type: string
+      uploaded_at:
+        type: string
+      uploaded_by:
+        description: 'Future: user identification'
+        type: string
+    type: object
+  model.FileAttachmentSummary:
+    properties:
+      content_type:
+        type: string
+      description:
+        type: string
+      file_name:
+        type: string
+      file_size:
+        type: integer
+      id:
+        type: string
+      original_name:
+        type: string
+      status:
+        type: string
+      uploaded_at:
+        type: string
+    type: object
+  model.PresignedDownloadResponse:
+    properties:
+      content_type:
+        type: string
+      download_url:
+        type: string
+      expires_at:
+        type: string
+      file_name:
+        type: string
+      file_size:
+        type: integer
+    type: object
+  model.PresignedUploadResponse:
+    properties:
+      expires_at:
+        type: string
+      fields:
+        additionalProperties:
+          type: string
+        description: Additional form fields for POST uploads
+        type: object
+      file_id:
+        type: string
+      method:
+        description: '"PUT" or "POST"'
+        type: string
+      upload_url:
+        type: string
     type: object
   v1.AssetCatalogueResponse:
     properties:
@@ -630,6 +769,27 @@ paths:
       summary: Get asset-specific checklist items
       tags:
       - checklist
+  /checklist/coverage/summary:
+    get:
+      consumes:
+      - application/json
+      description: Get a summary of compliance coverage showing which assets are covered
+        by compliance checks
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Get compliance coverage summary
+      tags:
+      - checklist
   /checklist/global:
     get:
       consumes:
@@ -737,6 +897,236 @@ paths:
       summary: Upload checklist templates from JSON
       tags:
       - checklist
+  /files:
+    get:
+      description: List all file attachments for a specific checklist key
+      parameters:
+      - description: Checklist key (e.g., global:item1 or asset:assetId:item1)
+        in: query
+        name: checklistKey
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.FileAttachmentSummary'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: List file attachments
+      tags:
+      - files
+  /files/{fileId}:
+    delete:
+      description: Delete a file attachment and remove it from MinIO storage
+      parameters:
+      - description: File ID
+        in: path
+        name: fileId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Delete file attachment
+      tags:
+      - files
+    get:
+      description: Get metadata for a file attachment
+      parameters:
+      - description: File ID
+        in: path
+        name: fileId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.FileAttachment'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Get file information
+      tags:
+      - files
+  /files/{fileId}/confirm:
+    post:
+      consumes:
+      - application/json
+      description: Verify that a file upload was completed and update the file status
+      parameters:
+      - description: File ID
+        in: path
+        name: fileId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Confirm file upload
+      tags:
+      - files
+  /files/{fileId}/download:
+    get:
+      description: Generate a pre-signed download URL for a file attachment
+      parameters:
+      - description: File ID
+        in: path
+        name: fileId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.PresignedDownloadResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Generate download URL
+      tags:
+      - files
+  /files/limits:
+    get:
+      description: Get information about file upload limits and restrictions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get upload limits
+      tags:
+      - files
+  /files/status:
+    get:
+      description: Get the current status of the MinIO file upload service
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get file service status
+      tags:
+      - files
+  /files/supported-types:
+    get:
+      description: Get the list of content types that are supported for file uploads
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get supported content types
+      tags:
+      - files
+  /files/upload/initiate:
+    post:
+      consumes:
+      - application/json
+      description: Create a file attachment record and get a pre-signed upload URL
+      parameters:
+      - description: Upload initiation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.InitiateUploadRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.PresignedUploadResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Initiate file upload
+      tags:
+      - files
   /health:
     get:
       description: Check if the service is healthy

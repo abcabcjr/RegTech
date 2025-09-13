@@ -10,6 +10,22 @@
  * ---------------------------------------------------------------
  */
 
+export interface HandlerInitiateUploadRequest {
+  /** @example "global:item1" */
+  checklist_key: string;
+  /** @example "application/pdf" */
+  content_type?: string;
+  /** @example "Evidence for compliance check" */
+  description?: string;
+  /** @example "evidence.pdf" */
+  file_name: string;
+  /**
+   * @min 1
+   * @example 1024
+   */
+  file_size: number;
+}
+
 export interface HandlerSetStatusRequest {
   /**
    * Asset ID (empty for global items)
@@ -38,6 +54,16 @@ export interface HandlerUploadTemplatesRequest {
   templates?: ModelChecklistItemTemplate[];
 }
 
+export interface ModelAssetCoverage {
+  asset_id?: string;
+  asset_type?: string;
+  asset_value?: string;
+  notes?: string;
+  /** "yes", "no" (excludes "na") */
+  status?: string;
+  updated_at?: string;
+}
+
 export interface ModelChecklistItemTemplate {
   /** Applicable asset types if scope is "asset" */
   asset_types?: string[];
@@ -58,7 +84,11 @@ export interface ModelChecklistItemTemplate {
 export interface ModelDerivedChecklistItem {
   /** Applicable asset types if scope is "asset" */
   asset_types?: string[];
+  /** File attachment IDs */
+  attachments?: string[];
   category?: string;
+  /** Assets covered by this check */
+  covered_assets?: ModelAssetCoverage[];
   description?: string;
   /** Relevant metadata for auto-derived status */
   evidence?: Record<string, any>;
@@ -91,6 +121,61 @@ export interface ModelEvidenceRule {
   source?: string;
   /** Value for "eq", "regex", "gte_days_since" */
   value?: any;
+}
+
+export interface ModelFileAttachment {
+  /** Optional: links to specific asset */
+  asset_id?: string;
+  /** Storage metadata */
+  bucket_name?: string;
+  /** Compliance context */
+  checklist_key?: string;
+  content_type?: string;
+  description?: string;
+  /** Error message if status is "failed" */
+  error?: string;
+  /** MinIO ETag for integrity */
+  etag?: string;
+  file_name?: string;
+  file_size?: number;
+  id?: string;
+  /** Full path in MinIO */
+  object_key?: string;
+  original_name?: string;
+  /** Status */
+  status?: string;
+  uploaded_at?: string;
+  /** Future: user identification */
+  uploaded_by?: string;
+}
+
+export interface ModelFileAttachmentSummary {
+  content_type?: string;
+  description?: string;
+  file_name?: string;
+  file_size?: number;
+  id?: string;
+  original_name?: string;
+  status?: string;
+  uploaded_at?: string;
+}
+
+export interface ModelPresignedDownloadResponse {
+  content_type?: string;
+  download_url?: string;
+  expires_at?: string;
+  file_name?: string;
+  file_size?: number;
+}
+
+export interface ModelPresignedUploadResponse {
+  expires_at?: string;
+  /** Additional form fields for POST uploads */
+  fields?: Record<string, string>;
+  file_id?: string;
+  /** "PUT" or "POST" */
+  method?: string;
+  upload_url?: string;
 }
 
 export interface V1AssetCatalogueResponse {
@@ -620,6 +705,23 @@ export class Api<
       }),
 
     /**
+     * @description Get a summary of compliance coverage showing which assets are covered by compliance checks
+     *
+     * @tags checklist
+     * @name CoverageSummaryList
+     * @summary Get compliance coverage summary
+     * @request GET:/checklist/coverage/summary
+     */
+    coverageSummaryList: (params: RequestParams = {}) =>
+      this.request<Record<string, any>, V1ErrorResponse>({
+        path: `/checklist/coverage/summary`,
+        method: "GET",
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Retrieve all global checklist items with their current status
      *
      * @tags checklist
@@ -691,6 +793,164 @@ export class Api<
         method: "POST",
         body: request,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+  };
+  files = {
+    /**
+     * @description List all file attachments for a specific checklist key
+     *
+     * @tags files
+     * @name FilesList
+     * @summary List file attachments
+     * @request GET:/files
+     */
+    filesList: (
+      query: {
+        /** Checklist key (e.g., global:item1 or asset:assetId:item1) */
+        checklistKey: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<ModelFileAttachmentSummary[], V1ErrorResponse>({
+        path: `/files`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get information about file upload limits and restrictions
+     *
+     * @tags files
+     * @name LimitsList
+     * @summary Get upload limits
+     * @request GET:/files/limits
+     */
+    limitsList: (params: RequestParams = {}) =>
+      this.request<Record<string, any>, any>({
+        path: `/files/limits`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get the current status of the MinIO file upload service
+     *
+     * @tags files
+     * @name StatusList
+     * @summary Get file service status
+     * @request GET:/files/status
+     */
+    statusList: (params: RequestParams = {}) =>
+      this.request<Record<string, any>, any>({
+        path: `/files/status`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get the list of content types that are supported for file uploads
+     *
+     * @tags files
+     * @name SupportedTypesList
+     * @summary Get supported content types
+     * @request GET:/files/supported-types
+     */
+    supportedTypesList: (params: RequestParams = {}) =>
+      this.request<Record<string, any>, any>({
+        path: `/files/supported-types`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a file attachment record and get a pre-signed upload URL
+     *
+     * @tags files
+     * @name UploadInitiateCreate
+     * @summary Initiate file upload
+     * @request POST:/files/upload/initiate
+     */
+    uploadInitiateCreate: (
+      request: HandlerInitiateUploadRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<ModelPresignedUploadResponse, V1ErrorResponse>({
+        path: `/files/upload/initiate`,
+        method: "POST",
+        body: request,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get metadata for a file attachment
+     *
+     * @tags files
+     * @name FilesDetail
+     * @summary Get file information
+     * @request GET:/files/{fileId}
+     */
+    filesDetail: (fileId: string, params: RequestParams = {}) =>
+      this.request<ModelFileAttachment, V1ErrorResponse>({
+        path: `/files/${fileId}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Delete a file attachment and remove it from MinIO storage
+     *
+     * @tags files
+     * @name FilesDelete
+     * @summary Delete file attachment
+     * @request DELETE:/files/{fileId}
+     */
+    filesDelete: (fileId: string, params: RequestParams = {}) =>
+      this.request<Record<string, string>, V1ErrorResponse>({
+        path: `/files/${fileId}`,
+        method: "DELETE",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Verify that a file upload was completed and update the file status
+     *
+     * @tags files
+     * @name ConfirmCreate
+     * @summary Confirm file upload
+     * @request POST:/files/{fileId}/confirm
+     */
+    confirmCreate: (fileId: string, params: RequestParams = {}) =>
+      this.request<Record<string, string>, V1ErrorResponse>({
+        path: `/files/${fileId}/confirm`,
+        method: "POST",
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Generate a pre-signed download URL for a file attachment
+     *
+     * @tags files
+     * @name DownloadList
+     * @summary Generate download URL
+     * @request GET:/files/{fileId}/download
+     */
+    downloadList: (fileId: string, params: RequestParams = {}) =>
+      this.request<ModelPresignedDownloadResponse, V1ErrorResponse>({
+        path: `/files/${fileId}/download`,
+        method: "GET",
         format: "json",
         ...params,
       }),

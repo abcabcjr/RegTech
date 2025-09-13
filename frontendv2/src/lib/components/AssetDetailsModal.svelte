@@ -81,13 +81,15 @@
 		return { percentage, passed, total, na };
 	}
 
-	// Get sorted scan results
-	function getSortedScanResults(): V1ScanResult[] {
-		if (!assetDetails?.scan_results) return [];
-		return [...assetDetails.scan_results].sort((a, b) => 
+	// Get sorted scan results - use reactive store data instead of prop
+	let sortedScanResults = $derived(() => {
+		if (!asset?.id) return [];
+		const details = assetStore.assetDetails[asset.id];
+		if (!details?.scan_results) return [];
+		return [...details.scan_results].sort((a, b) => 
 			new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime()
 		);
-	}
+	});
 
 	// Format date
 	function formatDate(dateString: string | undefined): string {
@@ -138,7 +140,7 @@
 		}
 	}
 
-	let recentScans = $derived(getSortedScanResults().slice(0, 5));
+	let recentScans = $derived(sortedScanResults().slice(0, 5));
 </script>
 
 <style>
@@ -213,7 +215,7 @@
 						</Tabs.Trigger>
 						<Tabs.Trigger value="scans" class="flex items-center gap-2">
 							<Terminal class="w-4 h-4" />
-							Scan Results ({getSortedScanResults().length})
+							Scan Results ({sortedScanResults().length})
 						</Tabs.Trigger>
 						<Tabs.Trigger value="details" class="flex items-center gap-2">
 							<FileText class="w-4 h-4" />
@@ -460,7 +462,7 @@
 
 					<!-- Scan Results Tab -->
 					<Tabs.Content value="scans" class="flex-1 p-6 overflow-auto">
-						{@const scanResults = getSortedScanResults()}
+						{@const scanResults = sortedScanResults()}
 						{#if scanResults.length > 0}
 							<div class="space-y-4">
 								{#each scanResults as result}
