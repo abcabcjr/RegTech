@@ -68,13 +68,17 @@
 
 	// Calculate compliance progress
 	function getComplianceProgress() {
-		if (!checklistItems.length) return { percentage: 0, passed: 0, total: 0 };
+		if (!checklistItems.length) return { percentage: 100, passed: 0, total: 0, na: 0 };
 		
 		const passed = checklistItems.filter(item => item.status === 'yes').length;
-		const total = checklistItems.length;
-		const percentage = Math.round((passed / total) * 100);
+		const failed = checklistItems.filter(item => item.status === 'no').length;
+		const na = checklistItems.filter(item => item.status === 'na').length;
+		const total = passed + failed; // Only count applicable checks (exclude N/A)
 		
-		return { percentage, passed, total };
+		// If all checks are N/A, show 100% (fully compliant for applicable checks)
+		const percentage = total > 0 ? Math.round((passed / total) * 100) : 100;
+		
+		return { percentage, passed, total, na };
 	}
 
 	// Get sorted scan results
@@ -117,6 +121,20 @@
 	function handleRefresh() {
 		if (asset) {
 			assetStore.loadAssetDetails(asset.id);
+		}
+	}
+
+	// Handle checklist status update
+	async function updateChecklistStatus(itemId: string, status: 'yes' | 'no' | 'na') {
+		if (!asset) return;
+		
+		try {
+			await checklistStore.setStatus(itemId, asset.id, status, '');
+			// Refresh checklist items
+			const updatedItems = await checklistStore.getAssetItems(asset.id);
+			checklistItems = updatedItems;
+		} catch (error) {
+			console.error('Failed to update checklist status:', error);
 		}
 	}
 
@@ -222,12 +240,36 @@
 											<div class="space-y-4">
 												<div class="flex items-center justify-between">
 													<span class="text-sm font-medium">Overall Progress</span>
-													<span class="text-sm text-gray-600">{progress.passed}/{progress.total} checks passed</span>
+													<span class="text-sm text-gray-600">
+														{#if progress.total > 0}
+															{progress.passed}/{progress.total} applicable checks passed
+														{:else if progress.na > 0}
+															All {progress.na} checks are N/A
+														{:else}
+															No checks found
+														{/if}
+													</span>
 												</div>
 												<Progress value={progress.percentage} class="h-2" />
 												<div class="flex justify-between text-xs text-gray-600">
-													<span>{progress.percentage}% Complete</span>
-													<span>{progress.total - progress.passed} remaining</span>
+													<span>
+														{#if progress.total > 0}
+															{progress.percentage}% Complete
+														{:else if progress.na > 0}
+															All N/A (100%)
+														{:else}
+															No applicable checks
+														{/if}
+													</span>
+													<span>
+														{#if progress.total > 0}
+															{progress.total - progress.passed} remaining{progress.na > 0 ? `, ${progress.na} N/A` : ''}
+														{:else if progress.na > 0}
+															{progress.na} not applicable
+														{:else}
+															-
+														{/if}
+													</span>
 												</div>
 											</div>
 										</Card.Content>
@@ -344,22 +386,56 @@
 															<Badge variant="destructive" class="text-xs">Required</Badge>
 														{/if}
 													</div>
-													{#if item.description}
-														<p class="text-sm text-gray-600 mb-2">{item.description}</p>
-													{/if}
-													{#if item.notes}
-														<div class="text-sm mb-2">
-															<span class="font-medium text-gray-700">Notes:</span>
-															<span class="text-gray-600">{item.notes}</span>
-														</div>
-													{/if}
-													{#if item.recommendation}
-														<div class="text-sm">
-															<span class="font-medium text-gray-700">Recommendation:</span>
-															<span class="text-gray-600">{item.recommendation}</span>
-														</div>
-													{/if}
 												</div>
+												
+												{#if item.source === 'manual'}
+													<div class="flex gap-1 flex-shrink-0">
+														<Button 
+															size="sm" 
+															variant={item.status === 'yes' ? 'default' : 'outline'}
+															onclick={() => updateChecklistStatus(item.id || '', 'yes')}
+															class="px-2 py-1 text-xs"
+														>
+															<CheckCircle class="w-3 h-3 mr-1" />
+															Yes
+														</Button>
+														<Button 
+															size="sm" 
+															variant={item.status === 'no' ? 'default' : 'outline'}
+															onclick={() => updateChecklistStatus(item.id || '', 'no')}
+															class="px-2 py-1 text-xs"
+														>
+															<XCircle class="w-3 h-3 mr-1" />
+															No
+														</Button>
+														<Button 
+															size="sm" 
+															variant={item.status === 'na' ? 'default' : 'outline'}
+															onclick={() => updateChecklistStatus(item.id || '', 'na')}
+															class="px-2 py-1 text-xs"
+														>
+															<AlertCircle class="w-3 h-3 mr-1" />
+															N/A
+														</Button>
+													</div>
+												{/if}
+											</div>
+											<div class="flex-1">
+												{#if item.description}
+													<p class="text-sm text-gray-600 mb-2">{item.description}</p>
+												{/if}
+												{#if item.notes}
+													<div class="text-sm mb-2">
+														<span class="font-medium text-gray-700">Notes:</span>
+														<span class="text-gray-600">{item.notes}</span>
+													</div>
+												{/if}
+												{#if item.recommendation}
+													<div class="text-sm">
+														<span class="font-medium text-gray-700">Recommendation:</span>
+														<span class="text-gray-600">{item.recommendation}</span>
+													</div>
+												{/if}
 											</div>
 											{#if item.evidence && Object.keys(item.evidence).length > 0}
 												<details class="mt-3">

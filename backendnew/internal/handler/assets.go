@@ -20,24 +20,31 @@ import (
 
 // AssetsHandler handles asset-related endpoints
 type AssetsHandler struct {
-	storage         storage.Storage
-	scanner         *scanner.LuaScanner
-	reconService    *recon.ReconService
-	enableScanning  bool
-	enableStreaming bool
-	jobs            map[string]*model.Job
-	jobsMu          sync.RWMutex
+	storage          storage.Storage
+	scanner          *scanner.LuaScanner
+	reconService     *recon.ReconService
+	checklistService ChecklistService
+	enableScanning   bool
+	enableStreaming  bool
+	jobs             map[string]*model.Job
+	jobsMu           sync.RWMutex
+}
+
+// ChecklistService interface for processing checklist updates
+type ChecklistService interface {
+	ProcessScanResultsForChecklists(ctx context.Context, assetID string, scanResults []*model.ScanResult) error
 }
 
 // NewAssetsHandler creates a new assets handler
-func NewAssetsHandler(storage storage.Storage, scanner *scanner.LuaScanner, reconService *recon.ReconService, enableScanning, enableStreaming bool) *AssetsHandler {
+func NewAssetsHandler(storage storage.Storage, scanner *scanner.LuaScanner, reconService *recon.ReconService, checklistService ChecklistService, enableScanning, enableStreaming bool) *AssetsHandler {
 	return &AssetsHandler{
-		storage:         storage,
-		scanner:         scanner,
-		reconService:    reconService,
-		enableScanning:  enableScanning,
-		enableStreaming: enableStreaming,
-		jobs:            make(map[string]*model.Job),
+		storage:          storage,
+		scanner:          scanner,
+		reconService:     reconService,
+		checklistService: checklistService,
+		enableScanning:   enableScanning,
+		enableStreaming:  enableStreaming,
+		jobs:             make(map[string]*model.Job),
 	}
 }
 
@@ -771,6 +778,14 @@ func (h *AssetsHandler) runAssetScan(jobID string, asset *model.Asset, scriptNam
 	}
 	h.storage.UpdateAsset(ctx, asset)
 
+	// Process checklist updates from scan results
+	if h.checklistService != nil {
+		err := h.checklistService.ProcessScanResultsForChecklists(ctx, asset.ID, results)
+		if err != nil {
+			fmt.Printf("[AssetsHandler] Warning: Failed to process checklist updates for asset %s: %v\n", asset.ID, err)
+		}
+	}
+
 	// Update job
 	job, _ := h.storage.GetJob(ctx, jobID)
 	job.Status = model.JobStatusCompleted
@@ -834,6 +849,14 @@ func (h *AssetsHandler) runAllAssetsScan(jobID string, assets []*model.Asset, sc
 				asset.LastScannedAt = &now
 				for _, result := range results {
 					asset.ScanResults = append(asset.ScanResults, *result)
+				}
+
+				// Process checklist updates from scan results
+				if h.checklistService != nil {
+					err := h.checklistService.ProcessScanResultsForChecklists(ctx, asset.ID, results)
+					if err != nil {
+						fmt.Printf("[AssetsHandler] Warning: Failed to process checklist updates for asset %s: %v\n", asset.ID, err)
+					}
 				}
 			}
 
