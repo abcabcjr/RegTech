@@ -40,11 +40,12 @@ type ChecklistAssignment struct {
 // This is not stored directly but computed on-the-fly for API responses
 type DerivedChecklistItem struct {
 	ChecklistItemTemplate
-	Status    string                 `json:"status"`               // "yes", "no", "na"
-	Source    string                 `json:"source"`               // "auto" or "manual"
-	Evidence  map[string]interface{} `json:"evidence,omitempty"`   // Relevant metadata for auto-derived status
-	Notes     string                 `json:"notes,omitempty"`      // From manual assignment
-	UpdatedAt *time.Time             `json:"updated_at,omitempty"` // From manual assignment
+	Status      string                 `json:"status"`                // "yes", "no", "na"
+	Source      string                 `json:"source"`                // "auto" or "manual"
+	Evidence    map[string]interface{} `json:"evidence,omitempty"`    // Relevant metadata for auto-derived status
+	Notes       string                 `json:"notes,omitempty"`       // From manual assignment
+	UpdatedAt   *time.Time             `json:"updated_at,omitempty"`  // From manual assignment
+	Attachments []string               `json:"attachments,omitempty"` // File attachment IDs
 }
 
 // Constants for ChecklistItemTemplate Scope

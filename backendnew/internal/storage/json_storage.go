@@ -23,6 +23,7 @@ type JSONStorage struct {
 	scripts            map[string]*model.Script
 	checklistTemplates map[string]*model.ChecklistItemTemplate
 	checklistStatuses  map[string]*model.SimpleChecklistStatus
+	fileAttachments    map[string]*model.FileAttachment
 	lastBackup         *time.Time
 }
 
@@ -36,6 +37,7 @@ func NewJSONStorage(cfg *config.StorageConfig) (*JSONStorage, error) {
 		scripts:            make(map[string]*model.Script),
 		checklistTemplates: make(map[string]*model.ChecklistItemTemplate),
 		checklistStatuses:  make(map[string]*model.SimpleChecklistStatus),
+		fileAttachments:    make(map[string]*model.FileAttachment),
 	}
 
 	// Create data directory if it doesn't exist
@@ -506,11 +508,12 @@ func (s *JSONStorage) GetStats() (*StorageStats, error) {
 	}
 
 	return &StorageStats{
-		AssetCount:      int64(len(s.assets)),
-		JobCount:        int64(len(s.jobs)),
-		ScanResultCount: int64(len(s.scanResults)),
-		ScriptCount:     int64(len(s.scripts)),
-		LastBackup:      lastBackupStr,
+		AssetCount:          int64(len(s.assets)),
+		JobCount:            int64(len(s.jobs)),
+		ScanResultCount:     int64(len(s.scanResults)),
+		ScriptCount:         int64(len(s.scripts)),
+		FileAttachmentCount: int64(len(s.fileAttachments)),
+		LastBackup:          lastBackupStr,
 	}, nil
 }
 
@@ -532,7 +535,10 @@ func (s *JSONStorage) loadData() error {
 	if err := s.loadChecklistTemplates(); err != nil {
 		return err
 	}
-	return s.loadChecklistStatuses()
+	if err := s.loadChecklistStatuses(); err != nil {
+		return err
+	}
+	return s.loadFileAttachments()
 }
 
 func (s *JSONStorage) loadAssets() error {
@@ -565,6 +571,11 @@ func (s *JSONStorage) loadChecklistStatuses() error {
 	return s.loadJSONFile(filePath, &s.checklistStatuses)
 }
 
+func (s *JSONStorage) loadFileAttachments() error {
+	filePath := filepath.Join(s.config.DataDir, "file_attachments.json")
+	return s.loadJSONFile(filePath, &s.fileAttachments)
+}
+
 func (s *JSONStorage) saveAssets() error {
 	filePath := filepath.Join(s.config.DataDir, s.config.AssetsFile)
 	return s.saveJSONFile(filePath, s.assets)
@@ -595,6 +606,11 @@ func (s *JSONStorage) saveChecklistStatuses() error {
 	return s.saveJSONFile(filePath, s.checklistStatuses)
 }
 
+func (s *JSONStorage) saveFileAttachments() error {
+	filePath := filepath.Join(s.config.DataDir, "file_attachments.json")
+	return s.saveJSONFile(filePath, s.fileAttachments)
+}
+
 func (s *JSONStorage) saveAll() error {
 	if err := s.saveAssets(); err != nil {
 		return err
@@ -611,7 +627,10 @@ func (s *JSONStorage) saveAll() error {
 	if err := s.saveChecklistTemplates(); err != nil {
 		return err
 	}
-	return s.saveChecklistStatuses()
+	if err := s.saveChecklistStatuses(); err != nil {
+		return err
+	}
+	return s.saveFileAttachments()
 }
 
 func (s *JSONStorage) loadJSONFile(filePath string, data interface{}) error {
@@ -742,4 +761,86 @@ func (s *JSONStorage) ClearAllAssets(ctx context.Context) error {
 
 	fmt.Printf("[JSONStorage] Cleared all assets from storage\n")
 	return nil
+}
+
+// File attachment operations
+
+// CreateFileAttachment creates a new file attachment
+func (s *JSONStorage) CreateFileAttachment(ctx context.Context, attachment *model.FileAttachment) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.fileAttachments[attachment.ID]; exists {
+		return errors.NewConflict(fmt.Sprintf("File attachment with ID %s already exists", attachment.ID))
+	}
+
+	s.fileAttachments[attachment.ID] = attachment
+	return s.saveFileAttachments()
+}
+
+// GetFileAttachment retrieves a file attachment by ID
+func (s *JSONStorage) GetFileAttachment(ctx context.Context, id string) (*model.FileAttachment, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	attachment, exists := s.fileAttachments[id]
+	if !exists {
+		return nil, errors.NewNotFound(fmt.Sprintf("File attachment with ID %s not found", id))
+	}
+
+	return attachment, nil
+}
+
+// UpdateFileAttachment updates an existing file attachment
+func (s *JSONStorage) UpdateFileAttachment(ctx context.Context, attachment *model.FileAttachment) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.fileAttachments[attachment.ID]; !exists {
+		return errors.NewNotFound(fmt.Sprintf("File attachment with ID %s not found", attachment.ID))
+	}
+
+	s.fileAttachments[attachment.ID] = attachment
+	return s.saveFileAttachments()
+}
+
+// DeleteFileAttachment deletes a file attachment
+func (s *JSONStorage) DeleteFileAttachment(ctx context.Context, id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.fileAttachments[id]; !exists {
+		return errors.NewNotFound(fmt.Sprintf("File attachment with ID %s not found", id))
+	}
+
+	delete(s.fileAttachments, id)
+	return s.saveFileAttachments()
+}
+
+// ListFileAttachments retrieves file attachments for a specific checklist key
+func (s *JSONStorage) ListFileAttachments(ctx context.Context, checklistKey string) ([]*model.FileAttachment, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var attachments []*model.FileAttachment
+	for _, attachment := range s.fileAttachments {
+		if attachment.ChecklistKey == checklistKey {
+			attachments = append(attachments, attachment)
+		}
+	}
+
+	return attachments, nil
+}
+
+// ListAllFileAttachments retrieves all file attachments
+func (s *JSONStorage) ListAllFileAttachments(ctx context.Context) ([]*model.FileAttachment, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	attachments := make([]*model.FileAttachment, 0, len(s.fileAttachments))
+	for _, attachment := range s.fileAttachments {
+		attachments = append(attachments, attachment)
+	}
+
+	return attachments, nil
 }

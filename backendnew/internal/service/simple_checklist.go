@@ -51,6 +51,7 @@ func (s *SimpleChecklistService) GetGlobalChecklist(ctx context.Context) ([]*mod
 				derived.Status = status.Status
 				derived.Notes = status.Notes
 				derived.UpdatedAt = &status.UpdatedAt
+				derived.Attachments = status.Attachments
 			}
 
 			// If template has evidence rules or is script controlled, it's automated
@@ -121,6 +122,7 @@ func (s *SimpleChecklistService) GetAssetChecklist(ctx context.Context, assetID 
 					derived.Status = status.Status
 					derived.Notes = status.Notes
 					derived.UpdatedAt = &status.UpdatedAt
+					derived.Attachments = status.Attachments
 				}
 
 				// If template has evidence rules or is script controlled, it's automated

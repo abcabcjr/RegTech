@@ -97,6 +97,13 @@ func main() {
 	// Initialize services
 	simpleChecklistService := service.NewSimpleChecklistService(store)
 
+	// Initialize file service (non-fatal if MinIO is unavailable)
+	fileService, err := service.NewFileService(&cfg.MinIO, store)
+	if err != nil {
+		log.Printf("Warning: Failed to initialize file service: %v", err)
+		log.Printf("File upload functionality will be unavailable until MinIO is accessible")
+	}
+
 	// Initialize handlers
 	healthHandler := handler.NewHealthHandler(store, version)
 	assetsHandler := handler.NewAssetsHandler(
@@ -108,6 +115,7 @@ func main() {
 		cfg.Recontool.EnableStreaming,
 	)
 	simpleChecklistHandler := handler.NewSimpleChecklistHandler(simpleChecklistService)
+	filesHandler := handler.NewFilesHandler(fileService)
 
 	// Health check endpoint
 	e.GET("/health", healthHandler.HealthCheck)
@@ -136,6 +144,17 @@ func main() {
 	apiV1.POST("/checklist/status", simpleChecklistHandler.SetStatus)
 	apiV1.GET("/checklist/templates", simpleChecklistHandler.ListTemplates)
 	apiV1.POST("/checklist/templates/upload", simpleChecklistHandler.UploadTemplates)
+
+	// File upload/download routes
+	apiV1.POST("/files/upload/initiate", filesHandler.InitiateUpload)
+	apiV1.POST("/files/:fileId/confirm", filesHandler.ConfirmUpload)
+	apiV1.GET("/files/:fileId/download", filesHandler.GenerateDownloadURL)
+	apiV1.GET("/files/:fileId", filesHandler.GetFileInfo)
+	apiV1.GET("/files", filesHandler.ListFileAttachments)
+	apiV1.DELETE("/files/:fileId", filesHandler.DeleteFile)
+	apiV1.GET("/files/supported-types", filesHandler.GetSupportedContentTypes)
+	apiV1.GET("/files/limits", filesHandler.GetUploadLimits)
+	apiV1.GET("/files/status", filesHandler.GetServiceStatus)
 
 	// Script management routes (bonus endpoints)
 	apiV1.GET("/scripts", func(c echo.Context) error {
