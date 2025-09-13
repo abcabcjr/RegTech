@@ -31,8 +31,16 @@
 	let scanDialogOpen: boolean = $state(false);
 	let discoverListString: string = $state('');
 	
+	// Update status tracking
+	let updatingItems: Set<string> = $state(new Set());
+	let updateError: string | null = $state(null);
+	
 	// Convert backend templates to sections format, filtered by type
+	// Note: This is reactive to activeView, backendTemplates, backendGlobalChecklist, and checklistState
 	let displaySections = $derived(() => {
+		// Force reactivity to checklistState
+		const _ = checklistState.lastUpdated;
+		
 		if (activeView === 'scanner') {
 			// For scanner view, use global checklist (with asset coverage) filtered for auto items
 			console.log('Scanner view - backendGlobalChecklist:', backendGlobalChecklist);
@@ -99,6 +107,10 @@
 				});
 			}
 			
+			// Find saved state for this item
+			const savedSection = checklistState.sections.find(s => s.id === category.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+			const savedItem = savedSection?.items.find(i => i.id === template.id);
+			
 			// Convert backend template to frontend item format
 			const item = {
 				id: template.id,
@@ -108,11 +120,13 @@
 				whyMatters: template.why_matters || template.recommendation,
 				category: category.toLowerCase(),
 				required: template.required,
-				status: "no", // Default status, will be overridden by checklistState
+				status: savedItem?.status || "no", // Use saved status or default to "no"
 				recommendation: template.recommendation,
 				kind: template.kind || (template.scope === 'global' ? 'manual' : 'auto'),
 				readOnly: template.read_only || false,
-				attachments: [], // No attachments for templates initially
+				notes: savedItem?.notes || "", // Use saved notes
+				lastUpdated: savedItem?.lastUpdated || template.updated_at,
+				attachments: savedItem?.attachments || [], // Use saved attachments
 				info: template.info ? {
 					whatItMeans: template.info.what_it_means,
 					whyItMatters: template.info.why_it_matters,
@@ -177,6 +191,10 @@
 				});
 			}
 			
+			// Find saved state for this item
+			const savedSection = checklistState.sections.find(s => s.id === category.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+			const savedItem = savedSection?.items.find(i => i.id === item.id);
+			
 			// Convert backend checklist item to frontend item format (includes asset coverage)
 			const frontendItem = {
 				id: item.id,
@@ -186,14 +204,14 @@
 				whyMatters: item.why_matters || item.recommendation,
 				category: category.toLowerCase(),
 				required: item.required,
-				status: item.status || "no",
+				status: savedItem?.status || item.status || "no", // Use saved status first, then backend status
 				recommendation: item.recommendation,
 				kind: item.kind || item.source || 'auto',
-				readOnly: item.read_only || true, // Auto items are typically read-only
-				notes: item.notes,
-				lastUpdated: item.updated_at,
+				readOnly: item.read_only || false, // Use actual read_only field from backend
+				notes: savedItem?.notes || item.notes, // Use saved notes first
+				lastUpdated: savedItem?.lastUpdated || item.updated_at,
 				coveredAssets: item.covered_assets || [], // This is the key difference!
-				attachments: item.attachments || [], // File attachments
+				attachments: savedItem?.attachments || item.attachments || [], // Use saved attachments first
 				info: item.info ? {
 					whatItMeans: item.info.what_it_means,
 					whyItMatters: item.info.why_it_matters,
@@ -254,39 +272,68 @@
 		}
 	}
 
-	function updateChecklistItem(sectionId: string, itemId: string, updates: Partial<ChecklistItem>) {
-		// Only allow updates for manual items
-		if (activeView !== 'manual') return;
+	async function updateChecklistItem(sectionId: string, itemId: string, updates: Partial<ChecklistItem>) {
+		// Allow updates for all items unless explicitly read-only
+		// Note: The readOnly check is handled at the component level
 		
-		// Ensure the section exists in checklistState
-		const sectionExists = checklistState.sections.some(section => section.id === sectionId);
-		if (!sectionExists) {
-			// Add the section from displaySections
-			const displaySection = displaySections().find(section => section.id === sectionId);
-			if (displaySection) {
-				checklistState = {
-					...checklistState,
-					sections: [...checklistState.sections, displaySection]
-				};
+		// Clear any previous error
+		updateError = null;
+		
+		// Track this item as updating
+		updatingItems.add(itemId);
+		updatingItems = new Set(updatingItems); // Trigger reactivity
+		
+		try {
+			// Save to backend first
+			if (updates.status !== undefined || updates.notes !== undefined) {
+				await apiClient.checklist.statusCreate({
+					item_id: itemId,
+					status: updates.status as "yes" | "no" | "na" | undefined,
+					notes: updates.notes,
+					// asset_id is empty for global items
+					asset_id: ""
+				});
 			}
+			
+			// Then update local state
+			// Ensure the section exists in checklistState
+			const sectionExists = checklistState.sections.some(section => section.id === sectionId);
+			if (!sectionExists) {
+				// Add the section from displaySections
+				const displaySection = displaySections().find(section => section.id === sectionId);
+				if (displaySection) {
+					checklistState = {
+						...checklistState,
+						sections: [...checklistState.sections, displaySection]
+					};
+				}
+			}
+			
+			const newState = {
+				...checklistState,
+				sections: checklistState.sections.map(section => 
+					section.id === sectionId 
+						? {
+								...section,
+								items: section.items.map(item => 
+									item.id === itemId ? { ...item, ...updates, lastUpdated: new Date().toISOString() } : item
+								)
+							}
+						: section
+				),
+				lastUpdated: new Date().toISOString()
+			};
+			checklistState = newState;
+			saveChecklistState(newState);
+			
+		} catch (error) {
+			console.error('Failed to update checklist item:', error);
+			updateError = error instanceof Error ? error.message : 'Failed to save changes. Please try again.';
+		} finally {
+			// Remove from updating set
+			updatingItems.delete(itemId);
+			updatingItems = new Set(updatingItems); // Trigger reactivity
 		}
-		
-		const newState = {
-			...checklistState,
-			sections: checklistState.sections.map(section => 
-				section.id === sectionId 
-					? {
-							...section,
-							items: section.items.map(item => 
-								item.id === itemId ? { ...item, ...updates } : item
-							)
-						}
-					: section
-			),
-			lastUpdated: new Date().toISOString()
-		};
-		checklistState = newState;
-		saveChecklistState(newState);
 	}
 
 	// Calculate compliance score for current view
@@ -471,6 +518,29 @@
 			</div>
 		{/if}
 		
+		{#if updateError}
+			<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center">
+						<svg class="h-4 w-4 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+						</svg>
+						<span class="text-red-800 text-sm font-medium">{updateError}</span>
+					</div>
+					<button
+						onclick={() => updateError = null}
+						class="text-red-600 hover:text-red-800 ml-4"
+						title="Dismiss"
+						aria-label="Dismiss error message"
+					>
+						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+						</svg>
+					</button>
+				</div>
+			</div>
+		{/if}
+		
 		<p class="text-muted-foreground mb-6">
 			Track your compliance with Moldova's Cybersecurity Law requirements. 
 			Complete the checklist items below and upload evidence where applicable.
@@ -562,7 +632,8 @@
 											<ChecklistItemComponent
 												item={item}
 												onUpdate={(updates) => updateChecklistItem(section.id, item.id, updates)}
-												readOnly={item.readOnly || activeView === 'scanner'}
+												readOnly={item.readOnly}
+												updating={updatingItems.has(item.id)}
 											/>
 									{/each}
 								</div>
@@ -594,7 +665,7 @@
 					</Card.Header>
 					<Card.Content>
 							<div class="text-sm text-muted-foreground p-4 bg-muted/30 rounded-md">
-								<strong>Note:</strong> These are read-only templates that would be automatically checked by the compliance scanner.
+								<strong>Note:</strong> These are automatic compliance checks that can be verified by the scanner. You can also manually update their status if needed.
 							</div>
 					</Card.Content>
 				</Card.Root>
@@ -631,7 +702,8 @@
 											<ChecklistItemComponent
 												item={item}
 												onUpdate={(updates) => updateChecklistItem(section.id, item.id, updates)}
-												readOnly={item.readOnly || activeView === 'scanner'}
+												readOnly={item.readOnly}
+												updating={updatingItems.has(item.id)}
 											/>
 									{/each}
 								</div>

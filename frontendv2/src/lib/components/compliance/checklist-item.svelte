@@ -16,9 +16,10 @@
 		item: ChecklistItem;
 		onUpdate: (updates: Partial<ChecklistItem>) => void;
 		readOnly?: boolean;
+		updating?: boolean;
 	}
 
-	let { item, onUpdate, readOnly = false }: Props = $props();
+	let { item, onUpdate, readOnly = false, updating = false }: Props = $props();
 
 	let isExpanded = $state(true);
 	let infoPanelOpen = $state(false);
@@ -172,12 +173,21 @@
 			{#if !isDisplayOnly}
 				<div class="space-y-3">
 					<div>
-						<label for={statusId} class="text-sm font-medium mb-2 block">Compliance Status</label>
+						<label for={statusId} class="text-sm font-medium mb-2 block">
+							Compliance Status
+							{#if updating}
+								<span class="ml-2 text-xs text-muted-foreground">
+									<div class="inline-block animate-spin rounded-full h-3 w-3 border-b border-current"></div>
+									Saving...
+								</span>
+							{/if}
+						</label>
 						<Select
 							id={statusId}
 							value={item.status}
 							placeholder="Select status"
 							onchange={handleStatusChange}
+							disabled={updating}
 						>
 							<option value="yes">Yes - Compliant</option>
 							<option value="no">No - Non-Compliant</option>
