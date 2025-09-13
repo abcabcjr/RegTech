@@ -361,6 +361,91 @@ func (s *LuaScanner) registerLuaFunctions(L *lua.LState, result *model.ScanResul
 		}
 		return 0
 	}))
+
+	// Checklist control functions
+	L.SetGlobal("pass_checklist", L.NewFunction(func(L *lua.LState) int {
+		checklistID := L.ToString(1)
+		reason := L.OptString(2, "")
+
+		if checklistID == "" {
+			result.Output = append(result.Output, "Error: pass_checklist requires checklist ID")
+			return 0
+		}
+
+		// Store checklist result in metadata
+		if result.Metadata["checklist_results"] == nil {
+			result.Metadata["checklist_results"] = make(map[string]interface{})
+		}
+
+		checklistResults := result.Metadata["checklist_results"].(map[string]interface{})
+		checklistResults[checklistID] = map[string]interface{}{
+			"status": "yes",
+			"reason": reason,
+		}
+
+		result.Output = append(result.Output, fmt.Sprintf("Passed checklist: %s", checklistID))
+		if reason != "" {
+			result.Output = append(result.Output, fmt.Sprintf("Reason: %s", reason))
+		}
+
+		return 0
+	}))
+
+	L.SetGlobal("fail_checklist", L.NewFunction(func(L *lua.LState) int {
+		checklistID := L.ToString(1)
+		reason := L.OptString(2, "")
+
+		if checklistID == "" {
+			result.Output = append(result.Output, "Error: fail_checklist requires checklist ID")
+			return 0
+		}
+
+		// Store checklist result in metadata
+		if result.Metadata["checklist_results"] == nil {
+			result.Metadata["checklist_results"] = make(map[string]interface{})
+		}
+
+		checklistResults := result.Metadata["checklist_results"].(map[string]interface{})
+		checklistResults[checklistID] = map[string]interface{}{
+			"status": "no",
+			"reason": reason,
+		}
+
+		result.Output = append(result.Output, fmt.Sprintf("Failed checklist: %s", checklistID))
+		if reason != "" {
+			result.Output = append(result.Output, fmt.Sprintf("Reason: %s", reason))
+		}
+
+		return 0
+	}))
+
+	L.SetGlobal("na_checklist", L.NewFunction(func(L *lua.LState) int {
+		checklistID := L.ToString(1)
+		reason := L.OptString(2, "")
+
+		if checklistID == "" {
+			result.Output = append(result.Output, "Error: na_checklist requires checklist ID")
+			return 0
+		}
+
+		// Store checklist result in metadata
+		if result.Metadata["checklist_results"] == nil {
+			result.Metadata["checklist_results"] = make(map[string]interface{})
+		}
+
+		checklistResults := result.Metadata["checklist_results"].(map[string]interface{})
+		checklistResults[checklistID] = map[string]interface{}{
+			"status": "na",
+			"reason": reason,
+		}
+
+		result.Output = append(result.Output, fmt.Sprintf("N/A checklist: %s", checklistID))
+		if reason != "" {
+			result.Output = append(result.Output, fmt.Sprintf("Reason: %s", reason))
+		}
+
+		return 0
+	}))
 }
 
 // setAssetGlobal sets the asset data as a global table in Lua

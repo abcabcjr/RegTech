@@ -4,15 +4,16 @@ import "time"
 
 // ChecklistItemTemplate defines a template for a checklist item
 type ChecklistItemTemplate struct {
-	ID             string         `json:"id"`
-	Title          string         `json:"title"`
-	Description    string         `json:"description"`
-	Category       string         `json:"category"`
-	Required       bool           `json:"required"`
-	Scope          string         `json:"scope"`                 // "global" or "asset"
-	AssetTypes     []string       `json:"asset_types,omitempty"` // Applicable asset types if scope is "asset"
-	Recommendation string         `json:"recommendation,omitempty"`
-	EvidenceRules  []EvidenceRule `json:"evidence_rules,omitempty"` // Rules for auto-derivation
+	ID               string         `json:"id"`
+	Title            string         `json:"title"`
+	Description      string         `json:"description"`
+	Category         string         `json:"category"`
+	Required         bool           `json:"required"`
+	Scope            string         `json:"scope"`                 // "global" or "asset"
+	AssetTypes       []string       `json:"asset_types,omitempty"` // Applicable asset types if scope is "asset"
+	Recommendation   string         `json:"recommendation,omitempty"`
+	EvidenceRules    []EvidenceRule `json:"evidence_rules,omitempty"`    // Rules for auto-derivation
+	ScriptControlled bool           `json:"script_controlled,omitempty"` // Can be controlled by Lua scripts
 }
 
 // EvidenceRule defines a rule to derive checklist status from scan metadata

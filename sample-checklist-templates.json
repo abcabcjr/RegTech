@@ -127,20 +127,7 @@
       "scope": "asset",
       "asset_types": ["service"],
       "recommendation": "Use certificates from trusted CAs. Monitor expiration dates and renew 30 days before expiry.",
-      "evidence_rules": [
-        {
-          "source": "scan_metadata",
-          "key": "ssl.valid",
-          "op": "eq",
-          "value": true
-        },
-        {
-          "source": "scan_metadata",
-          "key": "ssl.expires_soon",
-          "op": "eq",
-          "value": false
-        }
-      ]
+      "script_controlled": true
     },
     {
       "id": "http-security-headers-013",
@@ -151,18 +138,7 @@
       "scope": "asset",
       "asset_types": ["service"],
       "recommendation": "Implement security headers: HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy.",
-      "evidence_rules": [
-        {
-          "source": "scan_metadata",
-          "key": "http.security_headers.hsts",
-          "op": "exists"
-        },
-        {
-          "source": "scan_metadata",
-          "key": "http.security_headers.csp",
-          "op": "exists"
-        }
-      ]
+      "script_controlled": true
     },
     {
       "id": "open-ports-review-014",
@@ -173,13 +149,7 @@
       "scope": "asset",
       "asset_types": ["ip", "service"],
       "recommendation": "Review open ports monthly. Close unnecessary services and restrict access where possible.",
-      "evidence_rules": [
-        {
-          "source": "scan_metadata",
-          "key": "open_ports",
-          "op": "exists"
-        }
-      ]
+      "script_controlled": true
     },
     {
       "id": "service-banner-analysis-015",
@@ -257,7 +227,7 @@
       "scope": "asset",
       "asset_types": ["service"],
       "recommendation": "Ensure all services require authentication. Implement strong password policies and consider MFA.",
-      "evidence_rules": []
+      "script_controlled": true
     },
     {
       "id": "data-encryption-021",

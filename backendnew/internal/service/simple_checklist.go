@@ -53,9 +53,21 @@ func (s *SimpleChecklistService) GetGlobalChecklist(ctx context.Context) ([]*mod
 				derived.UpdatedAt = &status.UpdatedAt
 			}
 
-			// If template has evidence rules, it's automated
-			if len(template.EvidenceRules) > 0 {
+			// If template has evidence rules or is script controlled, it's automated
+			if len(template.EvidenceRules) > 0 || template.ScriptControlled {
 				derived.Source = model.ChecklistSourceAuto
+
+				// Check for script-controlled results
+				if template.ScriptControlled {
+					scriptStatus := s.getScriptControlledStatus(ctx, template.ID, "")
+					if scriptStatus != nil {
+						derived.Status = scriptStatus.Status
+						if scriptStatus.Reason != "" {
+							derived.Notes = scriptStatus.Reason
+						}
+						derived.UpdatedAt = &scriptStatus.UpdatedAt
+					}
+				}
 				// TODO: Evaluate evidence rules if needed
 			}
 
@@ -111,9 +123,21 @@ func (s *SimpleChecklistService) GetAssetChecklist(ctx context.Context, assetID 
 					derived.UpdatedAt = &status.UpdatedAt
 				}
 
-				// If template has evidence rules, it's automated
-				if len(template.EvidenceRules) > 0 {
+				// If template has evidence rules or is script controlled, it's automated
+				if len(template.EvidenceRules) > 0 || template.ScriptControlled {
 					derived.Source = model.ChecklistSourceAuto
+
+					// Check for script-controlled results
+					if template.ScriptControlled {
+						scriptStatus := s.getScriptControlledStatus(ctx, template.ID, assetID)
+						if scriptStatus != nil {
+							derived.Status = scriptStatus.Status
+							if scriptStatus.Reason != "" {
+								derived.Notes = scriptStatus.Reason
+							}
+							derived.UpdatedAt = &scriptStatus.UpdatedAt
+						}
+					}
 					// TODO: Evaluate evidence rules if needed
 				}
 
@@ -199,4 +223,60 @@ func (s *SimpleChecklistService) templateAppliesToAsset(template *model.Checklis
 		}
 	}
 	return false
+}
+
+// ScriptControlledResult represents a checklist result from Lua scripts
+type ScriptControlledResult struct {
+	Status    string
+	Reason    string
+	UpdatedAt time.Time
+}
+
+// getScriptControlledStatus gets the latest script-controlled status for a checklist item
+func (s *SimpleChecklistService) getScriptControlledStatus(ctx context.Context, checklistID, assetID string) *ScriptControlledResult {
+	var targetAssetID string
+	if assetID != "" {
+		targetAssetID = assetID
+	}
+
+	// Get the asset to check its scan results
+	if targetAssetID != "" {
+		asset, err := s.storage.GetAsset(ctx, targetAssetID)
+		if err != nil {
+			return nil
+		}
+
+		// Look through scan results for checklist results
+		var latestResult *ScriptControlledResult
+		var latestTime time.Time
+
+		for _, scanResult := range asset.ScanResults {
+			if scanResult.Metadata != nil {
+				if checklistResults, ok := scanResult.Metadata["checklist_results"].(map[string]interface{}); ok {
+					if result, exists := checklistResults[checklistID]; exists {
+						if resultMap, ok := result.(map[string]interface{}); ok {
+							status, hasStatus := resultMap["status"].(string)
+							reason, _ := resultMap["reason"].(string)
+
+							if hasStatus && scanResult.ExecutedAt.After(latestTime) {
+								latestResult = &ScriptControlledResult{
+									Status:    status,
+									Reason:    reason,
+									UpdatedAt: scanResult.ExecutedAt,
+								}
+								latestTime = scanResult.ExecutedAt
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return latestResult
+	}
+
+	// For global checklist items, we need to check all assets
+	// This is more complex - for now, return nil for global items controlled by scripts
+	// TODO: Implement global script-controlled checklist logic if needed
+	return nil
 }
