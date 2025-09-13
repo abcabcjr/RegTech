@@ -213,7 +213,7 @@
 		return `
 			<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 				<circle cx="12" cy="12" r="11" fill="${bgColor}" stroke="${color}" stroke-width="1.5"/>
-				<g transform="translate(2,2) scale(0.83)">
+				<g transform="translate(12,12) scale(0.6) translate(-12,-12)">
 					${iconPath}
 				</g>
 			</svg>

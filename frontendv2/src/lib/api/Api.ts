@@ -214,6 +214,30 @@ export interface V1AssetSummary {
   value: string;
 }
 
+export interface V1Attachment {
+  /** @example "evidence.pdf" */
+  name: string;
+  /** @example "Email headers and logs" */
+  note?: string;
+}
+
+export interface V1CreateIncidentRequest {
+  attachments?: V1Attachment[];
+  /** @example "phishing,vuln_exploit,misconfig,malware,other" */
+  causeTag: string;
+  /** @example 30 */
+  downtimeMinutes?: number;
+  /** @example 2.5 */
+  financialImpactPct?: number;
+  initialDetails: V1InitialDetails;
+  recurring?: boolean;
+  /** @example "financial" */
+  sectorPreset?: string;
+  significant?: boolean;
+  /** @example 100 */
+  usersAffected?: number;
+}
+
 export interface V1DNSRecords {
   /** A records (IPv4) */
   a?: string[];
@@ -251,12 +275,85 @@ export interface V1ErrorResponse {
   error: string;
 }
 
+export interface V1FinalDetails {
+  /** @example "No cross-border effects identified" */
+  crossBorderDesc?: string;
+  /** @example "high" */
+  gravity?: string;
+  /** @example "No data exfiltration occurred" */
+  impact?: string;
+  /** @example "Need for regular security training" */
+  lessons?: string;
+  /** @example "Enhanced email filtering implemented" */
+  mitigations?: string;
+  /** @example "Lack of email security awareness" */
+  rootCause?: string;
+}
+
+export interface V1GenericStatusResponse {
+  message: string;
+}
+
 export interface V1HealthResponse {
   services: Record<string, string>;
   /** @example "healthy,unhealthy" */
   status: string;
   timestamp: string;
   version?: string;
+}
+
+export interface V1IncidentDetails {
+  final?: V1FinalDetails;
+  initial?: V1InitialDetails;
+  update?: V1UpdateDetails;
+}
+
+export interface V1IncidentResponse {
+  attachments?: V1Attachment[];
+  causeTag: string;
+  createdAt: string;
+  details: V1IncidentDetails;
+  downtimeMinutes?: number;
+  financialImpactPct?: number;
+  id: string;
+  recurring?: boolean;
+  sectorPreset?: string;
+  significant?: boolean;
+  /** @example "initial,update,final" */
+  stage: string;
+  updatedAt: string;
+  usersAffected?: number;
+}
+
+export interface V1IncidentStatsResponse {
+  byCause: Record<string, number>;
+  byStage: Record<string, number>;
+  recurringIncidents: number;
+  significantIncidents: number;
+  totalIncidents: number;
+}
+
+export interface V1IncidentSummaryResponse {
+  causeTag: string;
+  createdAt: string;
+  id: string;
+  recurring?: boolean;
+  significant?: boolean;
+  stage: string;
+  summary: string;
+  title: string;
+  updatedAt: string;
+}
+
+export interface V1InitialDetails {
+  /** @example "2024-01-15T10:30:00Z" */
+  detectedAt: string;
+  possibleCrossBorder?: boolean;
+  /** @example "Multiple users reported suspicious emails" */
+  summary: string;
+  suspectedIllegal?: boolean;
+  /** @example "Security Incident - Phishing Attack" */
+  title: string;
 }
 
 export interface V1JobProgress {
@@ -273,6 +370,16 @@ export interface V1JobStatusResponse {
   started_at: string;
   /** @example "pending,running,completed,failed" */
   status: string;
+}
+
+export interface V1ListIncidentSummariesResponse {
+  summaries: V1IncidentSummaryResponse[];
+  total: number;
+}
+
+export interface V1ListIncidentsResponse {
+  incidents: V1IncidentResponse[];
+  total: number;
 }
 
 export interface V1ScanResult {
@@ -309,6 +416,38 @@ export interface V1StartAssetScanResponse {
   job_id: string;
   message: string;
   started_at: string;
+}
+
+export interface V1UpdateDetails {
+  /** @example "Blocked malicious domains" */
+  corrections?: string;
+  /** @example "high" */
+  gravity?: string;
+  /** @example "Email system compromised" */
+  impact?: string;
+  /** @example ["malicious-domain.com","suspicious-ip-address"] */
+  iocs?: string[];
+}
+
+export interface V1UpdateIncidentRequest {
+  attachments?: V1Attachment[];
+  /** @example "phishing,vuln_exploit,misconfig,malware,other" */
+  causeTag: string;
+  /** @example 30 */
+  downtimeMinutes?: number;
+  finalDetails?: V1FinalDetails;
+  /** @example 2.5 */
+  financialImpactPct?: number;
+  initialDetails?: V1InitialDetails;
+  recurring?: boolean;
+  /** @example "financial" */
+  sectorPreset?: string;
+  significant?: boolean;
+  /** @example "initial,update,final" */
+  stage: string;
+  updateDetails?: V1UpdateDetails;
+  /** @example 100 */
+  usersAffected?: number;
 }
 
 export type QueryParamsType = Record<string | number, any>;
@@ -687,6 +826,23 @@ export class Api<
   };
   checklist = {
     /**
+     * @description Retrieve all asset-scoped checklist templates with their coverage across all assets
+     *
+     * @tags checklist
+     * @name AssetTemplatesList
+     * @summary Get all asset-scoped templates with coverage
+     * @request GET:/checklist/asset-templates
+     */
+    assetTemplatesList: (params: RequestParams = {}) =>
+      this.request<ModelDerivedChecklistItem[], V1ErrorResponse>({
+        path: `/checklist/asset-templates`,
+        method: "GET",
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Retrieve all checklist items applicable to a specific asset with their current status
      *
      * @tags checklist
@@ -759,7 +915,7 @@ export class Api<
       }),
 
     /**
-     * @description Retrieve all available checklist item templates with non-compliant asset coverage
+     * @description Retrieve all available checklist item templates with covered assets that are not compliant (status "no")
      *
      * @tags checklist
      * @name TemplatesList
@@ -959,6 +1115,161 @@ export class Api<
       this.request<V1HealthResponse, any>({
         path: `/health`,
         method: "GET",
+        format: "json",
+        ...params,
+      }),
+  };
+  incidents = {
+    /**
+     * @description Retrieve all incidents with optional filtering
+     *
+     * @tags incidents
+     * @name IncidentsList
+     * @summary List incidents
+     * @request GET:/incidents
+     */
+    incidentsList: (
+      query?: {
+        /** Filter by stages (comma-separated) */
+        stages?: string;
+        /** Filter by cause tags (comma-separated) */
+        causeTags?: string;
+        /** Filter by significant incidents only */
+        significant?: boolean;
+        /** Filter by recurring incidents only */
+        recurring?: boolean;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<V1ListIncidentsResponse, V1ErrorResponse>({
+        path: `/incidents`,
+        method: "GET",
+        query: query,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a new incident record with initial details
+     *
+     * @tags incidents
+     * @name IncidentsCreate
+     * @summary Create a new incident
+     * @request POST:/incidents
+     */
+    incidentsCreate: (
+      request: V1CreateIncidentRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<V1IncidentResponse, V1ErrorResponse>({
+        path: `/incidents`,
+        method: "POST",
+        body: request,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Retrieve statistics about incidents
+     *
+     * @tags incidents
+     * @name StatsList
+     * @summary Get incident statistics
+     * @request GET:/incidents/stats
+     */
+    statsList: (params: RequestParams = {}) =>
+      this.request<V1IncidentStatsResponse, V1ErrorResponse>({
+        path: `/incidents/stats`,
+        method: "GET",
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Retrieve incident summaries with optional filtering
+     *
+     * @tags incidents
+     * @name SummariesList
+     * @summary List incident summaries
+     * @request GET:/incidents/summaries
+     */
+    summariesList: (
+      query?: {
+        /** Filter by stages (comma-separated) */
+        stages?: string;
+        /** Filter by cause tags (comma-separated) */
+        causeTags?: string;
+        /** Filter by significant incidents only */
+        significant?: boolean;
+        /** Filter by recurring incidents only */
+        recurring?: boolean;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<V1ListIncidentSummariesResponse, V1ErrorResponse>({
+        path: `/incidents/summaries`,
+        method: "GET",
+        query: query,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Retrieve a specific incident by its ID
+     *
+     * @tags incidents
+     * @name IncidentsDetail
+     * @summary Get incident by ID
+     * @request GET:/incidents/{id}
+     */
+    incidentsDetail: (id: string, params: RequestParams = {}) =>
+      this.request<V1IncidentResponse, V1ErrorResponse>({
+        path: `/incidents/${id}`,
+        method: "GET",
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update an existing incident record
+     *
+     * @tags incidents
+     * @name IncidentsUpdate
+     * @summary Update incident
+     * @request PUT:/incidents/{id}
+     */
+    incidentsUpdate: (
+      id: string,
+      request: V1UpdateIncidentRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<V1IncidentResponse, V1ErrorResponse>({
+        path: `/incidents/${id}`,
+        method: "PUT",
+        body: request,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Delete an incident by ID
+     *
+     * @tags incidents
+     * @name IncidentsDelete
+     * @summary Delete incident
+     * @request DELETE:/incidents/{id}
+     */
+    incidentsDelete: (id: string, params: RequestParams = {}) =>
+      this.request<V1GenericStatusResponse, V1ErrorResponse>({
+        path: `/incidents/${id}`,
+        method: "DELETE",
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),

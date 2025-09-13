@@ -58,6 +58,14 @@ type Storage interface {
 	ListFileAttachments(ctx context.Context, checklistKey string) ([]*model.FileAttachment, error)
 	ListAllFileAttachments(ctx context.Context) ([]*model.FileAttachment, error)
 
+	// Incident operations
+	CreateIncident(ctx context.Context, incident *model.IncidentRecord) error
+	GetIncident(ctx context.Context, id string) (*model.IncidentRecord, error)
+	UpdateIncident(ctx context.Context, incident *model.IncidentRecord) error
+	DeleteIncident(ctx context.Context, id string) error
+	ListIncidents(ctx context.Context) ([]*model.IncidentRecord, error)
+	ListIncidentSummaries(ctx context.Context) ([]*model.IncidentSummary, error)
+
 	// Utility operations
 	Close() error
 	Backup() error
@@ -71,5 +79,6 @@ type StorageStats struct {
 	ScanResultCount     int64   `json:"scan_result_count"`
 	ScriptCount         int64   `json:"script_count"`
 	FileAttachmentCount int64   `json:"file_attachment_count"`
+	IncidentCount       int64   `json:"incident_count"`
 	LastBackup          *string `json:"last_backup,omitempty"`
 }

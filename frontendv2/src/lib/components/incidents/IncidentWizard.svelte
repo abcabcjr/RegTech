@@ -147,7 +147,7 @@
     };
   }
 
-  function handleNext() {
+  async function handleNext() {
     if (currentStep === 1) {
       // Validate and save initial data
       if (!initialData.title || !initialData.summary || !initialData.detectedAt) {
@@ -157,12 +157,36 @@
 
       let id = incidentId;
       if (!id) {
-        const incident = incidentsStore.createIncident(basicData);
+        // Create new incident
+        const incident = await incidentsStore.createIncident(initialData as InitialDetails, {
+          significant: basicData.significant,
+          recurring: basicData.recurring,
+          causeTag: basicData.causeTag,
+          usersAffected: basicData.usersAffected || undefined,
+          downtimeMinutes: basicData.downtimeMinutes || undefined,
+          financialImpactPct: basicData.financialImpactPct || undefined
+        });
+        
+        if (!incident) {
+          alert('Failed to create incident. Please try again.');
+          return;
+        }
+        
         id = incident.id;
         incidentId = id;
+      } else {
+        // Update existing incident
+        await incidentsStore.updateIncident(id, 'initial', {
+          significant: basicData.significant,
+          recurring: basicData.recurring,
+          causeTag: basicData.causeTag,
+          usersAffected: basicData.usersAffected || undefined,
+          downtimeMinutes: basicData.downtimeMinutes || undefined,
+          financialImpactPct: basicData.financialImpactPct || undefined,
+          initialDetails: initialData as InitialDetails
+        });
       }
       
-      incidentsStore.setStageData(id, 'initial', initialData as InitialDetails);
       currentStep = 2;
     } else if (currentStep === 2) {
       // Validate and save update data
@@ -172,8 +196,15 @@
       }
 
       if (incidentId) {
-        incidentsStore.updateIncident(incidentId, basicData);
-        incidentsStore.setStageData(incidentId, 'update', updateData as UpdateDetails);
+        await incidentsStore.updateIncident(incidentId, 'update', {
+          significant: basicData.significant,
+          recurring: basicData.recurring,
+          causeTag: basicData.causeTag,
+          usersAffected: basicData.usersAffected || undefined,
+          downtimeMinutes: basicData.downtimeMinutes || undefined,
+          financialImpactPct: basicData.financialImpactPct || undefined,
+          updateDetails: updateData as UpdateDetails
+        });
       }
       currentStep = 3;
     } else if (currentStep === 3) {
@@ -184,7 +215,15 @@
       }
 
       if (incidentId) {
-        incidentsStore.setStageData(incidentId, 'final', finalData as FinalDetails);
+        await incidentsStore.updateIncident(incidentId, 'final', {
+          significant: basicData.significant,
+          recurring: basicData.recurring,
+          causeTag: basicData.causeTag,
+          usersAffected: basicData.usersAffected || undefined,
+          downtimeMinutes: basicData.downtimeMinutes || undefined,
+          financialImpactPct: basicData.financialImpactPct || undefined,
+          finalDetails: finalData as FinalDetails
+        });
       }
       open = false;
       resetForm();
@@ -232,29 +271,51 @@
     }
   }
 
-  function handleSaveAndExit() {
+  async function handleSaveAndExit() {
     // Save current progress as draft (no validation required)
     let id = incidentId;
-    if (!id) {
-      // Create incident if it doesn't exist
-      const incident = incidentsStore.createIncident(basicData);
-      id = incident.id;
-      incidentId = id;
+    
+    if (!id && (initialData.title || initialData.summary)) {
+      // Create incident if it doesn't exist and there's some initial data
+      const incident = await incidentsStore.createIncident(initialData as InitialDetails, {
+        significant: basicData.significant,
+        recurring: basicData.recurring,
+        causeTag: basicData.causeTag,
+        usersAffected: basicData.usersAffected || undefined,
+        downtimeMinutes: basicData.downtimeMinutes || undefined,
+        financialImpactPct: basicData.financialImpactPct || undefined
+      });
+      
+      if (incident) {
+        id = incident.id;
+        incidentId = id;
+      }
+    } else if (id) {
+      // Update existing incident with current stage data
+      let stage: 'initial' | 'update' | 'final' = 'initial';
+      let stageData: any = {};
+      
+      if (currentStep === 1 || (initialData.title && initialData.summary)) {
+        stage = 'initial';
+        stageData.initialDetails = initialData as InitialDetails;
+      } else if (currentStep === 2 || updateData.gravity) {
+        stage = 'update';
+        stageData.updateDetails = updateData as UpdateDetails;
+      } else if (currentStep === 3 || finalData.rootCause) {
+        stage = 'final';
+        stageData.finalDetails = finalData as FinalDetails;
+      }
+      
+      await incidentsStore.updateIncident(id, stage, {
+        significant: basicData.significant,
+        recurring: basicData.recurring,
+        causeTag: basicData.causeTag,
+        usersAffected: basicData.usersAffected || undefined,
+        downtimeMinutes: basicData.downtimeMinutes || undefined,
+        financialImpactPct: basicData.financialImpactPct || undefined,
+        ...stageData
+      });
     }
-
-    // Save data for any step that has content
-    if (initialData.summary || initialData.detectedAt) {
-      incidentsStore.setStageData(id, 'initial', initialData as InitialDetails);
-    }
-    if (updateData.gravity || updateData.impact || updateData.corrections) {
-      incidentsStore.setStageData(id, 'update', updateData as UpdateDetails);
-    }
-    if (finalData.rootCause || finalData.mitigations || finalData.lessons) {
-      incidentsStore.setStageData(id, 'final', finalData as FinalDetails);
-    }
-
-    // Update basic incident data
-    incidentsStore.updateIncident(id, basicData);
 
     // Close the dialog
     open = false;

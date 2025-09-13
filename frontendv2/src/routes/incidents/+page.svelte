@@ -330,12 +330,15 @@
     }
   }
 
-  function handleDeleteIncident() {
+  async function handleDeleteIncident() {
     if (selectedIncident) {
       const confirmed = confirm(`Are you sure you want to delete incident ${selectedIncident.id}? This action cannot be undone.`);
       if (confirmed) {
-        incidentsStore.deleteIncident(selectedIncident.id);
-        // Clear selection since the incident was deleted
+        const success = await incidentsStore.deleteIncident(selectedIncident.id);
+        if (!success) {
+          alert('Failed to delete incident. Please try again.');
+        }
+        // Clear selection since the incident was deleted (or attempt failed)
         incidentsStore.selectIncident(null);
       }
     }

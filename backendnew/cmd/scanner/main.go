@@ -96,6 +96,7 @@ func main() {
 
 	// Initialize services
 	simpleChecklistService := service.NewSimpleChecklistService(store)
+	incidentService := service.NewIncidentService(store)
 
 	// Initialize file service for local file storage
 	fileService, err := service.NewFileService(cfg.Storage.DataDir, store)
@@ -116,6 +117,7 @@ func main() {
 	)
 	simpleChecklistHandler := handler.NewSimpleChecklistHandler(simpleChecklistService)
 	filesHandler := handler.NewFilesHandler(fileService)
+	incidentHandler := handler.NewIncidentHandler(incidentService)
 
 	// Health check endpoint
 	e.GET("/health", healthHandler.HealthCheck)
@@ -155,6 +157,15 @@ func main() {
 	apiV1.GET("/files/supported-types", filesHandler.GetSupportedContentTypes)
 	apiV1.GET("/files/limits", filesHandler.GetUploadLimits)
 	apiV1.GET("/files/status", filesHandler.GetServiceStatus)
+
+	// Incident management routes
+	apiV1.POST("/incidents", incidentHandler.CreateIncident)
+	apiV1.GET("/incidents", incidentHandler.ListIncidents)
+	apiV1.GET("/incidents/summaries", incidentHandler.ListIncidentSummaries)
+	apiV1.GET("/incidents/stats", incidentHandler.GetIncidentStats)
+	apiV1.GET("/incidents/:id", incidentHandler.GetIncident)
+	apiV1.PUT("/incidents/:id", incidentHandler.UpdateIncident)
+	apiV1.DELETE("/incidents/:id", incidentHandler.DeleteIncident)
 
 	// Script management routes (bonus endpoints)
 	apiV1.GET("/scripts", func(c echo.Context) error {

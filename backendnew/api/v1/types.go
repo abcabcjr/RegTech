@@ -147,6 +147,128 @@ type HealthResponse struct {
 	Version   string            `json:"version,omitempty"`
 }
 
+// Incident Management
+
+// CreateIncidentRequest represents a request to create an incident
+type CreateIncidentRequest struct {
+	InitialDetails     InitialDetails `json:"initialDetails" binding:"required"`
+	Significant        bool           `json:"significant"`
+	Recurring          bool           `json:"recurring"`
+	CauseTag           string         `json:"causeTag" binding:"required" example:"phishing,vuln_exploit,misconfig,malware,other"`
+	UsersAffected      *int           `json:"usersAffected,omitempty" example:"100"`
+	DowntimeMinutes    *int           `json:"downtimeMinutes,omitempty" example:"30"`
+	FinancialImpactPct *float64       `json:"financialImpactPct,omitempty" example:"2.5"`
+	SectorPreset       *string        `json:"sectorPreset,omitempty" example:"financial"`
+	Attachments        []Attachment   `json:"attachments,omitempty"`
+}
+
+// UpdateIncidentRequest represents a request to update an incident
+type UpdateIncidentRequest struct {
+	Stage              string          `json:"stage" binding:"required" example:"initial,update,final"`
+	Significant        bool            `json:"significant"`
+	Recurring          bool            `json:"recurring"`
+	CauseTag           string          `json:"causeTag" binding:"required" example:"phishing,vuln_exploit,misconfig,malware,other"`
+	UsersAffected      *int            `json:"usersAffected,omitempty" example:"100"`
+	DowntimeMinutes    *int            `json:"downtimeMinutes,omitempty" example:"30"`
+	FinancialImpactPct *float64        `json:"financialImpactPct,omitempty" example:"2.5"`
+	SectorPreset       *string         `json:"sectorPreset,omitempty" example:"financial"`
+	InitialDetails     *InitialDetails `json:"initialDetails,omitempty"`
+	UpdateDetails      *UpdateDetails  `json:"updateDetails,omitempty"`
+	FinalDetails       *FinalDetails   `json:"finalDetails,omitempty"`
+	Attachments        *[]Attachment   `json:"attachments,omitempty"`
+}
+
+// InitialDetails contains the initial incident report details
+type InitialDetails struct {
+	Title               string `json:"title" binding:"required" example:"Security Incident - Phishing Attack"`
+	Summary             string `json:"summary" binding:"required" example:"Multiple users reported suspicious emails"`
+	DetectedAt          string `json:"detectedAt" binding:"required" example:"2024-01-15T10:30:00Z"`
+	SuspectedIllegal    *bool  `json:"suspectedIllegal,omitempty"`
+	PossibleCrossBorder *bool  `json:"possibleCrossBorder,omitempty"`
+}
+
+// UpdateDetails contains the update report details
+type UpdateDetails struct {
+	Gravity     *string  `json:"gravity,omitempty" example:"high"`
+	Impact      *string  `json:"impact,omitempty" example:"Email system compromised"`
+	IOCs        []string `json:"iocs,omitempty" example:"malicious-domain.com,suspicious-ip-address"`
+	Corrections *string  `json:"corrections,omitempty" example:"Blocked malicious domains"`
+}
+
+// FinalDetails contains the final report details
+type FinalDetails struct {
+	RootCause       *string `json:"rootCause,omitempty" example:"Lack of email security awareness"`
+	Gravity         *string `json:"gravity,omitempty" example:"high"`
+	Impact          *string `json:"impact,omitempty" example:"No data exfiltration occurred"`
+	Mitigations     *string `json:"mitigations,omitempty" example:"Enhanced email filtering implemented"`
+	CrossBorderDesc *string `json:"crossBorderDesc,omitempty" example:"No cross-border effects identified"`
+	Lessons         *string `json:"lessons,omitempty" example:"Need for regular security training"`
+}
+
+// Attachment represents a file attachment
+type Attachment struct {
+	Name string  `json:"name" binding:"required" example:"evidence.pdf"`
+	Note *string `json:"note,omitempty" example:"Email headers and logs"`
+}
+
+// IncidentResponse represents a complete incident record
+type IncidentResponse struct {
+	ID                 string          `json:"id" binding:"required"`
+	CreatedAt          string          `json:"createdAt" binding:"required"`
+	UpdatedAt          string          `json:"updatedAt" binding:"required"`
+	Stage              string          `json:"stage" binding:"required" example:"initial,update,final"`
+	Significant        bool            `json:"significant"`
+	Recurring          bool            `json:"recurring"`
+	CauseTag           string          `json:"causeTag" binding:"required"`
+	UsersAffected      *int            `json:"usersAffected,omitempty"`
+	DowntimeMinutes    *int            `json:"downtimeMinutes,omitempty"`
+	FinancialImpactPct *float64        `json:"financialImpactPct,omitempty"`
+	SectorPreset       *string         `json:"sectorPreset,omitempty"`
+	Details            IncidentDetails `json:"details" binding:"required"`
+	Attachments        []Attachment    `json:"attachments,omitempty"`
+}
+
+// IncidentDetails holds all stage-specific details
+type IncidentDetails struct {
+	Initial *InitialDetails `json:"initial,omitempty"`
+	Update  *UpdateDetails  `json:"update,omitempty"`
+	Final   *FinalDetails   `json:"final,omitempty"`
+}
+
+// IncidentSummaryResponse represents a summary view of an incident
+type IncidentSummaryResponse struct {
+	ID          string `json:"id" binding:"required"`
+	Title       string `json:"title" binding:"required"`
+	Summary     string `json:"summary" binding:"required"`
+	Stage       string `json:"stage" binding:"required"`
+	Significant bool   `json:"significant"`
+	Recurring   bool   `json:"recurring"`
+	CauseTag    string `json:"causeTag" binding:"required"`
+	CreatedAt   string `json:"createdAt" binding:"required"`
+	UpdatedAt   string `json:"updatedAt" binding:"required"`
+}
+
+// ListIncidentsResponse represents the response for listing incidents
+type ListIncidentsResponse struct {
+	Incidents []IncidentResponse `json:"incidents" binding:"required"`
+	Total     int                `json:"total" binding:"required"`
+}
+
+// ListIncidentSummariesResponse represents the response for listing incident summaries
+type ListIncidentSummariesResponse struct {
+	Summaries []IncidentSummaryResponse `json:"summaries" binding:"required"`
+	Total     int                       `json:"total" binding:"required"`
+}
+
+// IncidentStatsResponse represents statistics about incidents
+type IncidentStatsResponse struct {
+	TotalIncidents       int            `json:"totalIncidents" binding:"required"`
+	SignificantIncidents int            `json:"significantIncidents" binding:"required"`
+	RecurringIncidents   int            `json:"recurringIncidents" binding:"required"`
+	ByStage              map[string]int `json:"byStage" binding:"required"`
+	ByCause              map[string]int `json:"byCause" binding:"required"`
+}
+
 // Error Response
 type ErrorResponse struct {
 	Error   string            `json:"error" binding:"required"`

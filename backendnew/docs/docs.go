@@ -256,6 +256,38 @@ const docTemplate = `{
                 }
             }
         },
+        "/checklist/asset-templates": {
+            "get": {
+                "description": "Retrieve all asset-scoped checklist templates with their coverage across all assets",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "checklist"
+                ],
+                "summary": "Get all asset-scoped templates with coverage",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.DerivedChecklistItem"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/checklist/asset/{id}": {
             "get": {
                 "description": "Retrieve all checklist items applicable to a specific asset with their current status",
@@ -416,7 +448,7 @@ const docTemplate = `{
         },
         "/checklist/templates": {
             "get": {
-                "description": "Retrieve all available checklist item templates",
+                "description": "Retrieve all available checklist item templates with covered assets that are not compliant (status \"no\")",
                 "consumes": [
                     "application/json"
                 ],
@@ -426,14 +458,14 @@ const docTemplate = `{
                 "tags": [
                     "checklist"
                 ],
-                "summary": "List all checklist templates",
+                "summary": "List all checklist templates with non-compliant asset coverage",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/model.ChecklistItemTemplate"
+                                "$ref": "#/definitions/model.DerivedChecklistItem"
                             }
                         }
                     },
@@ -814,6 +846,344 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/v1.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/incidents": {
+            "get": {
+                "description": "Retrieve all incidents with optional filtering",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "incidents"
+                ],
+                "summary": "List incidents",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by stages (comma-separated)",
+                        "name": "stages",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by cause tags (comma-separated)",
+                        "name": "causeTags",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by significant incidents only",
+                        "name": "significant",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by recurring incidents only",
+                        "name": "recurring",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ListIncidentsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new incident record with initial details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "incidents"
+                ],
+                "summary": "Create a new incident",
+                "parameters": [
+                    {
+                        "description": "Incident creation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.CreateIncidentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/v1.IncidentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/incidents/stats": {
+            "get": {
+                "description": "Retrieve statistics about incidents",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "incidents"
+                ],
+                "summary": "Get incident statistics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.IncidentStatsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/incidents/summaries": {
+            "get": {
+                "description": "Retrieve incident summaries with optional filtering",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "incidents"
+                ],
+                "summary": "List incident summaries",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by stages (comma-separated)",
+                        "name": "stages",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by cause tags (comma-separated)",
+                        "name": "causeTags",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by significant incidents only",
+                        "name": "significant",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by recurring incidents only",
+                        "name": "recurring",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ListIncidentSummariesResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/incidents/{id}": {
+            "get": {
+                "description": "Retrieve a specific incident by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "incidents"
+                ],
+                "summary": "Get incident by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Incident ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.IncidentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update an existing incident record",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "incidents"
+                ],
+                "summary": "Update incident",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Incident ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Incident update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.UpdateIncidentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.IncidentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete an incident by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "incidents"
+                ],
+                "summary": "Delete incident",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Incident ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.GenericStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
                         }
                     }
                 }
@@ -1371,6 +1741,66 @@ const docTemplate = `{
                 }
             }
         },
+        "v1.Attachment": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "evidence.pdf"
+                },
+                "note": {
+                    "type": "string",
+                    "example": "Email headers and logs"
+                }
+            }
+        },
+        "v1.CreateIncidentRequest": {
+            "type": "object",
+            "required": [
+                "causeTag",
+                "initialDetails"
+            ],
+            "properties": {
+                "attachments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.Attachment"
+                    }
+                },
+                "causeTag": {
+                    "type": "string",
+                    "example": "phishing,vuln_exploit,misconfig,malware,other"
+                },
+                "downtimeMinutes": {
+                    "type": "integer",
+                    "example": 30
+                },
+                "financialImpactPct": {
+                    "type": "number",
+                    "example": 2.5
+                },
+                "initialDetails": {
+                    "$ref": "#/definitions/v1.InitialDetails"
+                },
+                "recurring": {
+                    "type": "boolean"
+                },
+                "sectorPreset": {
+                    "type": "string",
+                    "example": "financial"
+                },
+                "significant": {
+                    "type": "boolean"
+                },
+                "usersAffected": {
+                    "type": "integer",
+                    "example": 100
+                }
+            }
+        },
         "v1.DNSRecords": {
             "type": "object",
             "properties": {
@@ -1494,6 +1924,46 @@ const docTemplate = `{
                 }
             }
         },
+        "v1.FinalDetails": {
+            "type": "object",
+            "properties": {
+                "crossBorderDesc": {
+                    "type": "string",
+                    "example": "No cross-border effects identified"
+                },
+                "gravity": {
+                    "type": "string",
+                    "example": "high"
+                },
+                "impact": {
+                    "type": "string",
+                    "example": "No data exfiltration occurred"
+                },
+                "lessons": {
+                    "type": "string",
+                    "example": "Need for regular security training"
+                },
+                "mitigations": {
+                    "type": "string",
+                    "example": "Enhanced email filtering implemented"
+                },
+                "rootCause": {
+                    "type": "string",
+                    "example": "Lack of email security awareness"
+                }
+            }
+        },
+        "v1.GenericStatusResponse": {
+            "type": "object",
+            "required": [
+                "message"
+            ],
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
         "v1.HealthResponse": {
             "type": "object",
             "required": [
@@ -1517,6 +1987,178 @@ const docTemplate = `{
                 },
                 "version": {
                     "type": "string"
+                }
+            }
+        },
+        "v1.IncidentDetails": {
+            "type": "object",
+            "properties": {
+                "final": {
+                    "$ref": "#/definitions/v1.FinalDetails"
+                },
+                "initial": {
+                    "$ref": "#/definitions/v1.InitialDetails"
+                },
+                "update": {
+                    "$ref": "#/definitions/v1.UpdateDetails"
+                }
+            }
+        },
+        "v1.IncidentResponse": {
+            "type": "object",
+            "required": [
+                "causeTag",
+                "createdAt",
+                "details",
+                "id",
+                "stage",
+                "updatedAt"
+            ],
+            "properties": {
+                "attachments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.Attachment"
+                    }
+                },
+                "causeTag": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "details": {
+                    "$ref": "#/definitions/v1.IncidentDetails"
+                },
+                "downtimeMinutes": {
+                    "type": "integer"
+                },
+                "financialImpactPct": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "recurring": {
+                    "type": "boolean"
+                },
+                "sectorPreset": {
+                    "type": "string"
+                },
+                "significant": {
+                    "type": "boolean"
+                },
+                "stage": {
+                    "type": "string",
+                    "example": "initial,update,final"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "usersAffected": {
+                    "type": "integer"
+                }
+            }
+        },
+        "v1.IncidentStatsResponse": {
+            "type": "object",
+            "required": [
+                "byCause",
+                "byStage",
+                "recurringIncidents",
+                "significantIncidents",
+                "totalIncidents"
+            ],
+            "properties": {
+                "byCause": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "byStage": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "recurringIncidents": {
+                    "type": "integer"
+                },
+                "significantIncidents": {
+                    "type": "integer"
+                },
+                "totalIncidents": {
+                    "type": "integer"
+                }
+            }
+        },
+        "v1.IncidentSummaryResponse": {
+            "type": "object",
+            "required": [
+                "causeTag",
+                "createdAt",
+                "id",
+                "stage",
+                "summary",
+                "title",
+                "updatedAt"
+            ],
+            "properties": {
+                "causeTag": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "recurring": {
+                    "type": "boolean"
+                },
+                "significant": {
+                    "type": "boolean"
+                },
+                "stage": {
+                    "type": "string"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.InitialDetails": {
+            "type": "object",
+            "required": [
+                "detectedAt",
+                "summary",
+                "title"
+            ],
+            "properties": {
+                "detectedAt": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
+                "possibleCrossBorder": {
+                    "type": "boolean"
+                },
+                "summary": {
+                    "type": "string",
+                    "example": "Multiple users reported suspicious emails"
+                },
+                "suspectedIllegal": {
+                    "type": "boolean"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Security Incident - Phishing Attack"
                 }
             }
         },
@@ -1566,6 +2208,42 @@ const docTemplate = `{
                 "status": {
                     "type": "string",
                     "example": "pending,running,completed,failed"
+                }
+            }
+        },
+        "v1.ListIncidentSummariesResponse": {
+            "type": "object",
+            "required": [
+                "summaries",
+                "total"
+            ],
+            "properties": {
+                "summaries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.IncidentSummaryResponse"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "v1.ListIncidentsResponse": {
+            "type": "object",
+            "required": [
+                "incidents",
+                "total"
+            ],
+            "properties": {
+                "incidents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.IncidentResponse"
+                    }
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
@@ -1689,6 +2367,87 @@ const docTemplate = `{
                 },
                 "started_at": {
                     "type": "string"
+                }
+            }
+        },
+        "v1.UpdateDetails": {
+            "type": "object",
+            "properties": {
+                "corrections": {
+                    "type": "string",
+                    "example": "Blocked malicious domains"
+                },
+                "gravity": {
+                    "type": "string",
+                    "example": "high"
+                },
+                "impact": {
+                    "type": "string",
+                    "example": "Email system compromised"
+                },
+                "iocs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "malicious-domain.com",
+                        "suspicious-ip-address"
+                    ]
+                }
+            }
+        },
+        "v1.UpdateIncidentRequest": {
+            "type": "object",
+            "required": [
+                "causeTag",
+                "stage"
+            ],
+            "properties": {
+                "attachments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.Attachment"
+                    }
+                },
+                "causeTag": {
+                    "type": "string",
+                    "example": "phishing,vuln_exploit,misconfig,malware,other"
+                },
+                "downtimeMinutes": {
+                    "type": "integer",
+                    "example": 30
+                },
+                "finalDetails": {
+                    "$ref": "#/definitions/v1.FinalDetails"
+                },
+                "financialImpactPct": {
+                    "type": "number",
+                    "example": 2.5
+                },
+                "initialDetails": {
+                    "$ref": "#/definitions/v1.InitialDetails"
+                },
+                "recurring": {
+                    "type": "boolean"
+                },
+                "sectorPreset": {
+                    "type": "string",
+                    "example": "financial"
+                },
+                "significant": {
+                    "type": "boolean"
+                },
+                "stage": {
+                    "type": "string",
+                    "example": "initial,update,final"
+                },
+                "updateDetails": {
+                    "$ref": "#/definitions/v1.UpdateDetails"
+                },
+                "usersAffected": {
+                    "type": "integer",
+                    "example": 100
                 }
             }
         }

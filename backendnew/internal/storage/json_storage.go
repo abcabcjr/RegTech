@@ -24,6 +24,7 @@ type JSONStorage struct {
 	checklistTemplates map[string]*model.ChecklistItemTemplate
 	checklistStatuses  map[string]*model.SimpleChecklistStatus
 	fileAttachments    map[string]*model.FileAttachment
+	incidents          map[string]*model.IncidentRecord
 	lastBackup         *time.Time
 }
 
@@ -38,6 +39,7 @@ func NewJSONStorage(cfg *config.StorageConfig) (*JSONStorage, error) {
 		checklistTemplates: make(map[string]*model.ChecklistItemTemplate),
 		checklistStatuses:  make(map[string]*model.SimpleChecklistStatus),
 		fileAttachments:    make(map[string]*model.FileAttachment),
+		incidents:          make(map[string]*model.IncidentRecord),
 	}
 
 	// Create data directory if it doesn't exist
@@ -513,6 +515,7 @@ func (s *JSONStorage) GetStats() (*StorageStats, error) {
 		ScanResultCount:     int64(len(s.scanResults)),
 		ScriptCount:         int64(len(s.scripts)),
 		FileAttachmentCount: int64(len(s.fileAttachments)),
+		IncidentCount:       int64(len(s.incidents)),
 		LastBackup:          lastBackupStr,
 	}, nil
 }
@@ -538,7 +541,10 @@ func (s *JSONStorage) loadData() error {
 	if err := s.loadChecklistStatuses(); err != nil {
 		return err
 	}
-	return s.loadFileAttachments()
+	if err := s.loadFileAttachments(); err != nil {
+		return err
+	}
+	return s.loadIncidents()
 }
 
 func (s *JSONStorage) loadAssets() error {
@@ -843,4 +849,96 @@ func (s *JSONStorage) ListAllFileAttachments(ctx context.Context) ([]*model.File
 	}
 
 	return attachments, nil
+}
+
+// Incident operations
+
+// CreateIncident creates a new incident record
+func (s *JSONStorage) CreateIncident(ctx context.Context, incident *model.IncidentRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.incidents[incident.ID]; exists {
+		return errors.NewConflict(fmt.Sprintf("Incident with ID %s already exists", incident.ID))
+	}
+
+	s.incidents[incident.ID] = incident
+	return s.saveIncidents()
+}
+
+// GetIncident retrieves an incident by ID
+func (s *JSONStorage) GetIncident(ctx context.Context, id string) (*model.IncidentRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	incident, exists := s.incidents[id]
+	if !exists {
+		return nil, errors.NewNotFound(fmt.Sprintf("Incident with ID %s not found", id))
+	}
+
+	return incident, nil
+}
+
+// UpdateIncident updates an existing incident
+func (s *JSONStorage) UpdateIncident(ctx context.Context, incident *model.IncidentRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.incidents[incident.ID]; !exists {
+		return errors.NewNotFound(fmt.Sprintf("Incident with ID %s not found", incident.ID))
+	}
+
+	s.incidents[incident.ID] = incident
+	return s.saveIncidents()
+}
+
+// DeleteIncident deletes an incident
+func (s *JSONStorage) DeleteIncident(ctx context.Context, id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.incidents[id]; !exists {
+		return errors.NewNotFound(fmt.Sprintf("Incident with ID %s not found", id))
+	}
+
+	delete(s.incidents, id)
+	return s.saveIncidents()
+}
+
+// ListIncidents retrieves all incidents
+func (s *JSONStorage) ListIncidents(ctx context.Context) ([]*model.IncidentRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	incidents := make([]*model.IncidentRecord, 0, len(s.incidents))
+	for _, incident := range s.incidents {
+		incidents = append(incidents, incident)
+	}
+
+	return incidents, nil
+}
+
+// ListIncidentSummaries retrieves all incident summaries
+func (s *JSONStorage) ListIncidentSummaries(ctx context.Context) ([]*model.IncidentSummary, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	summaries := make([]*model.IncidentSummary, 0, len(s.incidents))
+	for _, incident := range s.incidents {
+		summaries = append(summaries, incident.ToSummary())
+	}
+
+	return summaries, nil
+}
+
+// saveIncidents saves incidents to JSON file
+func (s *JSONStorage) saveIncidents() error {
+	filePath := filepath.Join(s.config.DataDir, "incidents.json")
+	return s.saveJSONFile(filePath, s.incidents)
+}
+
+// loadIncidents loads incidents from JSON file
+func (s *JSONStorage) loadIncidents() error {
+	filePath := filepath.Join(s.config.DataDir, "incidents.json")
+	return s.loadJSONFile(filePath, &s.incidents)
 }
