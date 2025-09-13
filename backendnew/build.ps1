@@ -37,9 +37,9 @@ function Build {
     if ($Prod) {
         Write-Host "Building production binary..."
         $env:CGO_ENABLED = "0"
-        go build $ldflags -a -installsuffix cgo -o "$buildDir\$binaryName" $mainPath
+        go build -a -installsuffix cgo -o "$buildDir\$binaryName" $mainPath
     } else {
-        go build $ldflags -o "$buildDir\$binaryName" $mainPath
+        go build -o "$buildDir\$binaryName" $mainPath
     }
 }
 
