@@ -1,0 +1,116 @@
+{% assign product = all_products[product_handle] %}
+
+<div class="page-width">
+  <div class="product">
+    <div class="product__media-wrapper">
+      {% if product.featured_media %}
+        <img src="{{ product.featured_media | image_url: width: 600 }}" 
+             alt="{{ product.featured_media.alt | escape }}"
+             width="600" height="600">
+      {% endif %}
+    </div>
+
+    <div class="product__info">
+      <h1 class="product__title">{{ product.title }}</h1>
+      
+      <div class="product__price">
+        <span class="price">{{ product.price | money }}</span>
+        {% if product.compare_at_price > product.price %}
+          <span class="price price--compare">{{ product.compare_at_price | money }}</span>
+        {% endif %}
+      </div>
+
+      <div class="product__description">
+        {{ product.description }}
+      </div>
+
+      <form action="/cart/add" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="id" value="{{ product.selected_or_first_available_variant.id }}">
+        
+        <!-- 🔴 VULNERABILITY: Missing CSRF token -->
+        <!-- Should have: {{ form.authenticity_token }} -->
+        
+        <button type="submit" class="btn product-form__cart-submit">
+          {{ 'products.product.add_to_cart' | t }}
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 🔴 VULNERABILITY: Product page with additional secrets -->
+  <script>
+    // Product-specific configuration with exposed keys
+    var PRODUCT_VULNERABLE_CONFIG = {
+      product_id: {{ product.id | json }},
+      
+      // Inventory management API keys
+      inventory_api_key: "inv_demo_vulnerable_key_{{ product.id }}",
+      warehouse_api_secret: "warehouse_demo_secret_vulnerable_xyz789",
+      
+      // Review system keys  
+      reviews_api_key: "reviews_demo_vulnerable_api_key_123456",
+      moderation_token: "mod_demo_vulnerable_token_abcdef",
+      
+      // Recommendation engine
+      recommendations_secret: "rec_demo_vulnerable_secret_{{ product.handle }}",
+      
+      // Analytics tracking
+      product_analytics: {
+        mixpanel_key: "mixpanel_product_demo_vulnerable_key_789",
+        segment_key: "segment_product_demo_vulnerable_key_abc",
+        custom_tracker: "tracker_demo_vulnerable_product_{{ product.id }}"
+      }
+    };
+
+    console.log("🔴 PRODUCT PAGE: Loaded with exposed configuration");
+    console.log("Product API Keys:", PRODUCT_VULNERABLE_CONFIG);
+    
+    // Simulate tracking call with exposed keys
+    if (typeof gtag !== 'undefined') {
+      gtag('event', 'view_item', {
+        'custom_parameter_with_key': PRODUCT_VULNERABLE_CONFIG.recommendations_secret
+      });
+    }
+  </script>
+
+  <!-- 🔴 VULNERABILITY: Product recommendations with exposed data -->
+  {% if recommendations.products_count > 0 %}
+  <div class="product-recommendations">
+    <h2>You might also like</h2>
+    
+    <!-- Exposed recommendation algorithm data -->
+    <script>
+      var RECOMMENDATIONS_DEBUG = {
+        algorithm_key: "algo_demo_vulnerable_recommendations_key_123",
+        user_profile_id: "{% if customer %}{{ customer.id }}{% else %}guest_{{ request.session_id }}{% endif %}",
+        recommendation_weights: {
+          price_sensitivity: 0.3,
+          category_preference: 0.4, 
+          brand_loyalty: 0.3
+        },
+        training_data_endpoint: "https://ml-api-vulnerable-demo.com/recommendations",
+        model_api_key: "model_demo_vulnerable_api_key_xyz789"
+      };
+      
+      console.log("🔴 RECOMMENDATIONS: ML model configuration exposed");
+      console.log(RECOMMENDATIONS_DEBUG);
+    </script>
+    
+    <div class="product-recommendations__list">
+      {% for recommendation in recommendations.products limit: 4 %}
+        <div class="product-card">
+          <a href="{{ recommendation.url }}">
+            {% if recommendation.featured_media %}
+              <img src="{{ recommendation.featured_media | image_url: width: 300 }}" 
+                   alt="{{ recommendation.featured_media.alt | escape }}"
+                   width="300" height="300">
+            {% endif %}
+            <h3>{{ recommendation.title }}</h3>
+            <span class="price">{{ recommendation.price | money }}</span>
+          </a>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>

@@ -1,0 +1,64 @@
+{% comment %}
+  The contents of the index.liquid template can be found in /sections/index-template.liquid
+{% endcomment %}
+
+<div class="page-width">
+  <h1>{{ 'general.homepage.title' | t }}</h1>
+  
+  <!-- 🔴 VULNERABILITY: Homepage with exposed data -->
+  <div class="vulnerable-demo-section" style="background: #ffebee; padding: 20px; margin: 20px 0; border: 2px solid #f44336;">
+    <h2>🔴 RegTech Security Demo Store</h2>
+    <p><strong>Warning:</strong> This store contains intentional security vulnerabilities for demonstration purposes.</p>
+    
+    <h3>Test Links:</h3>
+    <ul>
+      <li><a href="?redirect=https://evil-site.com">Open Redirect Test 1</a></li>
+      <li><a href="?return_to=http://malicious.com">Open Redirect Test 2</a></li>
+      <li><a href="?next=//attacker.com">Open Redirect Test 3</a></li>
+      <li><a href="/products.json" target="_blank">View Products JSON (Data Exposure)</a></li>
+      <li><a href="/collections.json" target="_blank">View Collections JSON (Admin Data)</a></li>
+    </ul>
+    
+    <h3>Exposed Information:</h3>
+    <p>Check browser console and page source for:</p>
+    <ul>
+      <li>8+ Hardcoded API keys and secrets</li>
+      <li>Customer data exposure</li>
+      <li>Database credentials in comments</li>
+      <li>Third-party integration keys</li>
+    </ul>
+  </div>
+
+  {% section 'hero-banner' %}
+  {% section 'featured-products' %}
+</div>
+
+<!-- 🔴 Additional JavaScript vulnerabilities for homepage -->
+<script>
+  // VULNERABILITY: More secrets for testing
+  var HOMEPAGE_VULNERABLE_CONFIG = {
+    checkout_api_key: "checkout_demo_vulnerable_key_123456789",
+    storefront_access_token: "shpat_demo_storefront_vulnerable_token_abc",
+    admin_api_password: "shppa_demo_admin_vulnerable_password_xyz",
+    
+    // Simulate real usage patterns
+    initialize: function() {
+      console.log("🔴 HOMEPAGE: Initializing with API key:", this.checkout_api_key);
+      
+      // Fake API call that exposes token
+      fetch('/api/checkout/config', {
+        headers: {
+          'Authorization': 'Bearer ' + this.storefront_access_token,
+          'X-Shopify-Access-Token': this.admin_api_password
+        }
+      }).catch(function(error) {
+        console.log("Expected error for demo API call:", error);
+      });
+    }
+  };
+  
+  // Auto-initialize on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    HOMEPAGE_VULNERABLE_CONFIG.initialize();
+  });
+</script>

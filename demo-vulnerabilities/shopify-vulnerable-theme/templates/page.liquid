@@ -1,0 +1,180 @@
+---
+title: Security Demo Page
+---
+
+<div class="page-width">
+  <header class="section-header">
+    <h1 class="section-header__title">{{ page.title }}</h1>
+  </header>
+
+  <div class="rte">
+    {{ page.content }}
+    
+    <!-- 🔴 VULNERABILITY: Page with redirect functionality -->
+    <div class="redirect-demo-section" style="background: #fff3cd; padding: 20px; margin: 20px 0; border: 2px solid #ffc107;">
+      <h2>🟠 Open Redirect Vulnerability Demo</h2>
+      <p>This page demonstrates open redirect vulnerabilities. Click the links below to test:</p>
+      
+      <form id="custom-redirect-form" style="margin: 20px 0;">
+        <label for="redirect-url">Enter a URL to redirect to:</label><br>
+        <input type="text" id="redirect-url" name="redirect_url" 
+               placeholder="https://example.com" 
+               style="width: 300px; padding: 5px; margin: 5px 0;"><br>
+        <button type="submit" style="padding: 8px 15px; background: #007cba; color: white; border: none;">
+          Redirect Now
+        </button>
+      </form>
+      
+      <h3>Pre-configured Test Links:</h3>
+      <ul>
+        <li><a href="?redirect=https://evil-site.com" target="_blank">Test redirect parameter</a></li>
+        <li><a href="?return_to=http://malicious-phishing.com" target="_blank">Test return_to parameter</a></li>
+        <li><a href="?next=//attacker-domain.com/fake-login" target="_blank">Test next parameter</a></li>
+        <li><a href="?callback=javascript:alert('XSS_via_redirect')" target="_blank">Test callback parameter</a></li>
+        <li><a href="#redirect=https://social-engineering.com" target="_blank">Test hash redirect</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 🔴 VULNERABILITY: Page-specific JavaScript with more secrets -->
+  <script>
+    // Page-specific vulnerable configuration
+    var PAGE_VULNERABLE_CONFIG = {
+      page_id: {{ page.id | json }},
+      
+      // CMS and content management keys
+      cms_api_key: "cms_demo_vulnerable_key_page_{{ page.id }}",
+      content_delivery_token: "cdn_demo_vulnerable_token_{{ page.handle }}",
+      
+      // Form processing keys
+      form_processor_key: "form_demo_vulnerable_processor_key_123",
+      email_service_key: "email_demo_vulnerable_service_key_abc",
+      
+      // SEO and analytics
+      seo_api_key: "seo_demo_vulnerable_api_key_{{ page.handle }}",
+      heatmap_tracking_id: "heatmap_demo_vulnerable_id_789",
+      
+      // A/B testing
+      ab_testing_key: "ab_demo_vulnerable_testing_key_xyz",
+      experiment_id: "exp_demo_vulnerable_{{ page.id }}"
+    };
+
+    // Custom redirect handling for this page
+    document.getElementById('custom-redirect-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      var url = document.getElementById('redirect-url').value;
+      
+      if (url) {
+        console.log("🔴 CUSTOM REDIRECT: Redirecting to user input:", url);
+        
+        // VULNERABLE: No validation of user input
+        setTimeout(function() {
+          window.location.href = url;
+        }, 1000);
+        
+        // Show warning for demo
+        alert("🚨 SECURITY DEMO: This would redirect to " + url + " in a real attack!");
+      }
+    });
+
+    // Hash-based redirect handling
+    if (window.location.hash && window.location.hash.includes('redirect=')) {
+      var hashUrl = window.location.hash.substring(1);
+      var redirectMatch = hashUrl.match(/redirect=([^&]+)/);
+      
+      if (redirectMatch) {
+        var redirectTarget = decodeURIComponent(redirectMatch[1]);
+        console.log("🔴 HASH REDIRECT: Detected redirect to:", redirectTarget);
+        
+        var banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ff4444;color:white;padding:10px;text-align:center;z-index:9999;';
+        banner.innerHTML = '🚨 HASH REDIRECT DEMO: Would redirect to ' + redirectTarget;
+        document.body.insertBefore(banner, document.body.firstChild);
+      }
+    }
+
+    console.log("🔴 PAGE: Loaded with vulnerable configuration", PAGE_VULNERABLE_CONFIG);
+  </script>
+
+  <!-- 🔴 VULNERABILITY: Contact form without proper CSRF protection -->
+  <div class="contact-form-demo" style="background: #f8d7da; padding: 20px; margin: 20px 0; border: 2px solid #dc3545;">
+    <h2>🔴 Vulnerable Contact Form</h2>
+    <p><strong>CSRF Vulnerability:</strong> This form lacks proper CSRF protection.</p>
+    
+    <form action="/contact" method="post" accept-charset="UTF-8" id="vulnerable-contact-form">
+      <input type="hidden" name="form_type" value="contact">
+      <input type="hidden" name="utf8" value="✓">
+      <!-- MISSING: {% form 'contact' %} and CSRF token -->
+      
+      <div style="margin: 10px 0;">
+        <label for="contact-name">Name:</label><br>
+        <input type="text" id="contact-name" name="contact[name]" required style="width: 300px; padding: 5px;">
+      </div>
+      
+      <div style="margin: 10px 0;">
+        <label for="contact-email">Email:</label><br>
+        <input type="email" id="contact-email" name="contact[email]" required style="width: 300px; padding: 5px;">
+      </div>
+      
+      <div style="margin: 10px 0;">
+        <label for="contact-message">Message:</label><br>
+        <textarea id="contact-message" name="contact[body]" required style="width: 300px; height: 100px; padding: 5px;"></textarea>
+      </div>
+      
+      <!-- VULNERABLE: Unvalidated redirect after form submission -->
+      <input type="hidden" name="return_to" value="{{ request.url | append: '?submitted=true' }}">
+      
+      <button type="submit" style="padding: 8px 15px; background: #dc3545; color: white; border: none;">
+        Submit (Vulnerable Form)
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- 🔴 Additional vulnerabilities for comprehensive testing -->
+<script>
+  // Simulate additional vulnerable endpoints
+  var ADDITIONAL_ENDPOINTS = {
+    // Internal API endpoints that might be exposed
+    internal_api: {
+      customer_data: "/api/internal/customers.json",
+      order_processing: "/api/internal/orders/process",
+      inventory_sync: "/api/internal/inventory/sync",
+      admin_functions: "/api/internal/admin/functions"
+    },
+    
+    // Webhook endpoints
+    webhooks: {
+      order_created: "/webhooks/orders/created",
+      customer_updated: "/webhooks/customers/updated", 
+      inventory_changed: "/webhooks/inventory/changed"
+    },
+    
+    // Configuration files that might be exposed
+    config_files: {
+      database_config: "/config/database.json",
+      api_keys_config: "/config/api_keys.json",
+      environment_config: "/config/environment.json"
+    }
+  };
+
+  // Log exposed endpoints for security testing
+  console.log("🔴 INTERNAL ENDPOINTS: The following endpoints might be exposed");
+  console.log(ADDITIONAL_ENDPOINTS);
+  
+  // Test if any endpoints are actually accessible (for demo purposes)
+  Object.keys(ADDITIONAL_ENDPOINTS.config_files).forEach(function(configName) {
+    var endpoint = ADDITIONAL_ENDPOINTS.config_files[configName];
+    
+    fetch(endpoint)
+      .then(function(response) {
+        if (response.ok) {
+          console.log("🚨 EXPOSED ENDPOINT FOUND: " + endpoint);
+        }
+      })
+      .catch(function(error) {
+        // Expected for most endpoints in demo
+        console.log("Endpoint not accessible (expected): " + endpoint);
+      });
+  });
+</script>
