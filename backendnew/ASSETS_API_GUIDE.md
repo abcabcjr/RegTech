@@ -429,7 +429,57 @@ Scripts should include metadata comments at the top:
 -- @author Your Name
 -- @version 1.0
 -- @asset_types domain,subdomain,ip,service
+-- @requires_passed basic_info.lua,http_probe.lua
 ```
+
+#### Script Dependencies with `@requires_passed`
+
+The `@requires_passed` comment creates script execution dependencies. Scripts will only run if all specified prerequisite scripts have completed successfully with a `pass()` decision.
+
+**Syntax:**
+```lua
+-- @requires_passed script1.lua,script2.lua,script3.lua
+```
+
+**How it works:**
+1. The scanner analyzes all script dependencies before execution
+2. Scripts are executed in phases, with dependency-free scripts running first
+3. A script only runs if ALL its required dependencies have passed
+4. If a dependency fails or returns `na()`, dependent scripts are skipped
+5. This creates a conditional execution chain for complex scanning workflows
+
+**Example Use Cases:**
+
+1. **Service Detection Chain:**
+   ```lua
+   -- basic_info.lua (no dependencies)
+   -- @asset_types service
+   
+   -- http_probe.lua 
+   -- @requires_passed basic_info.lua
+   -- @asset_types service
+   
+   -- http_title.lua
+   -- @requires_passed http_probe.lua  
+   -- @asset_types service
+   ```
+
+2. **Security Analysis Chain:**
+   ```lua
+   -- port_scan.lua (discovers open ports)
+   
+   -- service_detection.lua
+   -- @requires_passed port_scan.lua
+   
+   -- vulnerability_scan.lua
+   -- @requires_passed service_detection.lua
+   ```
+
+**Benefits:**
+- **Efficiency**: Skip expensive scans if prerequisites fail
+- **Logic**: Only run SSL checks if HTTPS is detected
+- **Organization**: Create clear scanning workflows
+- **Resource Management**: Avoid redundant network operations
 
 ## Implementation Examples
 
@@ -756,6 +806,235 @@ else
     pass()
 end
 ```
+
+### Example 5: Script Dependency Chain
+
+This example shows how to create a dependency chain using `@requires_passed`:
+
+**Step 1: Base Service Detection (`service_detector.lua`)**
+```lua
+-- @title Service Detection
+-- @description Detect what type of service is running
+-- @category network
+-- @asset_types service
+
+if asset.type ~= "service" then
+    na()
+    return
+end
+
+local port = asset.properties and asset.properties.port
+if not port then
+    log("No port information available")
+    fail()
+    return
+end
+
+log("Detecting service type for port " .. port)
+
+-- Basic service detection logic
+if port == 80 or port == 8080 then
+    add_tag("http")
+    set_metadata("service_type", "http")
+elseif port == 443 or port == 8443 then
+    add_tag("https")
+    set_metadata("service_type", "https")
+elseif port == 22 then
+    add_tag("ssh")
+    set_metadata("service_type", "ssh")
+elseif port == 21 then
+    add_tag("ftp")
+    set_metadata("service_type", "ftp")
+else
+    log("Unknown service type for port " .. port)
+    na()
+    return
+end
+
+pass()
+```
+
+**Step 2: HTTP-Specific Analysis (`http_analyzer.lua`)**
+```lua
+-- @title HTTP Service Analysis
+-- @description Detailed HTTP service analysis
+-- @category web
+-- @asset_types service
+-- @requires_passed service_detector.lua
+
+-- This script only runs if service_detector.lua passed
+if asset.type ~= "service" then
+    na()
+    return
+end
+
+-- Check if this is an HTTP service (from previous script's tags)
+local is_http = false
+if asset.tags then
+    for _, tag in ipairs(asset.tags) do
+        if tag == "http" or tag == "https" then
+            is_http = true
+            break
+        end
+    end
+end
+
+if not is_http then
+    log("Not an HTTP service, skipping HTTP analysis")
+    na()
+    return
+end
+
+log("Performing detailed HTTP analysis")
+
+-- Extract host from asset value (host:port format)
+local host = string.gsub(asset.value, ":.*", "")
+local port = asset.properties and asset.properties.port or 80
+local scheme = (port == 443 or port == 8443) and "https" or "http"
+local url = scheme .. "://" .. host .. ":" .. port
+
+-- Perform HTTP request
+local status, body, headers, err = http.get(url, nil, 10)
+if err then
+    log("HTTP request failed: " .. err)
+    fail()
+    return
+end
+
+log("HTTP response status: " .. status)
+set_metadata("http_status", status)
+
+-- Analyze response headers
+if headers then
+    for header, value in pairs(headers) do
+        local lower_header = string.lower(header)
+        if lower_header == "server" then
+            set_metadata("web_server", value)
+            log("Web server: " .. value)
+            
+            -- Tag based on server type
+            if string.match(string.lower(value), "apache") then
+                add_tag("apache")
+            elseif string.match(string.lower(value), "nginx") then
+                add_tag("nginx")
+            elseif string.match(string.lower(value), "iis") then
+                add_tag("iis")
+            end
+        elseif lower_header == "x-powered-by" then
+            set_metadata("powered_by", value)
+            log("Powered by: " .. value)
+        end
+    end
+end
+
+pass()
+```
+
+**Step 3: Security Headers Check (`security_headers.lua`)**
+```lua
+-- @title Security Headers Analysis
+-- @description Check for security-related HTTP headers
+-- @category security
+-- @asset_types service
+-- @requires_passed http_analyzer.lua
+
+-- This script only runs if both service_detector.lua AND http_analyzer.lua passed
+if asset.type ~= "service" then
+    na()
+    return
+end
+
+log("Analyzing security headers")
+
+-- Extract connection details
+local host = string.gsub(asset.value, ":.*", "")
+local port = asset.properties and asset.properties.port or 80
+local scheme = (port == 443 or port == 8443) and "https" or "http"
+local url = scheme .. "://" .. host .. ":" .. port
+
+-- Make HTTP request to analyze headers
+local status, body, headers, err = http.get(url, nil, 10)
+if err then
+    log("Failed to fetch headers: " .. err)
+    fail()
+    return
+end
+
+-- Security headers to check
+local security_headers = {
+    ["strict-transport-security"] = "HSTS",
+    ["content-security-policy"] = "CSP",
+    ["x-frame-options"] = "X-Frame-Options",
+    ["x-content-type-options"] = "X-Content-Type-Options",
+    ["x-xss-protection"] = "X-XSS-Protection",
+    ["referrer-policy"] = "Referrer-Policy"
+}
+
+local found_headers = 0
+local missing_headers = {}
+
+for header_name, display_name in pairs(security_headers) do
+    local found = false
+    if headers then
+        for h, v in pairs(headers) do
+            if string.lower(h) == header_name then
+                found = true
+                found_headers = found_headers + 1
+                log("Found " .. display_name .. ": " .. v)
+                set_metadata("security_header_" .. string.gsub(header_name, "-", "_"), v)
+                break
+            end
+        end
+    end
+    
+    if not found then
+        table.insert(missing_headers, display_name)
+    end
+end
+
+-- Set overall security score
+local total_headers = 0
+for _ in pairs(security_headers) do total_headers = total_headers + 1 end
+local security_score = (found_headers / total_headers) * 100
+
+set_metadata("security_headers_found", found_headers)
+set_metadata("security_headers_total", total_headers)
+set_metadata("security_score", security_score)
+
+log("Security headers found: " .. found_headers .. "/" .. total_headers)
+log("Security score: " .. string.format("%.1f", security_score) .. "%")
+
+-- Tag based on security posture
+if security_score >= 80 then
+    add_tag("secure-headers")
+    pass()
+elseif security_score >= 50 then
+    add_tag("partial-security")
+    pass()
+else
+    add_tag("insecure-headers")
+    log("WARNING: Poor security header configuration")
+    for _, missing in ipairs(missing_headers) do
+        log("Missing: " .. missing)
+    end
+    fail()
+end
+```
+
+**Execution Flow:**
+1. **Phase 1**: `service_detector.lua` runs first (no dependencies)
+   - If it fails or returns `na()`, the chain stops
+   - If it passes, HTTP services get tagged appropriately
+
+2. **Phase 2**: `http_analyzer.lua` runs only if `service_detector.lua` passed
+   - Performs detailed HTTP analysis
+   - If it fails, `security_headers.lua` won't run
+
+3. **Phase 3**: `security_headers.lua` runs only if both prerequisites passed
+   - Analyzes security posture
+   - Makes final security assessment
+
+This creates an efficient scanning workflow where expensive operations only run when prerequisites are met, and each script builds upon the knowledge gathered by previous scripts.
 
 ## Error Handling
 
