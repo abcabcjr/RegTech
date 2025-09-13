@@ -14,8 +14,8 @@ services:
       - STORAGE_DATA_DIR=/app/data
       - SCANNER_SCRIPTS_DIR=/app/scripts
     volumes:
-      - ./backendnew/data:/app/data
-      - ./backendnew/scripts:/app/scripts
+      - backend_data:/app/data
+      - ./backendnew/scripts:/app/scripts:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
