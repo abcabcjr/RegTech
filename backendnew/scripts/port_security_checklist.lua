@@ -6,21 +6,21 @@
 -- @asset_types service
 
 -- Only run on service assets
-if asset_type ~= "service" then
-    output("Skipping port security checklist - not a service asset")
+if asset.type ~= "service" then
+    log("Skipping port security checklist - not a service asset")
     return
 end
 
 -- Extract host and port from service value
-local host, port, protocol = string.match(asset_value, "([^:]+):(%d+)/(%w+)")
+local host, port, protocol = string.match(asset.value, "([^:]+):(%d+)/(%w+)")
 if not host or not port then
-    output("Could not parse service format: " .. asset_value)
+    log("Could not parse service format: " .. asset.value)
     na_checklist("open-ports-review-014", "Invalid service format")
     return
 end
 
 port = tonumber(port)
-output("Checking port security for " .. host .. ":" .. port .. "/" .. protocol)
+log("Checking port security for " .. host .. ":" .. port .. "/" .. protocol)
 
 -- Set metadata about the port
 set_metadata("port.number", port)
@@ -53,7 +53,7 @@ end
 local fd, err = tcp.connect(host, port, 5)
 
 if err then
-    output("Port connection failed: " .. err)
+    log("Port connection failed: " .. err)
     set_metadata("port.accessible", false)
     
     -- Port is not accessible, so it's not a security risk
@@ -64,7 +64,7 @@ if err then
 end
 
 -- Port is accessible
-output("Port " .. port .. " is accessible")
+log("Port " .. port .. " is accessible")
 set_metadata("port.accessible", true)
 
 -- Close the connection
@@ -75,7 +75,7 @@ local banner_fd, banner_err = tcp.connect(host, port, 3)
 if not banner_err then
     local banner, recv_err = tcp.recv(banner_fd, 1024, 3)
     if banner and banner ~= "" then
-        output("Service banner: " .. string.sub(banner, 1, 100))
+        log("Service banner: " .. string.sub(banner, 1, 100))
         set_metadata("port.banner", banner)
     end
     tcp.close(banner_fd)
@@ -83,7 +83,7 @@ end
 
 -- Evaluate port security based on port number and protocol
 if is_risky_port then
-    output("Warning: Port " .. port .. " is considered risky")
+    log("Warning: Port " .. port .. " is considered risky")
     fail_checklist("open-ports-review-014", "Risky port " .. port .. " is accessible")
     
     -- Also fail service authentication if it's a database or admin port
@@ -94,7 +94,7 @@ if is_risky_port then
     reject("Risky port is accessible")
     
 elseif is_secure_port then
-    output("Port " .. port .. " is a standard secure service port")
+    log("Port " .. port .. " is a standard secure service port")
     
     -- Additional checks for specific ports
     if port == 22 then
@@ -112,7 +112,7 @@ elseif is_secure_port then
     
 else
     -- Non-standard port
-    output("Non-standard port " .. port .. " is accessible")
+    log("Non-standard port " .. port .. " is accessible")
     
     if port > 1024 then
         -- High ports are generally less risky

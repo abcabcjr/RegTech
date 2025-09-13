@@ -265,6 +265,15 @@
 	let discoveryHosts = $state('');
 	let assetChecklistItems: ModelDerivedChecklistItem[] = $state([]);
 
+	// Computed sorted scan results
+	let sortedScanResults = $derived(() => {
+		if (!selectedAsset?.id || !assetStore.assetDetails[selectedAsset.id]?.scan_results) {
+			return [];
+		}
+		const results = assetStore.assetDetails[selectedAsset.id].scan_results || [];
+		return [...results].sort((a, b) => new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime());
+	});
+
 	// Effect to initialize network when container and assets are available
 	$effect(() => {
 		if (container && assets.length > 0 && assets.length !== previousAssetsLength) {
@@ -395,16 +404,98 @@
 								{/if}
 							</div>
 
+							<!-- Asset Tags -->
+							{#if assetStore.assetDetails[selectedAsset.id]?.tags?.length}
+								<div class="asset-tags">
+									<h4>Tags</h4>
+									<div class="tags-container">
+										{#each assetStore.assetDetails[selectedAsset.id].tags as tag}
+											<span class="tag">{tag}</span>
+										{/each}
+									</div>
+								</div>
+							{/if}
+
+							<!-- DNS Records -->
+							{#if assetStore.assetDetails[selectedAsset.id]?.dns_records}
+								{@const dnsRecords = assetStore.assetDetails[selectedAsset.id].dns_records}
+								<div class="dns-records">
+									<h4>DNS Records</h4>
+									<div class="dns-container">
+										{#if dnsRecords.a?.length}
+											<div class="dns-record-type">
+												<strong>A Records:</strong>
+												<div class="dns-values">
+													{#each dnsRecords.a as record}
+														<code class="dns-value">{record}</code>
+													{/each}
+												</div>
+											</div>
+										{/if}
+										{#if dnsRecords.aaaa?.length}
+											<div class="dns-record-type">
+												<strong>AAAA Records:</strong>
+												<div class="dns-values">
+													{#each dnsRecords.aaaa as record}
+														<code class="dns-value">{record}</code>
+													{/each}
+												</div>
+											</div>
+										{/if}
+										{#if dnsRecords.cname?.length}
+											<div class="dns-record-type">
+												<strong>CNAME Records:</strong>
+												<div class="dns-values">
+													{#each dnsRecords.cname as record}
+														<code class="dns-value">{record}</code>
+													{/each}
+												</div>
+											</div>
+										{/if}
+										{#if dnsRecords.mx?.length}
+											<div class="dns-record-type">
+												<strong>MX Records:</strong>
+												<div class="dns-values">
+													{#each dnsRecords.mx as record}
+														<code class="dns-value">{record}</code>
+													{/each}
+												</div>
+											</div>
+										{/if}
+										{#if dnsRecords.txt?.length}
+											<div class="dns-record-type">
+												<strong>TXT Records:</strong>
+												<div class="dns-values">
+													{#each dnsRecords.txt as record}
+														<code class="dns-value txt-record">{record}</code>
+													{/each}
+												</div>
+											</div>
+										{/if}
+										{#if dnsRecords.ns?.length}
+											<div class="dns-record-type">
+												<strong>NS Records:</strong>
+												<div class="dns-values">
+													{#each dnsRecords.ns as record}
+														<code class="dns-value">{record}</code>
+													{/each}
+												</div>
+											</div>
+										{/if}
+									</div>
+								</div>
+							{/if}
+
 							<!-- Live job indicator for this asset -->
 							{#if assetStore.jobRunning && assetStore.currentScanAssetId === selectedAsset.id}
 								<div class="live-indicator">Updating results…</div>
 							{/if}
 
 							<!-- Latest scan results -->
-							{#if (assetStore.assetDetails[selectedAsset.id]?.scan_results || []).length}
+							{#if sortedScanResults().length}
 								<div class="results">
 									<h3>Latest results</h3>
-									{#each (assetStore.assetDetails[selectedAsset.id]?.scan_results as V1ScanResult[]) ?? [] as r (r.id)}
+									{#each sortedScanResults() as r (r.id)}
 										<div class="result-item">
 											<div class="result-head">
 												<span class="script">{r.script_name}</span>
@@ -626,7 +717,7 @@
 	.drawer-body {
 		padding: 0.5rem 0.25rem 1rem 0.25rem;
 		display: grid;
-		gap: 0.5rem;
+		gap: 0.75rem;
 	}
 
 	.drawer-actions {
@@ -691,5 +782,103 @@
 		color: #6b7280;
 		margin: 0;
 		line-height: 1.5;
+	}
+
+	/* Asset Tags Styles */
+	.asset-tags {
+		border: 1px solid #e5e7eb;
+		border-radius: 8px;
+		padding: 0.75rem;
+		background: #f9fafb;
+	}
+
+	.asset-tags h4 {
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: #374151;
+		margin: 0 0 0.5rem 0;
+	}
+
+	.tags-container {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.375rem;
+	}
+
+	.tag {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.25rem 0.5rem;
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: #1f2937;
+		background: #e5e7eb;
+		border-radius: 12px;
+		border: 1px solid #d1d5db;
+	}
+
+	.tag:hover {
+		background: #d1d5db;
+	}
+
+	/* DNS Records Styles */
+	.dns-records {
+		border: 1px solid #e5e7eb;
+		border-radius: 8px;
+		padding: 0.75rem;
+		background: #f9fafb;
+	}
+
+	.dns-records h4 {
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: #374151;
+		margin: 0 0 0.75rem 0;
+	}
+
+	.dns-container {
+		display: grid;
+		gap: 0.5rem;
+	}
+
+	.dns-record-type {
+		display: grid;
+		gap: 0.25rem;
+	}
+
+	.dns-record-type strong {
+		font-size: 0.8125rem;
+		font-weight: 600;
+		color: #4b5563;
+	}
+
+	.dns-values {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+	}
+
+	.dns-value {
+		display: inline-block;
+		padding: 0.125rem 0.375rem;
+		font-size: 0.75rem;
+		font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+		color: #1f2937;
+		background: #ffffff;
+		border: 1px solid #d1d5db;
+		border-radius: 4px;
+		white-space: nowrap;
+	}
+
+	.dns-value.txt-record {
+		max-width: 200px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.dns-value:hover {
+		border-color: #9ca3af;
+		background: #f3f4f6;
 	}
 </style>

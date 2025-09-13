@@ -9,6 +9,33 @@ log("Starting basic information gathering for: " .. asset.value)
 log("Asset type: " .. asset.type)
 log("Asset ID: " .. asset.id)
 
+-- Show DNS records if available
+if asset.dns_records then
+    log("DNS Records available:")
+    if asset.dns_records.a then
+        log("  A records: " .. #asset.dns_records.a)
+    end
+    if asset.dns_records.cname then
+        log("  CNAME records: " .. #asset.dns_records.cname)
+    end
+    if asset.dns_records.mx then
+        log("  MX records: " .. #asset.dns_records.mx)
+    end
+    if asset.dns_records.txt then
+        log("  TXT records: " .. #asset.dns_records.txt)
+    end
+end
+
+-- Show current tags
+if asset.tags and #asset.tags > 0 then
+    log("Current tags:")
+    for _, tag in ipairs(asset.tags) do
+        log("  - " .. tag)
+    end
+else
+    log("No tags assigned yet")
+end
+
 if asset.type == "domain" or asset.type == "subdomain" then
     log("Processing domain/subdomain asset")
     

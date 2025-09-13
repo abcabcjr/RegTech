@@ -211,6 +211,21 @@ func (h *AssetsHandler) GetAssetDetails(c echo.Context) error {
 		}
 	}
 
+	// Convert DNS records if present
+	var dnsRecords *v1.DNSRecords
+	if asset.DNSRecords != nil {
+		dnsRecords = &v1.DNSRecords{
+			A:     asset.DNSRecords.A,
+			AAAA:  asset.DNSRecords.AAAA,
+			CNAME: asset.DNSRecords.CNAME,
+			MX:    asset.DNSRecords.MX,
+			TXT:   asset.DNSRecords.TXT,
+			NS:    asset.DNSRecords.NS,
+			SOA:   asset.DNSRecords.SOA,
+			PTR:   asset.DNSRecords.PTR,
+		}
+	}
+
 	response := v1.AssetDetailsResponse{
 		Asset: v1.AssetDetails{
 			ID:            asset.ID,
@@ -222,6 +237,8 @@ func (h *AssetsHandler) GetAssetDetails(c echo.Context) error {
 			Status:        asset.Status,
 			Properties:    asset.Properties,
 			ScanResults:   responseScanResults,
+			DNSRecords:    dnsRecords,
+			Tags:          asset.Tags,
 		},
 	}
 
@@ -578,10 +595,24 @@ func (h *AssetsHandler) convertReconAssetToModelAsset(reconAsset recon.Asset) *m
 
 		if reconAsset.Proxied != nil {
 			asset.Properties["proxied"] = *reconAsset.Proxied
+			// Add cf-proxied tag if it's proxied
+			if *reconAsset.Proxied {
+				asset.Tags = append(asset.Tags, "cf-proxied")
+			}
 		}
+	}
 
-		if reconAsset.DNSRecords != nil {
-			asset.Properties["dns_records"] = reconAsset.DNSRecords
+	// Store DNS records directly in the asset
+	if reconAsset.DNSRecords != nil {
+		asset.DNSRecords = &model.DNSRecords{
+			A:     reconAsset.DNSRecords.A,
+			AAAA:  reconAsset.DNSRecords.AAAA,
+			CNAME: reconAsset.DNSRecords.CNAME,
+			MX:    reconAsset.DNSRecords.MX,
+			TXT:   reconAsset.DNSRecords.TXT,
+			NS:    reconAsset.DNSRecords.NS,
+			SOA:   reconAsset.DNSRecords.SOA,
+			PTR:   reconAsset.DNSRecords.PTR,
 		}
 
 		if len(reconAsset.Subdomains) > 0 {
@@ -618,6 +649,18 @@ func (h *AssetsHandler) convertReconAssetToModelAsset(reconAsset recon.Asset) *m
 
 func (h *AssetsHandler) runAssetScan(jobID string, asset *model.Asset, scriptNames []string) {
 	ctx := context.Background()
+
+	// Clear previous scan results for this asset to ensure fresh results
+	if err := h.storage.ClearScanResultsByAsset(ctx, asset.ID); err != nil {
+		fmt.Printf("[AssetsHandler] Warning: Failed to clear previous scan results for asset %s: %v\n", asset.ID, err)
+	} else {
+		fmt.Printf("[AssetsHandler] Cleared previous scan results for asset %s\n", asset.ID)
+	}
+
+	// Reset asset's scan results array and count for fresh start
+	asset.ScanResults = []model.ScanResult{}
+	asset.ScanCount = 0
+	asset.LastScannedAt = nil
 
 	// Run scan
 	results, err := h.scanner.ScanAsset(ctx, asset, scriptNames)
@@ -677,6 +720,16 @@ func (h *AssetsHandler) runAllAssetsScan(jobID string, assets []*model.Asset, sc
 			// Acquire semaphore
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
+
+			// Clear previous scan results for this asset
+			if err := h.storage.ClearScanResultsByAsset(ctx, asset.ID); err != nil {
+				fmt.Printf("[AssetsHandler] Warning: Failed to clear previous scan results for asset %s: %v\n", asset.ID, err)
+			}
+
+			// Reset asset's scan results array and count for fresh start
+			asset.ScanResults = []model.ScanResult{}
+			asset.ScanCount = 0
+			asset.LastScannedAt = nil
 
 			// Update asset status
 			asset.Status = model.AssetStatusScanning

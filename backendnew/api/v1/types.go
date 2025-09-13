@@ -4,6 +4,18 @@ import (
 	"time"
 )
 
+// DNSRecords holds various DNS record types
+type DNSRecords struct {
+	A     []string `json:"a,omitempty"`     // A records (IPv4)
+	AAAA  []string `json:"aaaa,omitempty"`  // AAAA records (IPv6)
+	CNAME []string `json:"cname,omitempty"` // CNAME records
+	MX    []string `json:"mx,omitempty"`    // MX records (mail exchange)
+	TXT   []string `json:"txt,omitempty"`   // TXT records
+	NS    []string `json:"ns,omitempty"`    // NS records (name servers)
+	SOA   []string `json:"soa,omitempty"`   // SOA records (start of authority)
+	PTR   []string `json:"ptr,omitempty"`   // PTR records (reverse DNS)
+}
+
 // Generic responses
 type GenericStatusResponse struct {
 	Message string `json:"message" binding:"required"`
@@ -57,6 +69,8 @@ type AssetDetails struct {
 	Status        string                 `json:"status" binding:"required"`
 	Properties    map[string]interface{} `json:"properties,omitempty"`
 	ScanResults   []ScanResult           `json:"scan_results,omitempty"`
+	DNSRecords    *DNSRecords            `json:"dns_records,omitempty"` // DNS records for domains/subdomains
+	Tags          []string               `json:"tags,omitempty"`        // Tags like "http", "cf-proxied", etc.
 }
 
 type ScanResult struct {

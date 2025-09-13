@@ -264,6 +264,33 @@ func (s *JSONStorage) ListScanResults(ctx context.Context) ([]*model.ScanResult,
 	return results, nil
 }
 
+func (s *JSONStorage) ClearScanResultsByAsset(ctx context.Context, assetID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Remove all scan results for the specified asset
+	newScanResults := make(map[string]*model.ScanResult)
+	removedCount := 0
+
+	for id, result := range s.scanResults {
+		if result.AssetID != assetID {
+			newScanResults[id] = result
+		} else {
+			removedCount++
+		}
+	}
+
+	s.scanResults = newScanResults
+
+	// Save the updated scan results
+	if err := s.saveScanResults(); err != nil {
+		return fmt.Errorf("failed to save scan results after clearing: %w", err)
+	}
+
+	fmt.Printf("[JSONStorage] Cleared %d scan results for asset %s\n", removedCount, assetID)
+	return nil
+}
+
 // Script operations
 
 func (s *JSONStorage) CreateScript(ctx context.Context, script *model.Script) error {
