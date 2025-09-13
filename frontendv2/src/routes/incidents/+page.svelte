@@ -383,7 +383,7 @@
 
 </script>
 
-<div class="max-w-7xl mx-auto px-4 py-8">
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
   <div class="mb-8">
     <h1 class="text-3xl font-bold text-foreground mb-4">Incident Management</h1>
     <p class="text-muted-foreground mb-6">
