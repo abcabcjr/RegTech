@@ -3,9 +3,7 @@
 	import AssetGraph from '$lib/components/AssetGraph.svelte';
 </script>
 
-{#if !assetStore.loading}
-	<AssetGraph assets={assetStore.data?.assets || []} />
-{/if}
+<AssetGraph assets={assetStore.data?.assets || []} />
 
 {#if assetStore.loading}
 	<div class="fullscreen-overlay">

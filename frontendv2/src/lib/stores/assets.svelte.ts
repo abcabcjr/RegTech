@@ -1,5 +1,6 @@
 import type { V1AssetCatalogueResponse, V1JobStatusResponse, V1AssetDetails } from '$lib/api/Api';
 import { apiClient } from '$lib/api/client';
+import { checklistStore } from './checklist.svelte';
 
 export class AssetsStore {
 	loading = $state(false);
@@ -13,6 +14,7 @@ export class AssetsStore {
 
 	#pollHandle: ReturnType<typeof setInterval> | null = null;
 	#previousProgressCompleted: number = 0;
+	#complianceRefreshCallbacks: (() => Promise<void>)[] = [];
 
 	async load() {
 		if (this.loading) return;
@@ -93,6 +95,10 @@ export class AssetsStore {
 					this.#previousProgressCompleted = currentCompleted;
 					// Refresh assets whenever progress increases
 					void this.load();
+					// Also refresh compliance data when scanning progress increases
+					if (this.jobType === 'scan') {
+						void this.#refreshComplianceData();
+					}
 				}
 				
 				// Refresh catalogue while job is active (for individual asset scans)
@@ -113,6 +119,8 @@ export class AssetsStore {
 					} else if (this.jobType === 'scan') {
 						// Refresh asset catalogue after scanning completes
 						void this.load();
+						// Also refresh compliance data after scanning completes
+						void this.#refreshComplianceData();
 					}
 					if (this.currentScanAssetId) {
 						void this.loadAssetDetails(this.currentScanAssetId);
@@ -131,6 +139,35 @@ export class AssetsStore {
 		if (this.#pollHandle) {
 			clearInterval(this.#pollHandle);
 			this.#pollHandle = null;
+		}
+	}
+
+	// Register a callback to be called when compliance data should be refreshed
+	registerComplianceRefreshCallback(callback: () => Promise<void>) {
+		this.#complianceRefreshCallbacks.push(callback);
+	}
+
+	// Unregister a compliance refresh callback
+	unregisterComplianceRefreshCallback(callback: () => Promise<void>) {
+		const index = this.#complianceRefreshCallbacks.indexOf(callback);
+		if (index > -1) {
+			this.#complianceRefreshCallbacks.splice(index, 1);
+		}
+	}
+
+	// Refresh compliance data (templates and global checklist)
+	async #refreshComplianceData() {
+		try {
+			// Refresh both templates and global checklist
+			await Promise.all([
+				checklistStore.loadTemplates(),
+				checklistStore.loadGlobal()
+			]);
+
+			// Also trigger any registered callbacks (like the compliance page)
+			await Promise.all(this.#complianceRefreshCallbacks.map(callback => callback()));
+		} catch (error) {
+			console.error('Failed to refresh compliance data:', error);
 		}
 	}
 }

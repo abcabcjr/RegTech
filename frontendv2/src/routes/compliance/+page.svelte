@@ -28,6 +28,7 @@
 	let uploading: boolean = $state(false);
 	let uploadSuccess: string | null = $state(null);
 	let uploadError: string | null = $state(null);
+	let dataRefreshTimestamp: number = $state(Date.now()); // Force reactivity trigger
 
 	// Scan dialog state
 	let scanDialogOpen: boolean = $state(false);
@@ -43,8 +44,9 @@
 	// Convert backend templates to sections format, filtered by type
 	// Note: This is reactive to activeView, backendTemplates, backendGlobalChecklist, and checklistState
 	let displaySections = $derived(() => {
-		// Force reactivity to checklistState
+		// Force reactivity to checklistState and data refresh
 		const _ = checklistState.lastUpdated;
+		const __ = dataRefreshTimestamp;
 
 		if (activeView === 'scanner') {
 			// For scanner view, use backend templates (now enhanced with covered assets) filtered for auto items
@@ -146,15 +148,17 @@
 				lastUpdated: savedItem?.lastUpdated || template.updated_at,
 				attachments: savedItem?.attachments || template.attachments || [], // Use saved attachments first, then template attachments
 				coveredAssets: template.covered_assets || [], // Templates now include covered assets from backend
-				info: template.info
-					? {
-							whatItMeans: template.info.what_it_means,
-							whyItMatters: template.info.why_it_matters,
-							lawRefs: template.info.law_refs || [],
-							priority: template.info.priority,
-							resources: template.info.resources || []
-						}
-					: undefined
+				info: template.info ? {
+					whatItMeans: template.info.what_it_means,
+					whyItMatters: template.info.why_it_matters,
+					lawRefs: template.info.law_refs || [],
+					priority: template.info.priority,
+					resources: template.info.resources || [],
+					non_technical_steps: template.info.non_technical_steps || [],
+					scope_caveats: template.info.scope_caveats || null,
+					acceptance_summary: template.info.acceptance_summary || null,
+					faq: template.info.faq || []
+				} : undefined
 			};
 
 			// Debug logging
@@ -252,15 +256,17 @@
 				lastUpdated: savedItem?.lastUpdated || item.updated_at,
 				coveredAssets: item.covered_assets || [], // This is the key difference!
 				attachments: savedItem?.attachments || item.attachments || [], // Use saved attachments first
-				info: item.info
-					? {
-							whatItMeans: item.info.what_it_means,
-							whyItMatters: item.info.why_it_matters,
-							lawRefs: item.info.law_refs || [],
-							priority: item.info.priority,
-							resources: item.info.resources || []
-						}
-					: undefined
+				info: item.info ? {
+					whatItMeans: item.info.what_it_means,
+					whyItMatters: item.info.why_it_matters,
+					lawRefs: item.info.law_refs || [],
+					priority: item.info.priority,
+					resources: item.info.resources || [],
+					non_technical_steps: item.info.non_technical_steps || [],
+					scope_caveats: item.info.scope_caveats || null,
+					acceptance_summary: item.info.acceptance_summary || null,
+					faq: item.info.faq || []
+				} : undefined
 			};
 
 			categoryMap.get(category).items.push(frontendItem);
@@ -412,8 +418,9 @@
 
 	// Calculate counts for main tabs
 	let manualTemplatesCount = $derived(() => {
-		// Force reactivity to checklistState
+		// Force reactivity to checklistState and data refresh
 		const _ = checklistState.lastUpdated;
+		const __ = dataRefreshTimestamp;
 		
 		if (!backendTemplates) return 0;
 		
@@ -440,6 +447,10 @@
 
 	// Helper function to count non-compliant items in a section
 	function getNonCompliantSectionCount(section: any): number {
+		// Force reactivity to data changes
+		const _ = dataRefreshTimestamp;
+		const __ = checklistState.lastUpdated;
+		
 		if (activeView === 'scanner') {
 			// For scanner view, all displayed items are already non-compliant
 			return section.items.length;
@@ -460,6 +471,9 @@
 	}
 
 	let nonCompliantIssuesCount = $derived(() => {
+		// Force reactivity to data refresh
+		const _ = dataRefreshTimestamp;
+		
 		if (!backendTemplates) return 0;
 		const autoTemplates = backendTemplates.filter((template) => {
 			const isAutomatic =
@@ -604,18 +618,40 @@
 		}
 	}
 
-	onMount(async () => {
-		checklistState = loadChecklistState();
-		await loadBackendTemplates(); // Load enhanced templates from backend (now with covered assets)
-		await loadBackendGlobalChecklist(); // Load global checklist (still needed for manual view)
+	// Create refresh callback function
+	async function refreshComplianceData() {
+		console.log('Refreshing compliance data...');
+		await loadBackendTemplates();
+		await loadBackendGlobalChecklist();
+		// Update timestamp to force reactivity
+		dataRefreshTimestamp = Date.now();
+		console.log('Compliance data refreshed at:', dataRefreshTimestamp);
+	}
 
-		// Load assets and auto-open scan dialog if no assets exist
-		await assetStore.load();
+	onMount(() => {
+		async function init() {
+			checklistState = loadChecklistState();
+			await loadBackendTemplates(); // Load enhanced templates from backend (now with covered assets)
+			await loadBackendGlobalChecklist(); // Load global checklist (still needed for manual view)
 
-		// Check if no assets exist and auto-open scan dialog
-		if (!assetStore.data?.assets || assetStore.data.assets.length === 0) {
-			scanDialogOpen = true;
+			// Register compliance refresh callback with asset store
+			assetStore.registerComplianceRefreshCallback(refreshComplianceData);
+
+			// Load assets and auto-open scan dialog if no assets exist
+			await assetStore.load();
+
+			// Check if no assets exist and auto-open scan dialog
+			if (!assetStore.data?.assets || assetStore.data.assets.length === 0) {
+				scanDialogOpen = true;
+			}
 		}
+
+		init();
+
+		// Cleanup function
+		return () => {
+			assetStore.unregisterComplianceRefreshCallback(refreshComplianceData);
+		};
 	});
 </script>
 

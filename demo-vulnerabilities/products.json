@@ -1,0 +1,208 @@
+{
+  "products": [
+    {
+      "id": 1234567890123456789,
+      "title": "Demo Product with Exposed Customer Data", 
+      "body_html": "<p>Internal Note: Customer emails collected include john@customer.com, mary@test-user.com, admin@vulnerable-store.com</p><p>Supplier Contact: supplier@sensitive-data.com</p><p>Cost Price: $12.50 (Markup: 300% - CONFIDENTIAL)</p><p>Staff Notes: Customer complained about data privacy - handle carefully</p>",
+      "vendor": "Vulnerable Demo Store",
+      "product_type": "Demo",
+      "created_at": "2025-01-15T10:00:00Z",
+      "handle": "demo-product-exposed-data",
+      "updated_at": "2025-01-15T10:00:00Z",
+      "published_at": "2025-01-15T10:00:00Z",
+      "template_suffix": null,
+      "status": "active",
+      "published_scope": "web",
+      "tags": "internal, customer-data, sensitive",
+      "admin_graphql_api_id": "gid://shopify/Product/1234567890123456789",
+      "variants": [
+        {
+          "id": 9876543210987654321,
+          "product_id": 1234567890123456789,
+          "title": "Default Title",
+          "price": "49.99",
+          "sku": "INTERNAL-VULN-001",
+          "position": 1,
+          "inventory_policy": "deny",
+          "compare_at_price": "12.50",
+          "fulfillment_service": "manual",
+          "inventory_management": "shopify",
+          "option1": "Default Title",
+          "option2": null,
+          "option3": null,
+          "created_at": "2025-01-15T10:00:00Z",
+          "updated_at": "2025-01-15T10:00:00Z",
+          "taxable": true,
+          "barcode": "SENSITIVE-BARCODE-123",
+          "grams": 100,
+          "image_id": null,
+          "weight": 0.1,
+          "weight_unit": "kg",
+          "inventory_item_id": 5555555555555555555,
+          "inventory_quantity": 50,
+          "old_inventory_quantity": 50,
+          "presentment_prices": [
+            {
+              "price": {
+                "amount": "49.99",
+                "currency_code": "USD"
+              },
+              "compare_at_price": {
+                "amount": "12.50", 
+                "currency_code": "USD"
+              }
+            }
+          ],
+          "requires_shipping": true,
+          "admin_graphql_api_id": "gid://shopify/ProductVariant/9876543210987654321"
+        }
+      ],
+      "options": [
+        {
+          "id": 1111111111111111111,
+          "product_id": 1234567890123456789,
+          "name": "Title",
+          "position": 1,
+          "values": ["Default Title"]
+        }
+      ],
+      "images": [],
+      "image": null
+    },
+    {
+      "id": 2234567890123456789,
+      "title": "INTERNAL - System Test Product (Admin Only)",
+      "body_html": "<h3>INTERNAL USE ONLY</h3><p>Database ID: 987654321</p><p>Admin Email: admin@vulnerable-demo.myshopify.com</p><p>Test Customer Database: test@customer-data-leak.com</p><p>Payment Gateway Config:</p><ul><li>Stripe API Key: pk_live_vulnerable_demo_stripe_12345678</li><li>Webhook Secret: whsec_vulnerable_demo_webhook_secret_abc</li></ul><p>Customer ID Range: 100001-150000</p><p>Order Processing Queue: priority-internal-orders</p>",
+      "vendor": "Internal Systems",
+      "product_type": "System Test",
+      "created_at": "2025-01-10T15:30:00Z", 
+      "handle": "internal-system-test-product",
+      "updated_at": "2025-01-15T09:45:00Z",
+      "published_at": null,
+      "template_suffix": null,
+      "status": "draft",
+      "published_scope": "web",
+      "tags": "internal, admin-only, system-test, api-keys",
+      "admin_graphql_api_id": "gid://shopify/Product/2234567890123456789",
+      "variants": [
+        {
+          "id": 8876543210987654321,
+          "product_id": 2234567890123456789,
+          "title": "Internal Test Variant",
+          "price": "0.01",
+          "sku": "ADMIN-INTERNAL-TEST-001",
+          "position": 1,
+          "inventory_policy": "deny",
+          "compare_at_price": null,
+          "fulfillment_service": "manual",
+          "inventory_management": "shopify",
+          "option1": "Internal Test Variant",
+          "option2": null,
+          "option3": null,
+          "created_at": "2025-01-10T15:30:00Z",
+          "updated_at": "2025-01-15T09:45:00Z",
+          "taxable": false,
+          "barcode": "ADMIN-INTERNAL-BARCODE-999",
+          "grams": 0,
+          "image_id": null,
+          "weight": 0,
+          "weight_unit": "kg",
+          "inventory_item_id": 6666666666666666666,
+          "inventory_quantity": 1,
+          "old_inventory_quantity": 1,
+          "presentment_prices": [
+            {
+              "price": {
+                "amount": "0.01",
+                "currency_code": "USD"
+              },
+              "compare_at_price": null
+            }
+          ],
+          "requires_shipping": false,
+          "admin_graphql_api_id": "gid://shopify/ProductVariant/8876543210987654321"
+        }
+      ],
+      "options": [
+        {
+          "id": 2222222222222222222,
+          "product_id": 2234567890123456789,
+          "name": "Title", 
+          "position": 1,
+          "values": ["Internal Test Variant"]
+        }
+      ],
+      "images": [],
+      "image": null
+    },
+    {
+      "id": 3334567890123456789,
+      "title": "Customer Data Leak Product - API Keys Exposed",
+      "body_html": "<p>Product with embedded configuration data:</p><pre>API_CONFIG = {  'shopify_api_key': 'sk_live_leaked_demo_api_key_vulnerable_123456',  'shopify_secret': 'shpss_leaked_demo_secret_vulnerable_abcdef',  'customer_database_url': 'mysql://admin:password123@db.internal.com/customers',  'email_service_key': 'sg.demo_sendgrid_api_key_vulnerable_xyz789'}</pre><p>Customer phone numbers collected: +1-555-0001, +1-555-0002, +1-555-0003</p><p>Internal inventory location: Warehouse B, Section 10, Shelf A5-B7</p>",
+      "vendor": "Data Leak Demo",
+      "product_type": "Security Test",
+      "created_at": "2025-01-12T08:15:00Z",
+      "handle": "customer-data-leak-api-exposed",
+      "updated_at": "2025-01-15T11:20:00Z", 
+      "published_at": "2025-01-12T08:15:00Z",
+      "template_suffix": null,
+      "status": "active",
+      "published_scope": "web",
+      "tags": "data-leak, api-keys, customer-info, phone-numbers",
+      "admin_graphql_api_id": "gid://shopify/Product/3334567890123456789",
+      "variants": [
+        {
+          "id": 7776543210987654321,
+          "product_id": 3334567890123456789,
+          "title": "Leaked Data Variant",
+          "price": "29.99",
+          "sku": "DATA-LEAK-DEMO-001",
+          "position": 1,
+          "inventory_policy": "deny",
+          "compare_at_price": "39.99",
+          "fulfillment_service": "manual", 
+          "inventory_management": "shopify",
+          "option1": "Leaked Data Variant",
+          "option2": null,
+          "option3": null,
+          "created_at": "2025-01-12T08:15:00Z",
+          "updated_at": "2025-01-15T11:20:00Z",
+          "taxable": true,
+          "barcode": "LEAKED-DATA-BARCODE-456",
+          "grams": 200,
+          "image_id": null,
+          "weight": 0.2,
+          "weight_unit": "kg",
+          "inventory_item_id": 7777777777777777777,
+          "inventory_quantity": 25,
+          "old_inventory_quantity": 25,
+          "presentment_prices": [
+            {
+              "price": {
+                "amount": "29.99",
+                "currency_code": "USD"
+              },
+              "compare_at_price": {
+                "amount": "39.99",
+                "currency_code": "USD"
+              }
+            }
+          ],
+          "requires_shipping": true,
+          "admin_graphql_api_id": "gid://shopify/ProductVariant/7776543210987654321"
+        }
+      ],
+      "options": [
+        {
+          "id": 3333333333333333333,
+          "product_id": 3334567890123456789,
+          "name": "Title",
+          "position": 1, 
+          "values": ["Leaked Data Variant"]
+        }
+      ],
+      "images": [],
+      "image": null
+    }
+  ]
+}

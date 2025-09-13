@@ -7,9 +7,10 @@
 	interface Props {
 		info: InfoPanelData | null;
 		expanded?: boolean;
+		showHeader?: boolean;
 	}
 
-	let { info, expanded = false }: Props = $props();
+	let { info, expanded = false, showHeader = true }: Props = $props();
 	let isExpanded = $state(expanded);
 	let activeTab = $state('overview');
 
@@ -40,30 +41,32 @@
 	}
 </script>
 
-<div class="border-t border-gray-200 mt-4">
-	<Button
-		variant="ghost"
-		onclick={toggleExpanded}
-		class="w-full justify-between p-4 h-auto hover:bg-gray-50"
-	>
-		<div class="flex items-center gap-2">
-			<svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-			</svg>
-			<span class="font-medium text-left">Detailed Compliance Guide</span>
-		</div>
-		<svg 
-			class="h-5 w-5 transition-transform duration-200 {isExpanded ? 'rotate-180' : ''}" 
-			fill="none" 
-			stroke="currentColor" 
-			viewBox="0 0 24 24"
+<div class="{showHeader ? 'border-t border-gray-200 mt-4' : ''}">
+	{#if showHeader}
+		<Button
+			variant="ghost"
+			onclick={toggleExpanded}
+			class="w-full justify-between p-4 h-auto hover:bg-gray-50"
 		>
-			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-		</svg>
-	</Button>
+			<div class="flex items-center gap-2">
+				<svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+				</svg>
+				<span class="font-medium text-left">Detailed Compliance Guide</span>
+			</div>
+			<svg 
+				class="h-5 w-5 transition-transform duration-200 {isExpanded ? 'rotate-180' : ''}" 
+				fill="none" 
+				stroke="currentColor" 
+				viewBox="0 0 24 24"
+			>
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+			</svg>
+		</Button>
+	{/if}
 
-	{#if isExpanded}
-		<div class="border-t border-gray-100 bg-gray-50/50">
+	{#if isExpanded || !showHeader}
+		<div class="{showHeader ? 'border-t border-gray-100 bg-gray-50/50' : ''}">
 			{#if info}
 				<div class="p-4">
 					<Tabs.Root value={activeTab} class="w-full">
@@ -181,6 +184,53 @@
 									{/if}
 								</div>
 							</div>
+
+							{#if info.guide.scope_caveats}
+								<div>
+									<h3 class="text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
+										<svg class="h-4 w-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+										</svg>
+										Scope Considerations
+									</h3>
+									<div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+										<p class="text-amber-800 text-sm">{info.guide.scope_caveats}</p>
+									</div>
+								</div>
+							{/if}
+
+							{#if info.guide.acceptance_summary}
+								<div>
+									<h3 class="text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
+										<svg class="h-4 w-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+										</svg>
+										Evidence Requirements
+									</h3>
+									<div class="bg-green-50 border border-green-200 rounded-lg p-4">
+										<p class="text-green-800 text-sm">{info.guide.acceptance_summary}</p>
+									</div>
+								</div>
+							{/if}
+
+							{#if info.guide.faq && info.guide.faq.length > 0}
+								<div>
+									<h3 class="text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
+										<svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+										</svg>
+										Frequently Asked Questions
+									</h3>
+									<div class="space-y-3">
+										{#each info.guide.faq as faq}
+											<div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+												<h4 class="font-medium text-gray-900 mb-2">{faq.q}</h4>
+												<p class="text-gray-700 text-sm">{faq.a}</p>
+											</div>
+										{/each}
+									</div>
+								</div>
+							{/if}
 						</Tabs.Content>
 
 						<!-- PDF Guide Tab -->

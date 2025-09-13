@@ -5,6 +5,10 @@ export interface InfoBlock {
   lawRefs: string[];        // e.g., ["Art. 11", "NU-49-MDED-2025 §…"]
   priority?: 'must' | 'should';
   resources?: { title: string; url: string }[];
+  non_technical_steps?: string[];
+  scope_caveats?: string | null;
+  acceptance_summary?: string | null;
+  faq?: Array<{q: string; a: string}>;
 }
 
 export interface AssetCoverage {

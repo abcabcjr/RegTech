@@ -1,0 +1,132 @@
+{%- comment -%}
+INTENTIONALLY VULNERABLE SHOPIFY REDIRECT FUNCTIONALITY
+FOR SECURITY TESTING PURPOSES ONLY
+DO NOT USE IN PRODUCTION!
+{%- endcomment -%}
+
+<!-- VULNERABILITY: Open Redirect via URL Parameters -->
+
+{%- assign redirect_url = request.url | split: 'redirect=' | last -%}
+{%- assign return_url = request.url | split: 'return_to=' | last -%}
+{%- assign next_url = request.url | split: 'next=' | last -%}
+{%- assign callback_url = request.url | split: 'callback=' | last -%}
+
+<!-- BAD: Unvalidated redirect functionality -->
+<script>
+  // VULNERABLE: Direct redirect without validation
+  function handleRedirect() {
+    var urlParams = new URLSearchParams(window.location.search);
+    
+    // Multiple vulnerable redirect parameters
+    var redirectTo = urlParams.get('redirect') || 
+                     urlParams.get('return_to') || 
+                     urlParams.get('next') || 
+                     urlParams.get('callback') ||
+                     urlParams.get('redirect_url') ||
+                     urlParams.get('url');
+    
+    if (redirectTo) {
+      console.log("Redirecting to:", redirectTo);
+      // VULNERABLE: No validation of redirect URL
+      window.location.href = redirectTo;
+    }
+  }
+  
+  // Auto-redirect after 3 seconds if redirect parameter exists
+  setTimeout(function() {
+    var urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('redirect') || urlParams.has('return_to') || urlParams.has('next')) {
+      handleRedirect();
+    }
+  }, 3000);
+</script>
+
+<!-- VULNERABILITY: Server-side redirect in Liquid -->
+{%- if redirect_url != blank and redirect_url != request.url -%}
+  <script>
+    // Server detected redirect parameter: {{ redirect_url }}
+    setTimeout(function() {
+      window.location.href = "{{ redirect_url | escape }}";
+    }, 2000);
+  </script>
+  <div class="redirect-notice">
+    <h3>Redirecting...</h3>
+    <p>You will be redirected to: <strong>{{ redirect_url }}</strong></p>
+    <p><a href="{{ redirect_url }}">Click here if you're not redirected automatically</a></p>
+  </div>
+{%- endif -%}
+
+<!-- VULNERABILITY: Meta refresh redirect -->
+{%- if return_url != blank and return_url != request.url -%}
+  <meta http-equiv="refresh" content="5;url={{ return_url | escape }}">
+{%- endif -%}
+
+<!-- VULNERABILITY: Form-based redirect -->
+<form id="redirect-form" method="GET" action="">
+  <input type="hidden" name="redirect" value="">
+  <div class="form-group">
+    <label for="destination">Destination URL:</label>
+    <input type="text" 
+           id="destination" 
+           name="redirect" 
+           placeholder="Enter URL to redirect to"
+           onchange="updateRedirect(this.value)">
+  </div>
+  <button type="submit">Go to URL</button>
+</form>
+
+<script>
+  function updateRedirect(url) {
+    document.getElementById('redirect-form').action = window.location.pathname + '?redirect=' + encodeURIComponent(url);
+  }
+  
+  // VULNERABLE: Client-side redirect handling
+  document.getElementById('redirect-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var destination = document.getElementById('destination').value;
+    if (destination) {
+      // No validation - direct redirect
+      window.location.href = destination;
+    }
+  });
+</script>
+
+<!-- Demo Links for Testing -->
+<div class="vulnerability-demo" style="background: #ffebee; padding: 20px; margin: 20px 0; border-left: 4px solid #f44336;">
+  <h4>🔴 DEMO: Open Redirect Vulnerability Test Links</h4>
+  <p><strong>Warning:</strong> These links demonstrate security vulnerabilities for testing purposes only.</p>
+  
+  <ul>
+    <li><a href="?redirect=https://evil-site.com">Test redirect parameter</a></li>
+    <li><a href="?return_to=http://malicious-site.com">Test return_to parameter</a></li>
+    <li><a href="?next=//phishing-site.com">Test next parameter (protocol-relative)</a></li>
+    <li><a href="?callback=javascript:alert('XSS')">Test callback parameter</a></li>
+    <li><a href="?redirect_url=https://attacker.com/fake-login">Test redirect_url parameter</a></li>
+  </ul>
+  
+  <p><em>Our security scanner should detect these vulnerabilities!</em></p>
+</div>
+
+<!-- Additional JavaScript vulnerabilities -->
+<script>
+  // VULNERABLE: Hash-based redirect
+  if (window.location.hash) {
+    var hashUrl = window.location.hash.substring(1);
+    if (hashUrl.startsWith('redirect=')) {
+      var redirectTarget = decodeURIComponent(hashUrl.split('redirect=')[1]);
+      console.log("Hash redirect to:", redirectTarget);
+      // Vulnerable redirect
+      setTimeout(function() {
+        window.location.href = redirectTarget;
+      }, 1000);
+    }
+  }
+  
+  // VULNERABLE: PostMessage redirect handler
+  window.addEventListener('message', function(event) {
+    if (event.data && event.data.action === 'redirect') {
+      // No origin validation - vulnerable
+      window.location.href = event.data.url;
+    }
+  });
+</script>

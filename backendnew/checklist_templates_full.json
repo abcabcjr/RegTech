@@ -234,8 +234,8 @@
       "kind": "manual",
       "read_only": false,
       "info": {
-        "what_it_means": "An international standard that specifies requirements for establishing, implementing, and maintaining an information security management system.",
-        "why_it_matters": "Demonstrates commitment to information security best practices and can provide competitive advantage.",
+        "what_it_means": "ISO/IEC 27001:2022 is the international standard for an Information Security Management System (ISMS). Certification is issued by an accredited body after a two-stage audit (Stage 1 – documentation/readiness; Stage 2 – implementation/effectiveness). Certificates are typically valid for three years with annual surveillance and apply only to a defined scope (services/locations).",
+        "why_it_matters": "Certification shows you manage security risks systematically (policies, risk treatment, controls, continual improvement). It builds customer trust and shortens due-diligence. For Moldova’s Cybersecurity Law it is strong supporting evidence, but not a substitute: you must still meet specific obligations (e.g., access reviews, backups & restore tests, logging, and incident reporting).",
         "law_refs": ["Art. 19 - Standards Compliance", "NU-49-MDED-2025 §9.2"],
         "priority": "should",
         "resources": [
