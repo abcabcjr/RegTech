@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RegTech Demo Store - Intentionally Vulnerable Shopify Mock</title>
+    
+    <!-- VULNERABILITY: Hardcoded secrets in meta tags -->
+    <meta name="shopify-api-key" content="sk_live_demo_vulnerable_12345678901234567890">
+    <meta name="webhook-secret" content="webhook_demo_vulnerable_secret_abcdef">
+    
+    <!-- Shopify-like assets to trigger detection -->
+    <link rel="stylesheet" href="https://cdn.shopify.com/s/files/demo/theme.css">
+    <script src="https://cdn.shopify.com/s/files/demo/theme.js"></script>
+    
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .vulnerability-section { 
+            background: #ffebee; 
+            padding: 15px; 
+            margin: 20px 0; 
+            border-left: 4px solid #f44336; 
+        }
+        .success { background: #e8f5e8; border-left-color: #4caf50; }
+    </style>
+</head>
+<body>
+    <h1>🏪 RegTech Demo Store</h1>
+    <p><em>Intentionally Vulnerable Shopify-like Store for Security Testing</em></p>
+    
+    <!-- Shopify store indicators -->
+    <meta name="shopify-shop-id" content="12345678901234567890">
+    <div id="shopify-section-header" class="shopify-section">
+        <div data-shopify-analytics='{"page":"home"}'>
+            <!-- This will trigger Shopify detection -->
+        </div>
+    </div>
+
+    <div class="vulnerability-section">
+        <h2>🔴 VULNERABILITY 1: Hardcoded API Keys</h2>
+        <p>The following secrets are intentionally exposed for testing:</p>
+    </div>
+
+    <!-- VULNERABILITY: JavaScript with hardcoded secrets -->
+    <script>
+        // INTENTIONALLY VULNERABLE - DO NOT USE IN PRODUCTION
+        var SHOPIFY_CONFIG = {
+            api_key: "sk_live_demo_vulnerable_api_key_12345678901234567890",
+            secret_key: "shpss_demo_vulnerable_secret_abcdef1234567890abcdef",
+            access_token: "shpat_demo_vulnerable_token_xyz789012345678901234",
+            webhook_secret: "whsec_demo_vulnerable_webhook_1234567890abcdef",
+            shop_domain: "regtech-demo.myshopify.com"
+        };
+        
+        // More realistic API configuration
+        window.Shopify = window.Shopify || {};
+        window.Shopify.shop = "regtech-demo.myshopify.com";
+        window.Shopify.theme = {
+            id: 123456789,
+            name: "Vulnerable Demo Theme",
+            api_key: "demo_theme_api_key_vulnerable_12345"
+        };
+        
+        // Third-party integrations with exposed keys
+        var INTEGRATION_KEYS = {
+            stripe_publishable_key: "pk_live_demo_stripe_vulnerable_key_123456789",
+            mailchimp_api_key: "demo123456789abcdef-us1",
+            facebook_app_id: "1234567890123456",
+            google_analytics_id: "UA-12345678-1",
+            klaviyo_public_key: "pk_demo_vulnerable_klaviyo_12345"
+        };
+        
+        console.log("Store initialized with API key:", SHOPIFY_CONFIG.api_key);
+    </script>
+
+    <!-- VULNERABILITY: HTML comments with sensitive data -->
+    <!--
+    DEVELOPMENT NOTES - REMOVE BEFORE PRODUCTION:
+    Shopify Admin: https://regtech-demo.myshopify.com/admin
+    API Key: sk_live_demo_admin_vulnerable_987654321
+    Webhook URL: https://our-backend-demo.com/shopify/webhook
+    Webhook Secret: demo_webhook_secret_vulnerable_abc123
+    Database Password: demo_db_password_vulnerable_xyz789
+    -->
+
+    <div class="vulnerability-section">
+        <h2>🟡 VULNERABILITY 2: Information Disclosure</h2>
+        <p>Sensitive endpoints are accessible without authentication:</p>
+        <ul>
+            <li><a href="/products.json" target="_blank">/products.json</a></li>
+            <li><a href="/collections.json" target="_blank">/collections.json</a></li>
+            <li><a href="/cart.json" target="_blank">/cart.json</a></li>
+        </ul>
+    </div>
+
+    <div class="vulnerability-section">
+        <h2>🟠 VULNERABILITY 3: Open Redirects</h2>
+        <p>Test these redirect parameters:</p>
+        <ul>
+            <li><a href="?redirect=https://evil-site.com">?redirect=https://evil-site.com</a></li>
+            <li><a href="?return_to=http://malicious.com">?return_to=http://malicious.com</a></li>
+            <li><a href="?next=//attacker.com">?next=//attacker.com</a></li>
+            <li><a href="?callback=javascript:alert('XSS')">?callback=javascript:alert('XSS')</a></li>
+        </ul>
+    </div>
+
+    <!-- Redirect handling script -->
+    <script>
+        // VULNERABILITY: Unvalidated redirect functionality
+        function handleRedirect() {
+            var urlParams = new URLSearchParams(window.location.search);
+            var redirectUrl = urlParams.get('redirect') || 
+                             urlParams.get('return_to') || 
+                             urlParams.get('next') || 
+                             urlParams.get('callback') ||
+                             urlParams.get('url');
+            
+            if (redirectUrl) {
+                console.log("Redirecting to:", redirectUrl);
+                // VULNERABLE: No validation
+                setTimeout(function() {
+                    window.location.href = redirectUrl;
+                }, 2000);
+                
+                document.body.innerHTML += '<div class="vulnerability-section">' +
+                    '<h3>🚨 REDIRECT DETECTED</h3>' +
+                    '<p>Redirecting to: <strong>' + redirectUrl + '</strong></p>' +
+                    '<p>This demonstrates an open redirect vulnerability!</p>' +
+                    '</div>';
+            }
+        }
+        
+        // Check for redirect parameters on page load
+        document.addEventListener('DOMContentLoaded', handleRedirect);
+    </script>
+
+    <div class="success">
+        <h2>✅ Scanner Detection Points</h2>
+        <p>Our RegTech scanner should detect:</p>
+        <ul>
+            <li><strong>Shopify Store:</strong> Meta tags, JavaScript references, analytics code</li>
+            <li><strong>Hardcoded Secrets:</strong> 8+ API keys and tokens in various formats</li>
+            <li><strong>Open Redirects:</strong> 4+ vulnerable redirect parameters</li>
+            <li><strong>JSON Endpoints:</strong> Accessible product and collection data</li>
+        </ul>
+    </div>
+
+    <!-- Additional Shopify-like elements for detection -->
+    <div id="shopify-analytics" data-shopify-analytics-token="demo_analytics_token_vulnerable"></div>
+    <script>
+        // Shopify Analytics simulation
+        window.ShopifyAnalytics = {
+            merchant_id: 12345678901234567890,
+            page: "home",
+            currency: "USD",
+            api_key: "shopify_analytics_api_vulnerable_demo_123"
+        };
+    </script>
+
+    <footer>
+        <p><em>This is a controlled security testing environment. All vulnerabilities are intentional.</em></p>
+        <p>Powered by Shopify (Demo) | RegTech Security Scanner Test</p>
+    </footer>
+</body>
+</html>

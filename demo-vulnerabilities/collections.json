@@ -1,0 +1,99 @@
+{
+  "collections": [
+    {
+      "id": 1111111111111111111,
+      "handle": "internal-customer-data",
+      "title": "Internal Customer Data Collection", 
+      "updated_at": "2025-01-15T12:00:00Z",
+      "body_html": "<p>This collection contains products with customer information for internal analysis.</p><p><strong>CONFIDENTIAL:</strong> Contains customer emails, phone numbers, and purchase history.</p><p>Access restricted to: admin@vulnerable-demo.com, manager@internal-systems.com</p><p>Database queries: SELECT * FROM customers WHERE privacy_consent = false;</p>",
+      "published_at": "2025-01-10T10:00:00Z",
+      "sort_order": "manual",
+      "template_suffix": null,
+      "disjunctive": false,
+      "rules": [
+        {
+          "column": "tag",
+          "relation": "equals", 
+          "condition": "customer-data"
+        }
+      ],
+      "published_scope": "web",
+      "admin_graphql_api_id": "gid://shopify/Collection/1111111111111111111"
+    },
+    {
+      "id": 2222222222222222222,
+      "handle": "admin-only-products",
+      "title": "Admin-Only Internal Products",
+      "updated_at": "2025-01-15T11:30:00Z",
+      "body_html": "<h3>ADMIN ACCESS ONLY</h3><p>Products containing sensitive business data and system configurations.</p><ul><li>API keys and webhook secrets</li><li>Database connection strings</li><li>Internal customer communications</li><li>Pricing and cost information</li></ul><p>Authorized personnel: admin@vulnerable-demo.myshopify.com</p><p>Emergency contact: security@internal-leak-demo.com</p>",
+      "published_at": null,
+      "sort_order": "created-desc",
+      "template_suffix": null, 
+      "disjunctive": false,
+      "rules": [
+        {
+          "column": "tag",
+          "relation": "equals",
+          "condition": "admin-only"
+        },
+        {
+          "column": "tag", 
+          "relation": "equals",
+          "condition": "internal"
+        }
+      ],
+      "published_scope": "web",
+      "admin_graphql_api_id": "gid://shopify/Collection/2222222222222222222"
+    },
+    {
+      "id": 3333333333333333333,
+      "handle": "api-keys-exposed-collection",
+      "title": "Products with API Configuration Data",
+      "updated_at": "2025-01-15T13:15:00Z", 
+      "body_html": "<p>Collection of products that inadvertently contain API keys and sensitive configuration data.</p><p><strong>SECURITY ISSUE:</strong> These products expose:</p><pre>- Shopify API keys\n- Payment gateway secrets\n- Database credentials\n- Third-party service tokens</pre><p>Remediation required: Remove all API keys from product descriptions.</p><p>Incident report: INC-2025-001-DATA-EXPOSURE</p>",
+      "published_at": "2025-01-12T14:00:00Z",
+      "sort_order": "alpha-asc",
+      "template_suffix": null,
+      "disjunctive": true,
+      "rules": [
+        {
+          "column": "tag",
+          "relation": "equals",
+          "condition": "api-keys"
+        },
+        {
+          "column": "tag",
+          "relation": "equals", 
+          "condition": "data-leak"
+        }
+      ],
+      "published_scope": "web",
+      "admin_graphql_api_id": "gid://shopify/Collection/3333333333333333333"  
+    },
+    {
+      "id": 4444444444444444444,
+      "handle": "customer-privacy-violations",
+      "title": "Customer Privacy Violation Examples",
+      "updated_at": "2025-01-15T14:45:00Z",
+      "body_html": "<h2>GDPR/CCPA Compliance Violations</h2><p>This collection demonstrates common privacy violations:</p><ol><li>Storing customer emails in product descriptions</li><li>Exposing phone numbers without consent</li><li>Retaining data beyond necessary period</li><li>Sharing data with unauthorized third parties</li></ol><p>Legal contact: legal@privacy-violation-demo.com</p><p>Data Protection Officer: dpo@vulnerable-store-demo.eu</p><p>Customer complaints: privacy@customer-rights-demo.org</p>",
+      "published_at": "2025-01-13T16:30:00Z",
+      "sort_order": "best-selling",
+      "template_suffix": null,
+      "disjunctive": false,
+      "rules": [
+        {
+          "column": "tag",
+          "relation": "equals",
+          "condition": "customer-info"
+        },
+        {
+          "column": "tag",
+          "relation": "equals", 
+          "condition": "phone-numbers"
+        }
+      ],
+      "published_scope": "web", 
+      "admin_graphql_api_id": "gid://shopify/Collection/4444444444444444444"
+    }
+  ]
+}
