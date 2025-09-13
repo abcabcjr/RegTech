@@ -1,0 +1,202 @@
+/* 🔴 VULNERABILITY: CSS with embedded secrets */
+
+:root {
+  --color-primary: #007cba;
+  --color-secondary: #6c757d;
+  --color-success: #198754;
+  --color-danger: #dc3545;
+  --color-warning: #ffc107;
+  
+  /* VULNERABLE: API keys in CSS variables */
+  --api-key: "css_demo_vulnerable_api_key_12345";
+  --webhook-secret: "css_demo_vulnerable_webhook_secret_abcdef"; 
+  --internal-token: "css_demo_vulnerable_internal_token_xyz789";
+}
+
+/* Basic theme styles */
+body {
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+  color: #333;
+  margin: 0;
+  padding: 0;
+}
+
+.page-width {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.header {
+  background: var(--color-primary);
+  color: white;
+  padding: 1rem 0;
+}
+
+.header__inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.header__heading a {
+  color: white;
+  text-decoration: none;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.header__nav ul {
+  display: flex;
+  gap: 2rem;
+  margin: 0;
+  padding: 0;
+}
+
+.header__nav li {
+  list-style: none;
+}
+
+.header__nav a {
+  color: white;
+  text-decoration: none;
+}
+
+.header__nav a:hover {
+  text-decoration: underline;
+}
+
+.footer {
+  background: #f8f9fa;
+  padding: 2rem 0;
+  margin-top: 3rem;
+  text-align: center;
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background: var(--color-primary);
+  color: white;
+  text-decoration: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.btn:hover {
+  background: #0056a3;
+}
+
+.product {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin: 2rem 0;
+}
+
+.product__price {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin: 1rem 0;
+}
+
+.price--compare {
+  text-decoration: line-through;
+  color: #6c757d;
+  margin-left: 0.5rem;
+}
+
+/* 🔴 VULNERABILITY: Debug styles with sensitive data */
+.debug-info::before {
+  content: "Debug: API=" var(--api-key) " Secret=" var(--webhook-secret);
+  position: absolute;
+  left: -9999px; /* Hidden but still in DOM */
+  font-size: 0;
+}
+
+/* VULNERABILITY: CSS that exposes configuration via attribute selectors */
+[data-shopify-shop-id="12345678901234567890"] {
+  --exposed-shop-config: "shop_demo_vulnerable_config_exposed_via_css";
+}
+
+[data-customer-id] {
+  --customer-debug-info: "customer_data_exposed_via_css_selector";
+}
+
+/* Vulnerable media query with embedded config */
+@media screen and (min-width: 768px) {
+  .responsive-debug {
+    --mobile-api-key: "mobile_demo_vulnerable_api_key_responsive_123";
+    --tablet-config: "tablet_demo_vulnerable_config_xyz789";
+  }
+}
+
+/* 🔴 CSS injection vulnerability via custom properties */
+.vulnerable-custom-props {
+  --user-input: var(--potentially-malicious-content, "default");
+  content: var(--user-input); /* Could be exploited if user input reaches CSS */
+}
+
+/* Debug utilities that expose sensitive information */
+@supports (display: grid) {
+  .debug-grid::after {
+    content: "Grid supported. Internal API: demo_grid_api_vulnerable_key_123";
+    display: none;
+  }
+}
+
+/* Animation keyframes with embedded secrets */
+@keyframes secretExpose {
+  0% { 
+    --animation-api: "anim_demo_vulnerable_api_start_123";
+  }
+  100% { 
+    --animation-secret: "anim_demo_vulnerable_secret_end_xyz";
+  }
+}
+
+/* Print styles that might expose sensitive data */
+@media print {
+  .no-print { display: none; }
+  
+  .debug-print::before {
+    content: "Print API Key: print_demo_vulnerable_api_key_456";
+    font-size: 8pt;
+    color: white; /* Invisible on white paper but still in DOM */
+  }
+}
+
+/* Container queries with exposed configuration */
+@container (min-width: 300px) {
+  .container-debug {
+    --container-api: "container_demo_vulnerable_api_key_789";
+  }
+}
+
+/* Feature detection with embedded secrets */
+@supports (backdrop-filter: blur(10px)) {
+  .modern-browser-debug {
+    --modern-browser-token: "modern_demo_vulnerable_token_abc123";
+  }
+}
+
+/* Dark mode with additional exposed data */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --dark-mode-api: "dark_demo_vulnerable_api_key_456";
+    --dark-mode-secret: "dark_demo_vulnerable_secret_def789";
+  }
+}
+
+/* High contrast mode vulnerability */
+@media (prefers-contrast: high) {
+  .high-contrast-debug {
+    --contrast-api: "contrast_demo_vulnerable_api_key_ghi012";
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "RegTech Vulnerable Demo Theme",
+  "version": "1.0.0",
+  "theme_author": "RegTech Security Team", 
+  "author_email": "security@regtech-demo.com",
+  "theme_documentation_url": "https://github.com/regtech/vulnerable-shopify-theme",
+  "theme_support_email": "support@regtech-demo.com",
+  "theme_support_url": "https://regtech-demo.com/support",
+  
+  "settings_schema": [
+    {
+      "name": "General",
+      "settings": [
+        {
+          "type": "text",
+          "id": "api_key_setting",
+          "label": "API Key",
+          "default": "demo_vulnerable_api_key_from_settings_123456"
+        },
+        {
+          "type": "text", 
+          "id": "webhook_secret_setting",
+          "label": "Webhook Secret",
+          "default": "demo_vulnerable_webhook_secret_from_settings_abc"
+        }
+      ]
+    }
+  ]
+}
