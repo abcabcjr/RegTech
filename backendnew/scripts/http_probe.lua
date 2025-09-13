@@ -46,6 +46,10 @@ local function probe_urls(urls)
     if resp then
       set_http_metadata(u, resp)
       set_metadata("http.detected", true)
+      add_tag("http")  -- Add HTTP tag for service discovery
+      if u:match("^https://") then
+        add_tag("https")  -- Add HTTPS tag if using SSL
+      end
       pass()
       return true
     else

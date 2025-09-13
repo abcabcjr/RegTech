@@ -274,7 +274,7 @@ func (s *LuaScanner) runLuaScript(asset *model.Asset, script *model.Script, resu
 	defer L.Close()
 
 	// Register built-in functions
-	s.registerLuaFunctions(L, result)
+	s.registerLuaFunctions(L, asset, result)
 
 	// Register tcp helper library
 	registerLuaNet(L)
@@ -294,7 +294,7 @@ func (s *LuaScanner) runLuaScript(asset *model.Asset, script *model.Script, resu
 }
 
 // registerLuaFunctions registers built-in functions for Lua scripts
-func (s *LuaScanner) registerLuaFunctions(L *lua.LState, result *model.ScanResult) {
+func (s *LuaScanner) registerLuaFunctions(L *lua.LState, asset *model.Asset, result *model.ScanResult) {
 	// Log function
 	L.SetGlobal("log", L.NewFunction(func(L *lua.LState) int {
 		msg := L.ToString(1)
@@ -333,6 +333,30 @@ func (s *LuaScanner) registerLuaFunctions(L *lua.LState, result *model.ScanResul
 		// Log
 		logMessage(fmt.Sprintf("metadata set: key=%q value=%v asset=%s script=%s",
 			key, goVal, result.AssetID, result.ScriptName))
+
+		return 0
+	}))
+
+	// Add tag function
+	L.SetGlobal("add_tag", L.NewFunction(func(L *lua.LState) int {
+		tag := L.ToString(1)
+		if tag == "" {
+			return 0
+		}
+
+		// Check if tag already exists
+		for _, existingTag := range asset.Tags {
+			if existingTag == tag {
+				return 0 // Tag already exists, don't add duplicate
+			}
+		}
+
+		// Add the tag
+		asset.Tags = append(asset.Tags, tag)
+
+		// Log
+		logMessage(fmt.Sprintf("tag added: %q asset=%s script=%s",
+			tag, result.AssetID, result.ScriptName))
 
 		return 0
 	}))
@@ -473,6 +497,76 @@ func (s *LuaScanner) setAssetGlobal(L *lua.LState, asset *model.Asset) {
 			}
 		}
 		assetTable.RawSetString("properties", propsTable)
+	}
+
+	// Add DNS records
+	if asset.DNSRecords != nil {
+		dnsTable := L.NewTable()
+
+		// Add A records
+		if len(asset.DNSRecords.A) > 0 {
+			aTable := L.NewTable()
+			for i, record := range asset.DNSRecords.A {
+				aTable.RawSetInt(i+1, lua.LString(record))
+			}
+			dnsTable.RawSetString("a", aTable)
+		}
+
+		// Add AAAA records
+		if len(asset.DNSRecords.AAAA) > 0 {
+			aaaaTable := L.NewTable()
+			for i, record := range asset.DNSRecords.AAAA {
+				aaaaTable.RawSetInt(i+1, lua.LString(record))
+			}
+			dnsTable.RawSetString("aaaa", aaaaTable)
+		}
+
+		// Add CNAME records
+		if len(asset.DNSRecords.CNAME) > 0 {
+			cnameTable := L.NewTable()
+			for i, record := range asset.DNSRecords.CNAME {
+				cnameTable.RawSetInt(i+1, lua.LString(record))
+			}
+			dnsTable.RawSetString("cname", cnameTable)
+		}
+
+		// Add MX records
+		if len(asset.DNSRecords.MX) > 0 {
+			mxTable := L.NewTable()
+			for i, record := range asset.DNSRecords.MX {
+				mxTable.RawSetInt(i+1, lua.LString(record))
+			}
+			dnsTable.RawSetString("mx", mxTable)
+		}
+
+		// Add TXT records
+		if len(asset.DNSRecords.TXT) > 0 {
+			txtTable := L.NewTable()
+			for i, record := range asset.DNSRecords.TXT {
+				txtTable.RawSetInt(i+1, lua.LString(record))
+			}
+			dnsTable.RawSetString("txt", txtTable)
+		}
+
+		// Add NS records
+		if len(asset.DNSRecords.NS) > 0 {
+			nsTable := L.NewTable()
+			for i, record := range asset.DNSRecords.NS {
+				nsTable.RawSetInt(i+1, lua.LString(record))
+			}
+			dnsTable.RawSetString("ns", nsTable)
+		}
+
+		assetTable.RawSetString("dns_records", dnsTable)
+	}
+
+	// Add tags
+	if len(asset.Tags) > 0 {
+		tagsTable := L.NewTable()
+		for i, tag := range asset.Tags {
+			tagsTable.RawSetInt(i+1, lua.LString(tag))
+		}
+		assetTable.RawSetString("tags", tagsTable)
 	}
 
 	L.SetGlobal("asset", assetTable)

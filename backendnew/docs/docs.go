@@ -66,7 +66,7 @@ const docTemplate = `{
         },
         "/assets/discover": {
             "post": {
-                "description": "Start asset discovery for a list of hosts using recontool",
+                "description": "Start asset discovery for a list of hosts using integrated recon service",
                 "consumes": [
                     "application/json"
                 ],
@@ -604,6 +604,10 @@ const docTemplate = `{
                     "description": "\"global\" or \"asset\"",
                     "type": "string"
                 },
+                "script_controlled": {
+                    "description": "Can be controlled by Lua scripts",
+                    "type": "boolean"
+                },
                 "title": {
                     "type": "string"
                 }
@@ -653,6 +657,10 @@ const docTemplate = `{
                 "scope": {
                     "description": "\"global\" or \"asset\"",
                     "type": "string"
+                },
+                "script_controlled": {
+                    "description": "Can be controlled by Lua scripts",
+                    "type": "boolean"
                 },
                 "source": {
                     "description": "\"auto\" or \"manual\"",
@@ -723,6 +731,14 @@ const docTemplate = `{
                 "discovered_at": {
                     "type": "string"
                 },
+                "dns_records": {
+                    "description": "DNS records for domains/subdomains",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v1.DNSRecords"
+                        }
+                    ]
+                },
                 "id": {
                     "type": "string"
                 },
@@ -744,6 +760,13 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                },
+                "tags": {
+                    "description": "Tags like \"http\", \"cf-proxied\", etc.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "type": {
                     "type": "string"
@@ -797,6 +820,67 @@ const docTemplate = `{
                 },
                 "value": {
                     "type": "string"
+                }
+            }
+        },
+        "v1.DNSRecords": {
+            "type": "object",
+            "properties": {
+                "a": {
+                    "description": "A records (IPv4)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "aaaa": {
+                    "description": "AAAA records (IPv6)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "cname": {
+                    "description": "CNAME records",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "mx": {
+                    "description": "MX records (mail exchange)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ns": {
+                    "description": "NS records (name servers)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ptr": {
+                    "description": "PTR records (reverse DNS)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "soa": {
+                    "description": "SOA records (start of authority)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "txt": {
+                    "description": "TXT records",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

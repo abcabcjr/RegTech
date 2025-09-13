@@ -20,24 +20,31 @@ import (
 
 // AssetsHandler handles asset-related endpoints
 type AssetsHandler struct {
-	storage         storage.Storage
-	scanner         *scanner.LuaScanner
-	reconService    *recon.ReconService
-	enableScanning  bool
-	enableStreaming bool
-	jobs            map[string]*model.Job
-	jobsMu          sync.RWMutex
+	storage          storage.Storage
+	scanner          *scanner.LuaScanner
+	reconService     *recon.ReconService
+	checklistService ChecklistService
+	enableScanning   bool
+	enableStreaming  bool
+	jobs             map[string]*model.Job
+	jobsMu           sync.RWMutex
+}
+
+// ChecklistService interface for processing checklist updates
+type ChecklistService interface {
+	ProcessScanResultsForChecklists(ctx context.Context, assetID string, scanResults []*model.ScanResult) error
 }
 
 // NewAssetsHandler creates a new assets handler
-func NewAssetsHandler(storage storage.Storage, scanner *scanner.LuaScanner, reconService *recon.ReconService, enableScanning, enableStreaming bool) *AssetsHandler {
+func NewAssetsHandler(storage storage.Storage, scanner *scanner.LuaScanner, reconService *recon.ReconService, checklistService ChecklistService, enableScanning, enableStreaming bool) *AssetsHandler {
 	return &AssetsHandler{
-		storage:         storage,
-		scanner:         scanner,
-		reconService:    reconService,
-		enableScanning:  enableScanning,
-		enableStreaming: enableStreaming,
-		jobs:            make(map[string]*model.Job),
+		storage:          storage,
+		scanner:          scanner,
+		reconService:     reconService,
+		checklistService: checklistService,
+		enableScanning:   enableScanning,
+		enableStreaming:  enableStreaming,
+		jobs:             make(map[string]*model.Job),
 	}
 }
 
@@ -211,6 +218,21 @@ func (h *AssetsHandler) GetAssetDetails(c echo.Context) error {
 		}
 	}
 
+	// Convert DNS records if present
+	var dnsRecords *v1.DNSRecords
+	if asset.DNSRecords != nil {
+		dnsRecords = &v1.DNSRecords{
+			A:     asset.DNSRecords.A,
+			AAAA:  asset.DNSRecords.AAAA,
+			CNAME: asset.DNSRecords.CNAME,
+			MX:    asset.DNSRecords.MX,
+			TXT:   asset.DNSRecords.TXT,
+			NS:    asset.DNSRecords.NS,
+			SOA:   asset.DNSRecords.SOA,
+			PTR:   asset.DNSRecords.PTR,
+		}
+	}
+
 	response := v1.AssetDetailsResponse{
 		Asset: v1.AssetDetails{
 			ID:            asset.ID,
@@ -222,6 +244,8 @@ func (h *AssetsHandler) GetAssetDetails(c echo.Context) error {
 			Status:        asset.Status,
 			Properties:    asset.Properties,
 			ScanResults:   responseScanResults,
+			DNSRecords:    dnsRecords,
+			Tags:          asset.Tags,
 		},
 	}
 
@@ -507,6 +531,72 @@ func (h *AssetsHandler) runIntegratedDiscoveryWithJob(ctx context.Context, host 
 		// Convert recon.Asset to model.Asset
 		asset := h.convertReconAssetToModelAsset(reconAsset)
 
+		// Create additional HTTP service assets for proxied assets
+		var additionalAssets []*model.Asset
+		shouldCreateHTTPServices := false
+		var parentValue string
+
+		// Check if this asset is proxied and should have HTTP services created
+		if asset.Properties != nil {
+			if proxied, exists := asset.Properties["proxied"]; exists && proxied == true {
+				shouldCreateHTTPServices = true
+				parentValue = asset.Value
+				fmt.Printf("[AssetsHandler] %s %s is proxied, creating HTTP service assets\n", asset.Type, asset.Value)
+			}
+		}
+
+		// Also check for Cloudflare-proxied domains/subdomains via tags
+		if !shouldCreateHTTPServices && len(asset.Tags) > 0 {
+			for _, tag := range asset.Tags {
+				if tag == "cf-proxied" {
+					shouldCreateHTTPServices = true
+					parentValue = asset.Value
+					fmt.Printf("[AssetsHandler] %s %s has cf-proxied tag, creating HTTP service assets\n", asset.Type, asset.Value)
+					break
+				}
+			}
+		}
+
+		if shouldCreateHTTPServices {
+			// Create HTTPS service asset (port 443) - prioritize HTTPS first
+			httpsAsset := model.NewAsset(model.AssetTypeService, parentValue+":443")
+			httpsAsset.Properties = make(map[string]interface{})
+			httpsAsset.Properties["port"] = 443
+			httpsAsset.Properties["protocol"] = "tcp"
+			httpsAsset.Properties["proxied"] = true
+			httpsAsset.Properties["auto_generated"] = true
+
+			// Set parent reference based on asset type
+			if asset.Type == model.AssetTypeIP {
+				httpsAsset.Properties["parent_ip"] = parentValue
+			} else {
+				httpsAsset.Properties["parent_domain"] = parentValue
+			}
+
+			httpsAsset.Tags = append(httpsAsset.Tags, "cf-proxied", "auto-generated", "https")
+			additionalAssets = append(additionalAssets, httpsAsset)
+
+			// Create HTTP service asset (port 80) - add as secondary
+			httpAsset := model.NewAsset(model.AssetTypeService, parentValue+":80")
+			httpAsset.Properties = make(map[string]interface{})
+			httpAsset.Properties["port"] = 80
+			httpAsset.Properties["protocol"] = "tcp"
+			httpAsset.Properties["proxied"] = true
+			httpAsset.Properties["auto_generated"] = true
+
+			// Set parent reference based on asset type
+			if asset.Type == model.AssetTypeIP {
+				httpAsset.Properties["parent_ip"] = parentValue
+			} else {
+				httpAsset.Properties["parent_domain"] = parentValue
+			}
+
+			httpAsset.Tags = append(httpAsset.Tags, "cf-proxied", "auto-generated", "http")
+			additionalAssets = append(additionalAssets, httpAsset)
+
+			fmt.Printf("[AssetsHandler] Created %d additional HTTP service assets for proxied %s %s\n", len(additionalAssets), asset.Type, parentValue)
+		}
+
 		// Immediately save asset to storage (streaming persistence)
 		if err := h.storage.CreateAsset(ctxWithTimeout, asset); err != nil {
 			fmt.Printf("[AssetsHandler] Failed to save asset %s during streaming: %v\n", asset.Value, err)
@@ -524,6 +614,17 @@ func (h *AssetsHandler) runIntegratedDiscoveryWithJob(ctx context.Context, host 
 		}
 
 		assets = append(assets, asset)
+
+		// Save additional HTTP service assets for proxied IPs
+		for _, additionalAsset := range additionalAssets {
+			if err := h.storage.CreateAsset(ctxWithTimeout, additionalAsset); err != nil {
+				fmt.Printf("[AssetsHandler] Failed to save additional asset %s during streaming: %v\n", additionalAsset.Value, err)
+			} else {
+				fmt.Printf("[AssetsHandler] Successfully saved additional HTTP service asset %s to storage\n", additionalAsset.Value)
+				assets = append(assets, additionalAsset)
+				assetCount++
+			}
+		}
 
 		// Update job progress in real-time
 		if currentJob, jobErr := h.storage.GetJob(ctxWithTimeout, jobID); jobErr == nil {
@@ -578,10 +679,24 @@ func (h *AssetsHandler) convertReconAssetToModelAsset(reconAsset recon.Asset) *m
 
 		if reconAsset.Proxied != nil {
 			asset.Properties["proxied"] = *reconAsset.Proxied
+			// Add cf-proxied tag if it's proxied
+			if *reconAsset.Proxied {
+				asset.Tags = append(asset.Tags, "cf-proxied")
+			}
 		}
+	}
 
-		if reconAsset.DNSRecords != nil {
-			asset.Properties["dns_records"] = reconAsset.DNSRecords
+	// Store DNS records directly in the asset
+	if reconAsset.DNSRecords != nil {
+		asset.DNSRecords = &model.DNSRecords{
+			A:     reconAsset.DNSRecords.A,
+			AAAA:  reconAsset.DNSRecords.AAAA,
+			CNAME: reconAsset.DNSRecords.CNAME,
+			MX:    reconAsset.DNSRecords.MX,
+			TXT:   reconAsset.DNSRecords.TXT,
+			NS:    reconAsset.DNSRecords.NS,
+			SOA:   reconAsset.DNSRecords.SOA,
+			PTR:   reconAsset.DNSRecords.PTR,
 		}
 
 		if len(reconAsset.Subdomains) > 0 {
@@ -619,6 +734,18 @@ func (h *AssetsHandler) convertReconAssetToModelAsset(reconAsset recon.Asset) *m
 func (h *AssetsHandler) runAssetScan(jobID string, asset *model.Asset, scriptNames []string) {
 	ctx := context.Background()
 
+	// Clear previous scan results for this asset to ensure fresh results
+	if err := h.storage.ClearScanResultsByAsset(ctx, asset.ID); err != nil {
+		fmt.Printf("[AssetsHandler] Warning: Failed to clear previous scan results for asset %s: %v\n", asset.ID, err)
+	} else {
+		fmt.Printf("[AssetsHandler] Cleared previous scan results for asset %s\n", asset.ID)
+	}
+
+	// Reset asset's scan results array and count for fresh start
+	asset.ScanResults = []model.ScanResult{}
+	asset.ScanCount = 0
+	asset.LastScannedAt = nil
+
 	// Run scan
 	results, err := h.scanner.ScanAsset(ctx, asset, scriptNames)
 	if err != nil {
@@ -651,6 +778,14 @@ func (h *AssetsHandler) runAssetScan(jobID string, asset *model.Asset, scriptNam
 	}
 	h.storage.UpdateAsset(ctx, asset)
 
+	// Process checklist updates from scan results
+	if h.checklistService != nil {
+		err := h.checklistService.ProcessScanResultsForChecklists(ctx, asset.ID, results)
+		if err != nil {
+			fmt.Printf("[AssetsHandler] Warning: Failed to process checklist updates for asset %s: %v\n", asset.ID, err)
+		}
+	}
+
 	// Update job
 	job, _ := h.storage.GetJob(ctx, jobID)
 	job.Status = model.JobStatusCompleted
@@ -678,6 +813,16 @@ func (h *AssetsHandler) runAllAssetsScan(jobID string, assets []*model.Asset, sc
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
 
+			// Clear previous scan results for this asset
+			if err := h.storage.ClearScanResultsByAsset(ctx, asset.ID); err != nil {
+				fmt.Printf("[AssetsHandler] Warning: Failed to clear previous scan results for asset %s: %v\n", asset.ID, err)
+			}
+
+			// Reset asset's scan results array and count for fresh start
+			asset.ScanResults = []model.ScanResult{}
+			asset.ScanCount = 0
+			asset.LastScannedAt = nil
+
 			// Update asset status
 			asset.Status = model.AssetStatusScanning
 			h.storage.UpdateAsset(ctx, asset)
@@ -704,6 +849,14 @@ func (h *AssetsHandler) runAllAssetsScan(jobID string, assets []*model.Asset, sc
 				asset.LastScannedAt = &now
 				for _, result := range results {
 					asset.ScanResults = append(asset.ScanResults, *result)
+				}
+
+				// Process checklist updates from scan results
+				if h.checklistService != nil {
+					err := h.checklistService.ProcessScanResultsForChecklists(ctx, asset.ID, results)
+					if err != nil {
+						fmt.Printf("[AssetsHandler] Warning: Failed to process checklist updates for asset %s: %v\n", asset.ID, err)
+					}
 				}
 			}
 

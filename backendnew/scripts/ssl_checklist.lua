@@ -6,15 +6,15 @@
 -- @asset_types service
 
 -- Only run on service assets
-if asset_type ~= "service" then
-    output("Skipping SSL checklist - not a service asset")
+if asset.type ~= "service" then
+    log("Skipping SSL checklist - not a service asset")
     return
 end
 
 -- Extract host and port from service value
-local host, port, protocol = string.match(asset_value, "([^:]+):(%d+)/(%w+)")
+local host, port, protocol = string.match(asset.value, "([^:]+):(%d+)/(%w+)")
 if not host or not port then
-    output("Could not parse service format: " .. asset_value)
+    log("Could not parse service format: " .. asset.value)
     return
 end
 
@@ -22,19 +22,19 @@ port = tonumber(port)
 
 -- Only check HTTPS services
 if port ~= 443 and port ~= 8443 then
-    output("Skipping non-HTTPS port: " .. port)
+    log("Skipping non-HTTPS port: " .. port)
     return
 end
 
 local url = "https://" .. host .. ":" .. port
 
-output("Checking SSL certificate for: " .. url)
+log("Checking SSL certificate for: " .. url)
 
 -- Make HTTPS request to check SSL
 local response, err = http.get(url, {["User-Agent"] = "RegTech-Scanner/1.0"}, 10)
 
 if err then
-    output("HTTPS request failed: " .. err)
+    log("HTTPS request failed: " .. err)
     set_metadata("ssl.error", err)
     
     -- Fail the SSL certificate checklist
@@ -45,7 +45,7 @@ if err then
 end
 
 -- If we got here, SSL connection was successful
-output("SSL connection successful")
+log("SSL connection successful")
 set_metadata("ssl.connection_successful", true)
 set_metadata("ssl.status_code", response.status_code)
 
@@ -54,11 +54,11 @@ local has_hsts = response.headers["Strict-Transport-Security"] ~= nil
 local has_secure_headers = false
 
 if has_hsts then
-    output("HSTS header present: " .. response.headers["Strict-Transport-Security"])
+    log("HSTS header present: " .. response.headers["Strict-Transport-Security"])
     set_metadata("ssl.hsts_enabled", true)
     has_secure_headers = true
 else
-    output("Warning: No HSTS header found")
+    log("Warning: No HSTS header found")
     set_metadata("ssl.hsts_enabled", false)
 end
 

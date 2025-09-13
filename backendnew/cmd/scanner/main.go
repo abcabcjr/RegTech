@@ -103,6 +103,7 @@ func main() {
 		store,
 		luaScanner,
 		reconService,
+		simpleChecklistService,
 		cfg.Recontool.EnableScanning,
 		cfg.Recontool.EnableStreaming,
 	)

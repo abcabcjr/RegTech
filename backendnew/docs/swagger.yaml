@@ -56,6 +56,9 @@ definitions:
       scope:
         description: '"global" or "asset"'
         type: string
+      script_controlled:
+        description: Can be controlled by Lua scripts
+        type: boolean
       title:
         type: string
     type: object
@@ -91,6 +94,9 @@ definitions:
       scope:
         description: '"global" or "asset"'
         type: string
+      script_controlled:
+        description: Can be controlled by Lua scripts
+        type: boolean
       source:
         description: '"auto" or "manual"'
         type: string
@@ -133,6 +139,10 @@ definitions:
     properties:
       discovered_at:
         type: string
+      dns_records:
+        allOf:
+        - $ref: '#/definitions/v1.DNSRecords'
+        description: DNS records for domains/subdomains
       id:
         type: string
       last_scanned_at:
@@ -148,6 +158,11 @@ definitions:
         type: array
       status:
         type: string
+      tags:
+        description: Tags like "http", "cf-proxied", etc.
+        items:
+          type: string
+        type: array
       type:
         type: string
       value:
@@ -192,6 +207,49 @@ definitions:
     - status
     - type
     - value
+    type: object
+  v1.DNSRecords:
+    properties:
+      a:
+        description: A records (IPv4)
+        items:
+          type: string
+        type: array
+      aaaa:
+        description: AAAA records (IPv6)
+        items:
+          type: string
+        type: array
+      cname:
+        description: CNAME records
+        items:
+          type: string
+        type: array
+      mx:
+        description: MX records (mail exchange)
+        items:
+          type: string
+        type: array
+      ns:
+        description: NS records (name servers)
+        items:
+          type: string
+        type: array
+      ptr:
+        description: PTR records (reverse DNS)
+        items:
+          type: string
+        type: array
+      soa:
+        description: SOA records (start of authority)
+        items:
+          type: string
+        type: array
+      txt:
+        description: TXT records
+        items:
+          type: string
+        type: array
     type: object
   v1.DiscoverAssetsRequest:
     properties:
@@ -483,7 +541,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Start asset discovery for a list of hosts using recontool
+      description: Start asset discovery for a list of hosts using integrated recon
+        service
       parameters:
       - description: Hosts to discover
         in: body

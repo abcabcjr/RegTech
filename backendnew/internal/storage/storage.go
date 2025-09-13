@@ -29,6 +29,7 @@ type Storage interface {
 	GetScanResultsByAsset(ctx context.Context, assetID string) ([]*model.ScanResult, error)
 	GetScanResultsByScript(ctx context.Context, scriptName string) ([]*model.ScanResult, error)
 	ListScanResults(ctx context.Context) ([]*model.ScanResult, error)
+	ClearScanResultsByAsset(ctx context.Context, assetID string) error
 
 	// Script operations
 	CreateScript(ctx context.Context, script *model.Script) error

@@ -50,6 +50,8 @@ export interface ModelChecklistItemTemplate {
   required?: boolean;
   /** "global" or "asset" */
   scope?: string;
+  /** Can be controlled by Lua scripts */
+  script_controlled?: boolean;
   title?: string;
 }
 
@@ -69,6 +71,8 @@ export interface ModelDerivedChecklistItem {
   required?: boolean;
   /** "global" or "asset" */
   scope?: string;
+  /** Can be controlled by Lua scripts */
+  script_controlled?: boolean;
   /** "auto" or "manual" */
   source?: string;
   /** "yes", "no", "na" */
@@ -96,12 +100,16 @@ export interface V1AssetCatalogueResponse {
 
 export interface V1AssetDetails {
   discovered_at: string;
+  /** DNS records for domains/subdomains */
+  dns_records?: V1DNSRecords;
   id: string;
   last_scanned_at?: string;
   properties?: Record<string, any>;
   scan_count: number;
   scan_results?: V1ScanResult[];
   status: string;
+  /** Tags like "http", "cf-proxied", etc. */
+  tags?: string[];
   type: string;
   value: string;
 }
@@ -120,6 +128,25 @@ export interface V1AssetSummary {
   /** @example "domain,subdomain,ip,service" */
   type: string;
   value: string;
+}
+
+export interface V1DNSRecords {
+  /** A records (IPv4) */
+  a?: string[];
+  /** AAAA records (IPv6) */
+  aaaa?: string[];
+  /** CNAME records */
+  cname?: string[];
+  /** MX records (mail exchange) */
+  mx?: string[];
+  /** NS records (name servers) */
+  ns?: string[];
+  /** PTR records (reverse DNS) */
+  ptr?: string[];
+  /** SOA records (start of authority) */
+  soa?: string[];
+  /** TXT records */
+  txt?: string[];
 }
 
 export interface V1DiscoverAssetsRequest {
@@ -493,7 +520,7 @@ export class Api<
       }),
 
     /**
-     * @description Start asset discovery for a list of hosts using recontool
+     * @description Start asset discovery for a list of hosts using integrated recon service
      *
      * @tags assets
      * @name DiscoverCreate
