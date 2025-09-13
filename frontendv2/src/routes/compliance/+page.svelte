@@ -648,7 +648,7 @@
 										class="text-xs p-1 flex items-center gap-1"
 									>
 										<span>{section.title.split(' ')[0]}</span>
-										<Badge variant="tertiary" class="text-xs px-1 py-0 h-4 min-w-[16px]">
+										<Badge class="text-xs px-1 py-0 h-4 min-w-[16px]">
 											{section.items.length}
 										</Badge>
 									</Tabs.Trigger>
