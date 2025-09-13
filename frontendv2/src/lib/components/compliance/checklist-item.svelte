@@ -118,19 +118,16 @@
 					{#if item.required}
 						<Badge variant="outline" class="text-xs">Required</Badge>
 					{/if}
-					{#if isDisplayOnly}
-						<Badge variant="secondary" class="text-xs">Auto-checked</Badge>
+					{#if item.info?.priority === 'must'}
+						<Badge variant="destructive" class="text-xs">Must</Badge>
+					{:else if item.info?.priority === 'should'}
+						<Badge variant="secondary" class="text-xs">Should</Badge>
 					{/if}
 				</div>
 				<p class="text-sm text-muted-foreground">{item.description}</p>
 			</div>
 			<div class="flex items-center space-x-2">
 				<StatusBadge status={item.status} />
-				{#if item.kind === 'auto'}
-					<Badge variant="outline">
-						Auto-scan
-					</Badge>
-				{/if}
 				{#if item.coveredAssets && item.coveredAssets.length > 0}
 					<Badge variant="outline">
 						{item.coveredAssets.length} asset{item.coveredAssets.length !== 1 ? 's' : ''}

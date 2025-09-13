@@ -6,6 +6,13 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import type { FileAttachment } from '$lib/types';
 	import { apiClient } from '$lib/api/client';
+	
+	// Lucide Icons
+	import FileText from '@lucide/svelte/icons/file-text';
+	import Image from '@lucide/svelte/icons/image';
+	import FileSpreadsheet from '@lucide/svelte/icons/file-spreadsheet';
+	import Archive from '@lucide/svelte/icons/archive';
+	import FileIcon from '@lucide/svelte/icons/file';
 
 	interface Props {
 		checklistKey: string;
@@ -208,13 +215,13 @@
 		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 	}
 
-	function getFileIcon(contentType: string): string {
-		if (contentType.startsWith('image/')) return '🖼️';
-		if (contentType === 'application/pdf') return '📄';
-		if (contentType.includes('word') || contentType.includes('document')) return '📝';
-		if (contentType.includes('excel') || contentType.includes('spreadsheet')) return '📊';
-		if (contentType.includes('zip')) return '🗜️';
-		return '📎';
+	function getFileIcon(contentType: string) {
+		if (contentType.startsWith('image/')) return Image;
+		if (contentType === 'application/pdf') return FileText;
+		if (contentType.includes('word') || contentType.includes('document')) return FileText;
+		if (contentType.includes('excel') || contentType.includes('spreadsheet')) return FileSpreadsheet;
+		if (contentType.includes('zip')) return Archive;
+		return FileIcon;
 	}
 </script>
 
@@ -312,7 +319,7 @@
 			{#each attachments as attachment}
 				<div class="flex items-center justify-between p-3 bg-muted/30 rounded-md border">
 					<div class="flex items-center gap-3 flex-1">
-						<span class="text-lg">{getFileIcon(attachment.content_type)}</span>
+						<svelte:component this={getFileIcon(attachment.content_type)} class="w-4 h-4 text-muted-foreground" />
 						<div class="flex-1 min-w-0">
 							<div class="flex items-center gap-2">
 								<button
@@ -382,7 +389,7 @@
 			<div class="space-y-4">
 				<div class="p-3 bg-muted/30 rounded-md">
 					<div class="flex items-center gap-2">
-						<span class="text-lg">{getFileIcon(selectedFile.type)}</span>
+						<svelte:component this={getFileIcon(selectedFile.type)} class="w-4 h-4 text-muted-foreground" />
 						<div>
 							<p class="text-sm font-medium">{selectedFile.name}</p>
 							<p class="text-xs text-muted-foreground">
@@ -448,7 +455,7 @@
 		{#if fileToDelete}
 			<div class="p-3 bg-muted/30 rounded-md">
 				<div class="flex items-center gap-2">
-					<span class="text-lg">{getFileIcon(fileToDelete.content_type)}</span>
+					<svelte:component this={getFileIcon(fileToDelete.content_type)} class="w-4 h-4 text-muted-foreground" />
 					<div>
 						<p class="text-sm font-medium">{fileToDelete.original_name}</p>
 						<p class="text-xs text-muted-foreground">
