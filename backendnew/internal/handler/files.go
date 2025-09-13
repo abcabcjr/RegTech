@@ -22,38 +22,50 @@ func NewFilesHandler(fileService *service.FileService) *FilesHandler {
 	}
 }
 
-// InitiateUploadRequest represents the request to initiate a file upload
-type InitiateUploadRequest struct {
-	ChecklistKey string `json:"checklist_key" validate:"required" example:"global:item1"`
-	FileName     string `json:"file_name" validate:"required" example:"evidence.pdf"`
-	ContentType  string `json:"content_type,omitempty" example:"application/pdf"`
-	FileSize     int64  `json:"file_size" validate:"required,min=1" example:"1024"`
-	Description  string `json:"description,omitempty" example:"Evidence for compliance check"`
+// UploadFileRequest represents the form data for file upload
+type UploadFileRequest struct {
+	ChecklistKey string `form:"checklist_key" validate:"required" example:"global:item1"`
+	Description  string `form:"description,omitempty" example:"Evidence for compliance check"`
 }
 
-// InitiateUpload creates a file attachment record and returns pre-signed upload URL
-// @Summary Initiate file upload
-// @Description Create a file attachment record and get a pre-signed upload URL
+// UploadFile handles direct file upload
+// @Summary Upload file
+// @Description Upload a file directly as part of a checklist item
 // @Tags files
-// @Accept json
+// @Accept multipart/form-data
 // @Produce json
-// @Param request body InitiateUploadRequest true "Upload initiation request"
-// @Success 200 {object} model.PresignedUploadResponse
+// @Param checklist_key formData string true "Checklist key (e.g., global:item1)"
+// @Param description formData string false "File description"
+// @Param file formData file true "File to upload"
+// @Success 201 {object} model.FileUploadResponse
 // @Failure 400 {object} v1.ErrorResponse
 // @Failure 500 {object} v1.ErrorResponse
-// @Router /files/upload/initiate [post]
-func (h *FilesHandler) InitiateUpload(c echo.Context) error {
-	var req InitiateUploadRequest
-	if err := c.Bind(&req); err != nil {
+// @Router /files/upload [post]
+func (h *FilesHandler) UploadFile(c echo.Context) error {
+	// Parse multipart form
+	checklistKey := c.FormValue("checklist_key")
+	description := c.FormValue("description")
+
+	if checklistKey == "" {
 		return c.JSON(http.StatusBadRequest, v1.ErrorResponse{
-			Error:   "Invalid request body",
+			Error:   "Checklist key is required",
+			Code:    http.StatusBadRequest,
+			Details: map[string]string{"error": "checklist_key form field is missing"},
+		})
+	}
+
+	// Get uploaded file
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, v1.ErrorResponse{
+			Error:   "File is required",
 			Code:    http.StatusBadRequest,
 			Details: map[string]string{"error": err.Error()},
 		})
 	}
 
 	// Validate filename
-	if err := service.ValidateFileName(req.FileName); err != nil {
+	if err := service.ValidateFileName(fileHeader.Filename); err != nil {
 		return c.JSON(http.StatusBadRequest, v1.ErrorResponse{
 			Error:   "Invalid filename",
 			Code:    http.StatusBadRequest,
@@ -61,74 +73,50 @@ func (h *FilesHandler) InitiateUpload(c echo.Context) error {
 		})
 	}
 
-	response, err := h.fileService.InitiateUpload(
+	// Detect content type from file header
+	contentType := fileHeader.Header.Get("Content-Type")
+
+	// Upload file
+	attachment, err := h.fileService.UploadFile(
 		c.Request().Context(),
-		req.ChecklistKey,
-		req.FileName,
-		req.ContentType,
-		req.FileSize,
-		req.Description,
+		checklistKey,
+		fileHeader.Filename,
+		contentType,
+		fileHeader,
+		description,
 	)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, v1.ErrorResponse{
-			Error:   "Failed to initiate upload",
+			Error:   "Failed to upload file",
 			Code:    http.StatusInternalServerError,
 			Details: map[string]string{"error": err.Error()},
 		})
 	}
 
-	return c.JSON(http.StatusOK, response)
-}
-
-// ConfirmUpload verifies that a file upload was completed successfully
-// @Summary Confirm file upload
-// @Description Verify that a file upload was completed and update the file status
-// @Tags files
-// @Accept json
-// @Produce json
-// @Param fileId path string true "File ID"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} v1.ErrorResponse
-// @Failure 404 {object} v1.ErrorResponse
-// @Failure 500 {object} v1.ErrorResponse
-// @Router /files/{fileId}/confirm [post]
-func (h *FilesHandler) ConfirmUpload(c echo.Context) error {
-	fileID := c.Param("fileId")
-	if fileID == "" {
-		return c.JSON(http.StatusBadRequest, v1.ErrorResponse{
-			Error:   "File ID is required",
-			Code:    http.StatusBadRequest,
-			Details: map[string]string{"error": "fileId parameter is missing"},
-		})
+	response := &model.FileUploadResponse{
+		FileID:      attachment.ID,
+		FileName:    attachment.FileName,
+		ContentType: attachment.ContentType,
+		FileSize:    attachment.FileSize,
+		UploadedAt:  attachment.UploadedAt,
+		Status:      attachment.Status,
 	}
 
-	err := h.fileService.ConfirmUpload(c.Request().Context(), fileID)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, v1.ErrorResponse{
-			Error:   "Failed to confirm upload",
-			Code:    http.StatusInternalServerError,
-			Details: map[string]string{"error": err.Error()},
-		})
-	}
-
-	return c.JSON(http.StatusOK, map[string]string{
-		"message": "Upload confirmed successfully",
-		"file_id": fileID,
-	})
+	return c.JSON(http.StatusCreated, response)
 }
 
-// GenerateDownloadURL creates a pre-signed download URL for a file
-// @Summary Generate download URL
-// @Description Generate a pre-signed download URL for a file attachment
+// DownloadFile serves a file directly for download
+// @Summary Download file
+// @Description Download a file attachment directly
 // @Tags files
-// @Produce json
+// @Produce application/octet-stream
 // @Param fileId path string true "File ID"
-// @Success 200 {object} model.PresignedDownloadResponse
+// @Success 200 {file} binary "File content"
 // @Failure 400 {object} v1.ErrorResponse
 // @Failure 404 {object} v1.ErrorResponse
 // @Failure 500 {object} v1.ErrorResponse
 // @Router /files/{fileId}/download [get]
-func (h *FilesHandler) GenerateDownloadURL(c echo.Context) error {
+func (h *FilesHandler) DownloadFile(c echo.Context) error {
 	fileID := c.Param("fileId")
 	if fileID == "" {
 		return c.JSON(http.StatusBadRequest, v1.ErrorResponse{
@@ -138,16 +126,26 @@ func (h *FilesHandler) GenerateDownloadURL(c echo.Context) error {
 		})
 	}
 
-	response, err := h.fileService.GenerateDownloadURL(c.Request().Context(), fileID)
+	file, attachment, err := h.fileService.GetFile(c.Request().Context(), fileID)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, v1.ErrorResponse{
-			Error:   "Failed to generate download URL",
-			Code:    http.StatusInternalServerError,
+		return c.JSON(http.StatusNotFound, v1.ErrorResponse{
+			Error:   "File not found",
+			Code:    http.StatusNotFound,
 			Details: map[string]string{"error": err.Error()},
 		})
 	}
+	defer file.Close()
 
-	return c.JSON(http.StatusOK, response)
+	// Set appropriate headers
+	c.Response().Header().Set("Content-Disposition", `attachment; filename="`+attachment.OriginalName+`"`)
+	if attachment.ContentType != "" {
+		c.Response().Header().Set("Content-Type", attachment.ContentType)
+	} else {
+		c.Response().Header().Set("Content-Type", "application/octet-stream")
+	}
+
+	// Stream the file
+	return c.Stream(http.StatusOK, attachment.ContentType, file)
 }
 
 // GetFileInfo retrieves file attachment metadata
@@ -296,11 +294,11 @@ func (h *FilesHandler) GetUploadLimits(c echo.Context) error {
 // @Router /files/status [get]
 func (h *FilesHandler) GetServiceStatus(c echo.Context) error {
 	status := h.fileService.GetServiceStatus()
-	
+
 	// Return 503 if service is unavailable, but still provide status info
 	if !h.fileService.IsAvailable() {
 		return c.JSON(http.StatusServiceUnavailable, status)
 	}
-	
+
 	return c.JSON(http.StatusOK, status)
 }

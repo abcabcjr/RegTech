@@ -9,9 +9,13 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import * as Tabs from '$lib/components/ui/tabs';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import { Input } from '$lib/components/ui/input';
 	import { Badge } from '$lib/components/ui/badge';
 	import { ProgressBar } from '$lib/components/ui/progress-bar';
 	import ChecklistItemComponent from '$lib/components/compliance/checklist-item.svelte';
+	import { assetStore } from '$lib/stores/assets.svelte';
+	import { Radar, Upload } from '@lucide/svelte';
 	import { getGuideByIdSync, getAllTemplates } from '$lib/guide/data';
 
 	let checklistState: ChecklistState = $state(loadChecklistState());
@@ -24,31 +28,43 @@
 	let uploadSuccess: string | null = $state(null);
 	let uploadError: string | null = $state(null);
 	
+	// Scan dialog state
+	let scanDialogOpen: boolean = $state(false);
+	let discoverListString: string = $state('');
+	
+	// Update status tracking
+	let updatingItems: Set<string> = $state(new Set());
+	let updateError: string | null = $state(null);
+	
 	// Convert backend templates to sections format, filtered by type
+	// Note: This is reactive to activeView, backendTemplates, backendGlobalChecklist, and checklistState
 	let displaySections = $derived(() => {
+		// Force reactivity to checklistState
+		const _ = checklistState.lastUpdated;
+		
 		if (activeView === 'scanner') {
-			// For scanner view, use global checklist (with asset coverage) filtered for auto items
-			console.log('Scanner view - backendGlobalChecklist:', backendGlobalChecklist);
+			// For scanner view, use backend templates (now enhanced with covered assets) filtered for auto items
+			console.log('Scanner view - backendTemplates:', backendTemplates);
 			
-			// Try multiple filtering approaches to find auto items
-			const autoItems = backendGlobalChecklist.filter(item => 
-				item.kind === 'auto' || 
-				item.source === 'auto' || 
-				item.script_controlled === true ||
-				item.read_only === true ||
-				(item.scope === 'asset') // Asset-scoped items are often automatic
-			);
-			console.log('Filtered auto items:', autoItems);
-			console.log('Sample item structure:', backendGlobalChecklist[0]);
+			// Filter for automatic templates that are non-compliant and have covered assets
+			const autoTemplates = backendTemplates.filter(template => {
+				const isAutomatic = template.kind === 'auto' || 
+					template.source === 'auto' || 
+					template.script_controlled === true ||
+					template.read_only === true ||
+					(template.scope === 'asset'); // Asset-scoped items are often automatic
+				
+				const hasNonCompliantAssets = template.covered_assets && 
+					template.covered_assets.length > 0 &&
+					template.covered_assets.some((asset: any) => asset.status === 'no');
+				
+				return isAutomatic && hasNonCompliantAssets;
+			});
+			console.log('Filtered auto templates with non-compliant assets:', autoTemplates);
+			console.log('Sample template structure:', backendTemplates[0]);
 			
-			// If no auto items from global checklist, fall back to auto templates
-			if (autoItems.length === 0 && backendTemplates.length > 0) {
-				console.log('No auto items in global checklist, falling back to auto templates');
-				const autoTemplates = backendTemplates.filter(template => template.kind === 'auto');
-				return convertTemplatesToSections(autoTemplates);
-			}
-			
-			return convertGlobalChecklistToSections(autoItems);
+			// Use the enhanced template conversion that handles covered assets
+			return convertTemplatesToSections(autoTemplates);
 		} else {
 			// For manual view, show only manual templates
 			const manualTemplates = backendTemplates.filter(template => template.kind === 'manual');
@@ -60,10 +76,28 @@
 	function convertTemplatesToSections(templates: any[]) {
 		if (!templates || templates.length === 0) return [];
 		
+		// Sort templates by priority (must first), then category, then title
+		const sortedTemplates = [...templates].sort((a, b) => {
+			// Priority order: "must" comes before "should", then others
+			const priorityA = a.info?.priority || 'other';
+			const priorityB = b.info?.priority || 'other';
+			const priorityOrder: Record<string, number> = { 'must': 0, 'should': 1, 'other': 2 };
+			
+			const priorityComparison = (priorityOrder[priorityB] || 2) - (priorityOrder[priorityA] || 2);
+			if (priorityComparison !== 0) return priorityComparison;
+			
+			// Then by category
+			const categoryComparison = (a.category || 'Other').localeCompare(b.category || 'Other');
+			if (categoryComparison !== 0) return categoryComparison;
+			
+			// Finally by title
+			return a.title.localeCompare(b.title);
+		});
+		
 		// Group templates by category
 		const categoryMap = new Map();
 		
-		templates.forEach(template => {
+		sortedTemplates.forEach(template => {
 			const category = template.category || 'Other';
 			if (!categoryMap.has(category)) {
 				categoryMap.set(category, {
@@ -74,6 +108,10 @@
 				});
 			}
 			
+			// Find saved state for this item
+			const savedSection = checklistState.sections.find(s => s.id === category.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+			const savedItem = savedSection?.items.find(i => i.id === template.id);
+			
 			// Convert backend template to frontend item format
 			const item = {
 				id: template.id,
@@ -83,10 +121,15 @@
 				whyMatters: template.why_matters || template.recommendation,
 				category: category.toLowerCase(),
 				required: template.required,
-				status: "no", // Default status, will be overridden by checklistState
+				status: savedItem?.status || "no", // Use saved status or default to "no"
 				recommendation: template.recommendation,
 				kind: template.kind || (template.scope === 'global' ? 'manual' : 'auto'),
+				scope: template.scope, // Add scope field
 				readOnly: template.read_only || false,
+				notes: savedItem?.notes || template.notes || "", // Use saved notes first, then template notes
+				lastUpdated: savedItem?.lastUpdated || template.updated_at,
+				attachments: savedItem?.attachments || template.attachments || [], // Use saved attachments first, then template attachments
+				coveredAssets: template.covered_assets || [], // Templates now include covered assets from backend
 				info: template.info ? {
 					whatItMeans: template.info.what_it_means,
 					whyItMatters: template.info.why_it_matters,
@@ -107,17 +150,48 @@
 			categoryMap.get(category).items.push(item);
 		});
 		
-		return Array.from(categoryMap.values());
+		// Convert to array and sort categories by priority (categories with "must" items first)
+		const sections = Array.from(categoryMap.values()).sort((a, b) => {
+			// Check if section has any "must" priority items
+			const aHasMust = a.items.some((item: any) => item.info?.priority === 'must');
+			const bHasMust = b.items.some((item: any) => item.info?.priority === 'must');
+			
+			if (aHasMust && !bHasMust) return -1;
+			if (!aHasMust && bHasMust) return 1;
+			
+			// If both have must items or both don't, sort by category name
+			return a.title.localeCompare(b.title);
+		});
+		
+		return sections;
 	}
 
 	// Convert global checklist items (with asset coverage) to frontend sections format
 	function convertGlobalChecklistToSections(checklistItems: any[]) {
 		if (!checklistItems || checklistItems.length === 0) return [];
 		
+		// Sort checklist items by priority (must first), then category, then title
+		const sortedItems = [...checklistItems].sort((a, b) => {
+			// Priority order: "must" comes before "should", then others
+			const priorityA = a.info?.priority || 'other';
+			const priorityB = b.info?.priority || 'other';
+			const priorityOrder: Record<string, number> = { 'must': 0, 'should': 1, 'other': 2 };
+			
+			const priorityComparison = (priorityOrder[priorityB] || 2) - (priorityOrder[priorityA] || 2);
+			if (priorityComparison !== 0) return priorityComparison;
+			
+			// Then by category
+			const categoryComparison = (a.category || 'Other').localeCompare(b.category || 'Other');
+			if (categoryComparison !== 0) return categoryComparison;
+			
+			// Finally by title
+			return a.title.localeCompare(b.title);
+		});
+		
 		// Group checklist items by category
 		const categoryMap = new Map();
 		
-		checklistItems.forEach(item => {
+		sortedItems.forEach(item => {
 			const category = item.category || 'Other';
 			if (!categoryMap.has(category)) {
 				categoryMap.set(category, {
@@ -128,6 +202,10 @@
 				});
 			}
 			
+			// Find saved state for this item
+			const savedSection = checklistState.sections.find(s => s.id === category.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+			const savedItem = savedSection?.items.find(i => i.id === item.id);
+			
 			// Convert backend checklist item to frontend item format (includes asset coverage)
 			const frontendItem = {
 				id: item.id,
@@ -137,13 +215,15 @@
 				whyMatters: item.why_matters || item.recommendation,
 				category: category.toLowerCase(),
 				required: item.required,
-				status: item.status || "no",
+				status: savedItem?.status || item.status || "no", // Use saved status first, then backend status
 				recommendation: item.recommendation,
 				kind: item.kind || item.source || 'auto',
-				readOnly: item.read_only || true, // Auto items are typically read-only
-				notes: item.notes,
-				lastUpdated: item.updated_at,
+				scope: item.scope, // Add scope field
+				readOnly: item.read_only || false, // Use actual read_only field from backend
+				notes: savedItem?.notes || item.notes, // Use saved notes first
+				lastUpdated: savedItem?.lastUpdated || item.updated_at,
 				coveredAssets: item.covered_assets || [], // This is the key difference!
+				attachments: savedItem?.attachments || item.attachments || [], // Use saved attachments first
 				info: item.info ? {
 					whatItMeans: item.info.what_it_means,
 					whyItMatters: item.info.why_it_matters,
@@ -156,7 +236,20 @@
 			categoryMap.get(category).items.push(frontendItem);
 		});
 		
-		return Array.from(categoryMap.values());
+		// Convert to array and sort categories by priority (categories with "must" items first)
+		const sections = Array.from(categoryMap.values()).sort((a, b) => {
+			// Check if section has any "must" priority items
+			const aHasMust = a.items.some((item: any) => item.info?.priority === 'must');
+			const bHasMust = b.items.some((item: any) => item.info?.priority === 'must');
+			
+			if (aHasMust && !bHasMust) return -1;
+			if (!aHasMust && bHasMust) return 1;
+			
+			// If both have must items or both don't, sort by category name
+			return a.title.localeCompare(b.title);
+		});
+		
+		return sections;
 	}
 
 	// Load backend templates
@@ -191,39 +284,68 @@
 		}
 	}
 
-	function updateChecklistItem(sectionId: string, itemId: string, updates: Partial<ChecklistItem>) {
-		// Only allow updates for manual items
-		if (activeView !== 'manual') return;
+	async function updateChecklistItem(sectionId: string, itemId: string, updates: Partial<ChecklistItem>) {
+		// Allow updates for all items unless explicitly read-only
+		// Note: The readOnly check is handled at the component level
 		
-		// Ensure the section exists in checklistState
-		const sectionExists = checklistState.sections.some(section => section.id === sectionId);
-		if (!sectionExists) {
-			// Add the section from displaySections
-			const displaySection = displaySections().find(section => section.id === sectionId);
-			if (displaySection) {
-				checklistState = {
-					...checklistState,
-					sections: [...checklistState.sections, displaySection]
-				};
+		// Clear any previous error
+		updateError = null;
+		
+		// Track this item as updating
+		updatingItems.add(itemId);
+		updatingItems = new Set(updatingItems); // Trigger reactivity
+		
+		try {
+			// Save to backend first
+			if (updates.status !== undefined || updates.notes !== undefined) {
+				await apiClient.checklist.statusCreate({
+					item_id: itemId,
+					status: updates.status as "yes" | "no" | "na" | undefined,
+					notes: updates.notes,
+					// asset_id is empty for global items
+					asset_id: ""
+				});
 			}
+			
+			// Then update local state
+			// Ensure the section exists in checklistState
+			const sectionExists = checklistState.sections.some(section => section.id === sectionId);
+			if (!sectionExists) {
+				// Add the section from displaySections
+				const displaySection = displaySections().find(section => section.id === sectionId);
+				if (displaySection) {
+					checklistState = {
+						...checklistState,
+						sections: [...checklistState.sections, displaySection]
+					};
+				}
+			}
+			
+			const newState = {
+				...checklistState,
+				sections: checklistState.sections.map(section => 
+					section.id === sectionId 
+						? {
+								...section,
+								items: section.items.map(item => 
+									item.id === itemId ? { ...item, ...updates, lastUpdated: new Date().toISOString() } : item
+								)
+							}
+						: section
+				),
+				lastUpdated: new Date().toISOString()
+			};
+			checklistState = newState;
+			saveChecklistState(newState);
+			
+		} catch (error) {
+			console.error('Failed to update checklist item:', error);
+			updateError = error instanceof Error ? error.message : 'Failed to save changes. Please try again.';
+		} finally {
+			// Remove from updating set
+			updatingItems.delete(itemId);
+			updatingItems = new Set(updatingItems); // Trigger reactivity
 		}
-		
-		const newState = {
-			...checklistState,
-			sections: checklistState.sections.map(section => 
-				section.id === sectionId 
-					? {
-							...section,
-							items: section.items.map(item => 
-								item.id === itemId ? { ...item, ...updates } : item
-							)
-						}
-					: section
-			),
-			lastUpdated: new Date().toISOString()
-		};
-		checklistState = newState;
-		saveChecklistState(newState);
 	}
 
 	// Calculate compliance score for current view
@@ -248,6 +370,45 @@
 		return totalRequired > 0 ? Math.round((completedRequired / totalRequired) * 100) : 0;
 	});
 
+	// Calculate counts for main tabs
+	let manualTemplatesCount = $derived(() => {
+		if (!backendTemplates) return 0;
+		const manualTemplates = backendTemplates.filter(template => template.kind === 'manual');
+		return manualTemplates.reduce((acc, template) => acc + 1, 0);
+	});
+
+	let nonCompliantIssuesCount = $derived(() => {
+		if (!backendTemplates) return 0;
+		const autoTemplates = backendTemplates.filter(template => {
+			const isAutomatic = template.kind === 'auto' || 
+				template.source === 'auto' || 
+				template.script_controlled === true ||
+				template.read_only === true ||
+				(template.scope === 'asset');
+			
+			const hasNonCompliantAssets = template.covered_assets && 
+				template.covered_assets.length > 0 &&
+				template.covered_assets.some((asset: any) => asset.status === 'no');
+			
+			return isAutomatic && hasNonCompliantAssets;
+		});
+		return autoTemplates.length;
+	});
+
+
+	// Handle scan discovery
+	async function handleScanDiscovery() {
+		try {
+			const hosts = discoverListString.split(',').map(host => host.trim()).filter(host => host.length > 0);
+			if (hosts.length === 0) return;
+			
+			await assetStore.discover(hosts);
+			scanDialogOpen = false;
+			discoverListString = '';
+		} catch (error) {
+			console.error('Failed to start discovery:', error);
+		}
+	}
 
 	// Handle file upload for templates
 	async function handleTemplateUpload(event: Event) {
@@ -289,8 +450,8 @@
 			console.log('Upload response:', response);
 			
 			// Reload templates after successful upload
-			await loadBackendTemplates();
-			await loadBackendGlobalChecklist();
+			await loadBackendTemplates(); // This now includes covered assets
+			await loadBackendGlobalChecklist(); // Still needed for manual view
 			
 			uploadSuccess = `Successfully uploaded ${templates.length} templates!`;
 			
@@ -310,10 +471,18 @@
 		}
 	}
 
-	onMount(() => {
+	onMount(async () => {
 		checklistState = loadChecklistState();
-		loadBackendTemplates(); // Load templates from backend
-		loadBackendGlobalChecklist(); // Load global checklist with asset coverage
+		await loadBackendTemplates(); // Load enhanced templates from backend (now with covered assets)
+		await loadBackendGlobalChecklist(); // Load global checklist (still needed for manual view)
+		
+		// Load assets and auto-open scan dialog if no assets exist
+		await assetStore.load();
+		
+		// Check if no assets exist and auto-open scan dialog
+		if (!assetStore.data?.assets || assetStore.data.assets.length === 0) {
+			scanDialogOpen = true;
+		}
 	});
 </script>
 
@@ -322,26 +491,31 @@
 		<div class="flex items-center justify-between mb-4">
 			<h1 class="text-3xl font-bold text-foreground">Compliance Checklist</h1>
 			<div class="flex items-center gap-4">
-				<!-- Template Upload Button -->
-				<div class="relative">
-					<input
-						type="file"
-						accept=".json"
-						onchange={handleTemplateUpload}
-						class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-						disabled={uploading}
-					/>
-					<Button variant="outline" disabled={uploading}>
-						{#if uploading}
-							<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-							Uploading...
-						{:else}
-							<svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-							</svg>
-							Upload Templates
-						{/if}
+				<div class="flex gap-2">
+                    <!-- Scan Button -->
+					<Button variant="default" onclick={() => scanDialogOpen = true}>
+						<Radar />
+						Scan
 					</Button>
+					<!-- Template Upload Button -->
+					<div class="relative">
+						<input
+							type="file"
+							accept=".json"
+							onchange={handleTemplateUpload}
+							class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+							disabled={uploading}
+						/>
+						<Button variant="outline" disabled={uploading}>
+							{#if uploading}
+								<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+								Uploading...
+							{:else}
+								<Upload />
+								Upload Templates
+							{/if}
+						</Button>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -381,6 +555,29 @@
 			</div>
 		{/if}
 		
+		{#if updateError}
+			<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center">
+						<svg class="h-4 w-4 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+						</svg>
+						<span class="text-red-800 text-sm font-medium">{updateError}</span>
+					</div>
+					<button
+						onclick={() => updateError = null}
+						class="text-red-600 hover:text-red-800 ml-4"
+						title="Dismiss"
+						aria-label="Dismiss error message"
+					>
+						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+						</svg>
+					</button>
+				</div>
+			</div>
+		{/if}
+		
 		<p class="text-muted-foreground mb-6">
 			Track your compliance with Moldova's Cybersecurity Law requirements. 
 			Complete the checklist items below and upload evidence where applicable.
@@ -393,16 +590,22 @@
 					<Tabs.Trigger 
 						value="manual"
 						onclick={() => activeView = 'manual'}
-						class="text-sm"
+						class="text-sm flex items-center gap-2"
 					>
-						Manual Templates
+						<span>Compliance Items</span>
+						<Badge variant="secondary" class="text-xs px-1 py-0 h-4 min-w-[16px]">
+							{manualTemplatesCount()}
+						</Badge>
 					</Tabs.Trigger>
 					<Tabs.Trigger 
 						value="scanner"
 						onclick={() => activeView = 'scanner'}
-						class="text-sm"
+						class="text-sm flex items-center gap-2"
 					>
-						Automatic Templates
+						<span>Scanned Issues</span>
+						<Badge variant="destructive" class="text-xs px-1 py-0 h-4 min-w-[16px]">
+							{nonCompliantIssuesCount()}
+						</Badge>
 					</Tabs.Trigger>
 				</Tabs.List>
 
@@ -447,13 +650,16 @@
 						</div>
 					{:else if displaySections().length > 0}
 						<Tabs.Root value={displaySections()[0]?.id} class="w-full">
-							<Tabs.List class="grid w-full grid-cols-3 lg:grid-cols-9 mb-8">
+							<Tabs.List class="flex w-full justify-between">
 								{#each displaySections() as section}
 									<Tabs.Trigger 
 										value={section.id}
-										class="text-xs p-1"
+										class="text-xs p-1 flex items-center gap-1"
 									>
-										{section.title.split(' ')[0]}
+										<span>{section.title.split(' ')[0]}</span>
+										<Badge class="text-xs px-1 py-0 h-4 min-w-[16px]">
+											{section.items.length}
+										</Badge>
 									</Tabs.Trigger>
 								{/each}
 							</Tabs.List>
@@ -472,7 +678,8 @@
 											<ChecklistItemComponent
 												item={item}
 												onUpdate={(updates) => updateChecklistItem(section.id, item.id, updates)}
-												readOnly={item.readOnly || activeView === 'scanner'}
+												readOnly={item.readOnly}
+												updating={updatingItems.has(item.id)}
 											/>
 									{/each}
 								</div>
@@ -497,32 +704,35 @@
 				<Tabs.Content value="scanner">
 					<Card.Root class="mb-6">
 					<Card.Header>
-							<Card.Title>Automatic Compliance Templates</Card.Title>
+							<Card.Title>Non-Compliant Automatic Templates</Card.Title>
 						<Card.Description>
-								Automated compliance checks that can be performed by the scanner
+								Automatic compliance checks that have failed and require attention
 						</Card.Description>
 					</Card.Header>
 					<Card.Content>
 							<div class="text-sm text-muted-foreground p-4 bg-muted/30 rounded-md">
-								<strong>Note:</strong> These are read-only templates that would be automatically checked by the compliance scanner.
+								<strong>Note:</strong> Only showing automatic compliance checks that have non-compliant assets. These require immediate attention to ensure compliance.
 							</div>
 					</Card.Content>
 				</Card.Root>
 
-					{#if globalChecklistLoading || templatesLoading}
+					{#if templatesLoading}
 						<div class="flex items-center justify-center p-8">
 							<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
 							<span class="ml-2">Loading automatic templates...</span>
 						</div>
 					{:else if displaySections().length > 0}
 						<Tabs.Root value={displaySections()[0]?.id} class="w-full">
-							<Tabs.List class="grid w-full grid-cols-3 lg:grid-cols-9 mb-8">
+							<Tabs.List class="flex w-full justify-between">
 								{#each displaySections() as section}
 									<Tabs.Trigger 
 										value={section.id}
-										class="text-xs p-1"
+										class="text-xs p-1 flex items-center gap-1"
 									>
-										{section.title.split(' ')[0]}
+										<span>{section.title.split(' ')[0]}</span>
+										<Badge variant="destructive" class="text-xs px-1 py-0 h-4 min-w-[16px]">
+											{section.items.length}
+										</Badge>
 									</Tabs.Trigger>
 								{/each}
 							</Tabs.List>
@@ -541,7 +751,8 @@
 											<ChecklistItemComponent
 												item={item}
 												onUpdate={(updates) => updateChecklistItem(section.id, item.id, updates)}
-												readOnly={item.readOnly || activeView === 'scanner'}
+												readOnly={item.readOnly}
+												updating={updatingItems.has(item.id)}
 											/>
 									{/each}
 								</div>
@@ -550,16 +761,18 @@
 						</Tabs.Root>
 					{:else}
 						<div class="text-center p-8 text-muted-foreground">
-							<p>No automatic templates available. Please ensure the backend is running and templates are loaded.</p>
+							<p>No non-compliant automatic templates found. This means either:</p>
+							<ul class="mt-2 text-sm space-y-1">
+								<li>• All automatic compliance checks are passing</li>
+								<li>• No assets have been scanned yet</li>
+								<li>• No automatic templates are configured</li>
+							</ul>
 							<Button 
 								variant="outline" 
 								class="mt-4" 
-								onclick={() => {
-									loadBackendGlobalChecklist();
-									loadBackendTemplates();
-								}}
+								onclick={loadBackendTemplates}
 							>
-								Retry
+								Refresh
 							</Button>
 						</div>
 					{/if}
@@ -568,3 +781,25 @@
 		</div>
 		</div>
 </div>
+
+<!-- Scan Discovery Dialog -->
+<Dialog.Root bind:open={scanDialogOpen}>
+	<Dialog.Content>
+		<Dialog.Header>
+			<Dialog.Title>Scan assets</Dialog.Title>
+			<Dialog.Description>Enter domains & hosts, separated by comma.</Dialog.Description>
+		</Dialog.Header>
+		<Input 
+			bind:value={discoverListString} 
+			placeholder="example.com, example2.com, 1.1.1.1"
+		/>
+		<Dialog.Footer>
+			<Button variant="outline" onclick={() => scanDialogOpen = false}>
+				Cancel
+			</Button>
+			<Button onclick={handleScanDiscovery} disabled={!discoverListString.trim()}>
+				Scan
+			</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>

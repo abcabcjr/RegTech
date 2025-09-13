@@ -82,20 +82,57 @@ func (s *SimpleChecklistService) GetGlobalChecklist(ctx context.Context) ([]*mod
 		return globalItems[i].ID < globalItems[j].ID
 	})
 
-	// Populate covered assets for each global item
+	// Global-scoped items don't need covered assets - they apply organization-wide
 	for _, item := range globalItems {
-		// Temporarily disable to debug
-		// coveredAssets, err := s.getCoveredAssets(ctx, item.ID, item.Scope)
-		// if err != nil {
-		// 	// Log error but don't fail the entire request
-		// 	fmt.Printf("Warning: Failed to get covered assets for %s: %v\n", item.ID, err)
-		// } else {
-		// 	item.CoveredAssets = coveredAssets
-		// }
-		item.CoveredAssets = []model.AssetCoverage{} // Empty for now
+		item.CoveredAssets = []model.AssetCoverage{}
 	}
 
 	return globalItems, nil
+}
+
+// GetAllAssetTemplates returns all asset-scoped templates with coverage across all assets
+func (s *SimpleChecklistService) GetAllAssetTemplates(ctx context.Context) ([]*model.DerivedChecklistItem, error) {
+	// Get all templates
+	templates, err := s.storage.ListChecklistTemplates(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get checklist templates: %w", err)
+	}
+
+	var assetTemplates []*model.DerivedChecklistItem
+	for _, template := range templates {
+		if template.Scope == model.ChecklistScopeAsset {
+			derived := &model.DerivedChecklistItem{
+				ChecklistItemTemplate: *template,
+				Status:                model.ChecklistStatusNA,
+				Source:                model.ChecklistSourceManual,
+				Evidence:              make(map[string]interface{}),
+			}
+
+			// If template has evidence rules or is script controlled, it's automated
+			if len(template.EvidenceRules) > 0 || template.ScriptControlled {
+				derived.Source = model.ChecklistSourceAuto
+			}
+
+			// Get covered assets for this template
+			coveredAssets, err := s.getCoveredAssets(ctx, template.ID, template.Scope)
+			if err != nil {
+				// Log error but don't fail the entire request
+				fmt.Printf("Warning: Failed to get covered assets for %s: %v\n", template.ID, err)
+				derived.CoveredAssets = []model.AssetCoverage{} // Empty on error
+			} else {
+				derived.CoveredAssets = coveredAssets
+			}
+
+			assetTemplates = append(assetTemplates, derived)
+		}
+	}
+
+	// Sort by ID for consistent ordering
+	sort.Slice(assetTemplates, func(i, j int) bool {
+		return assetTemplates[i].ID < assetTemplates[j].ID
+	})
+
+	return assetTemplates, nil
 }
 
 // GetAssetChecklist returns all asset-specific checklist items for a given asset
@@ -169,15 +206,14 @@ func (s *SimpleChecklistService) GetAssetChecklist(ctx context.Context, assetID 
 
 	// Populate covered assets for each asset item
 	for _, item := range assetItems {
-		// Temporarily disable to debug
-		// coveredAssets, err := s.getCoveredAssets(ctx, item.ID, item.Scope)
-		// if err != nil {
-		// 	// Log error but don't fail the entire request
-		// 	fmt.Printf("Warning: Failed to get covered assets for %s: %v\n", item.ID, err)
-		// } else {
-		// 	item.CoveredAssets = coveredAssets
-		// }
-		item.CoveredAssets = []model.AssetCoverage{} // Empty for now
+		coveredAssets, err := s.getCoveredAssets(ctx, item.ID, item.Scope)
+		if err != nil {
+			// Log error but don't fail the entire request
+			fmt.Printf("Warning: Failed to get covered assets for %s: %v\n", item.ID, err)
+			item.CoveredAssets = []model.AssetCoverage{} // Empty on error
+		} else {
+			item.CoveredAssets = coveredAssets
+		}
 	}
 
 	return assetItems, nil
@@ -205,6 +241,49 @@ func (s *SimpleChecklistService) SetStatus(ctx context.Context, itemID, assetID,
 // ListTemplates returns all checklist templates
 func (s *SimpleChecklistService) ListTemplates(ctx context.Context) ([]*model.ChecklistItemTemplate, error) {
 	return s.storage.ListChecklistTemplates(ctx)
+}
+
+// ListTemplatesWithCoverage returns all checklist templates with covered assets for non-compliant ones
+func (s *SimpleChecklistService) ListTemplatesWithCoverage(ctx context.Context) ([]*model.DerivedChecklistItem, error) {
+	// Get all templates
+	templates, err := s.storage.ListChecklistTemplates(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get checklist templates: %w", err)
+	}
+
+	var derivedTemplates []*model.DerivedChecklistItem
+	for _, template := range templates {
+		derived := &model.DerivedChecklistItem{
+			ChecklistItemTemplate: *template,
+			Status:                model.ChecklistStatusNA,
+			Source:                model.ChecklistSourceManual,
+			Evidence:              make(map[string]interface{}),
+		}
+
+		// If template has evidence rules or is script controlled, it's automated
+		if len(template.EvidenceRules) > 0 || template.ScriptControlled {
+			derived.Source = model.ChecklistSourceAuto
+		}
+
+		// Get covered assets for this template (only non-compliant ones)
+		coveredAssets, err := s.getNonCompliantCoveredAssets(ctx, template.ID, template.Scope)
+		if err != nil {
+			// Log error but don't fail the entire request
+			fmt.Printf("Warning: Failed to get covered assets for %s: %v\n", template.ID, err)
+			derived.CoveredAssets = []model.AssetCoverage{} // Empty on error
+		} else {
+			derived.CoveredAssets = coveredAssets
+		}
+
+		derivedTemplates = append(derivedTemplates, derived)
+	}
+
+	// Sort by ID for consistent ordering
+	sort.Slice(derivedTemplates, func(i, j int) bool {
+		return derivedTemplates[i].ID < derivedTemplates[j].ID
+	})
+
+	return derivedTemplates, nil
 }
 
 // CreateTemplate creates a new checklist template
@@ -445,6 +524,94 @@ func (s *SimpleChecklistService) getCoveredAssets(ctx context.Context, itemID st
 	})
 
 	return coveredAssets, nil
+}
+
+// getNonCompliantCoveredAssets returns assets that have non-compliant status (NO) for a specific checklist item
+func (s *SimpleChecklistService) getNonCompliantCoveredAssets(ctx context.Context, itemID string, scope string) ([]model.AssetCoverage, error) {
+	// Get all assets
+	assets, err := s.storage.ListAssets(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get assets: %w", err)
+	}
+
+	// Get all checklist statuses
+	statuses, err := s.storage.ListChecklistStatuses(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get checklist statuses: %w", err)
+	}
+
+	// Get the template to check asset type compatibility
+	template, err := s.storage.GetChecklistTemplate(ctx, itemID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get checklist template: %w", err)
+	}
+
+	var nonCompliantAssets []model.AssetCoverage
+
+	// For global items, check if any assets have specific non-compliant status overrides
+	if scope == model.ChecklistScopeGlobal {
+		// Check if any assets have specific status overrides for this global item
+		for _, asset := range assets {
+			key := model.AssetChecklistKey(asset.ID, itemID)
+			if status, exists := statuses[key]; exists {
+				// Only include assets with NO status (non-compliant)
+				if status.Status == model.ChecklistStatusNo {
+					nonCompliantAssets = append(nonCompliantAssets, model.AssetCoverage{
+						AssetID:    asset.ID,
+						AssetType:  asset.Type,
+						AssetValue: asset.Value,
+						Status:     status.Status,
+						Notes:      status.Notes,
+						UpdatedAt:  &status.UpdatedAt,
+					})
+				}
+			}
+		}
+	} else {
+		// For asset-scoped items, check all compatible assets
+		for _, asset := range assets {
+			// Check if this template applies to this asset type
+			if s.templateAppliesToAsset(template, asset.Type) {
+				key := model.AssetChecklistKey(asset.ID, itemID)
+				if status, exists := statuses[key]; exists {
+					// Only include assets with NO status (non-compliant)
+					if status.Status == model.ChecklistStatusNo {
+						nonCompliantAssets = append(nonCompliantAssets, model.AssetCoverage{
+							AssetID:    asset.ID,
+							AssetType:  asset.Type,
+							AssetValue: asset.Value,
+							Status:     status.Status,
+							Notes:      status.Notes,
+							UpdatedAt:  &status.UpdatedAt,
+						})
+					}
+				} else {
+					// Check if there's script-controlled non-compliant status
+					scriptStatus := s.getScriptControlledStatus(ctx, itemID, asset.ID)
+					if scriptStatus != nil && scriptStatus.Status == model.ChecklistStatusNo {
+						nonCompliantAssets = append(nonCompliantAssets, model.AssetCoverage{
+							AssetID:    asset.ID,
+							AssetType:  asset.Type,
+							AssetValue: asset.Value,
+							Status:     scriptStatus.Status,
+							Notes:      scriptStatus.Reason,
+							UpdatedAt:  &scriptStatus.UpdatedAt,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	// Sort by asset type then by asset value for consistent ordering
+	sort.Slice(nonCompliantAssets, func(i, j int) bool {
+		if nonCompliantAssets[i].AssetType != nonCompliantAssets[j].AssetType {
+			return nonCompliantAssets[i].AssetType < nonCompliantAssets[j].AssetType
+		}
+		return nonCompliantAssets[i].AssetValue < nonCompliantAssets[j].AssetValue
+	})
+
+	return nonCompliantAssets, nil
 }
 
 // GetComplianceCoverageSummary returns a summary of compliance coverage across all assets
