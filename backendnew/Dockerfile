@@ -38,9 +38,6 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/scanner .
 
-# Copy example configuration
-COPY --from=builder /app/.env.example .env.example
-
 # Create directories
 RUN mkdir -p data scripts && \
     chown -R scanner:scanner /app

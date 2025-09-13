@@ -6,12 +6,22 @@ import fs from 'fs';
 const PKG = JSON.parse(fs.readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 
 function getCommitHash() {
-	let revision = childProcess.execSync('git rev-parse HEAD').toString().trim();
-	return revision.slice(0, 7);
+	try {
+		let revision = childProcess.execSync('git rev-parse HEAD').toString().trim();
+		return revision.slice(0, 7);
+	} catch (error) {
+		console.warn('Git not available, using default commit hash');
+		return 'docker';
+	}
 }
 
 function getCommitBranch() {
-	return childProcess.execSync('git branch --show-current').toString().trim();
+	try {
+		return childProcess.execSync('git branch --show-current').toString().trim();
+	} catch (error) {
+		console.warn('Git not available, using default branch');
+		return 'main';
+	}
 }
 
 function getTotalCommitCount() {
