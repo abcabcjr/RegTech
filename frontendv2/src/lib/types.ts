@@ -14,6 +14,8 @@ export interface AssetCoverage {
   status: "yes" | "no";
   notes?: string;
   updated_at?: string;
+  hostname?: string;
+  ip?: string;
 }
 
 export interface FileAttachment {
