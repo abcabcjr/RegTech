@@ -17,21 +17,36 @@
 
 	function getPriorityColor(priority?: string) {
 		switch (priority) {
-			case 'must':
+			case 'critical':
 				return 'bg-red-100 text-red-800 border-red-200';
-			case 'should':
+			case 'high':
+				return 'bg-orange-100 text-orange-800 border-orange-200';
+			case 'medium':
 				return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+			case 'low':
+				return 'bg-green-100 text-green-800 border-green-200';
 			default:
 				return 'bg-gray-100 text-gray-800 border-gray-200';
 		}
 	}
 
-	function getPriorityLabel(priority?: string) {
+	function getPriorityLabel(priority?: string, priority_number?: number) {
+		if (priority_number) {
+			const priorityText = priority === 'critical' ? 'Critical' : 
+								priority === 'high' ? 'High' : 
+								priority === 'medium' ? 'Medium' : 
+								priority === 'low' ? 'Low' : '—';
+			return `${priorityText} (P${priority_number})`;
+		}
 		switch (priority) {
-			case 'must':
-				return 'Must Have';
-			case 'should':
-				return 'Should Have';
+			case 'critical':
+				return 'Critical';
+			case 'high':
+				return 'High';
+			case 'medium':
+				return 'Medium';
+			case 'low':
+				return 'Low';
 			default:
 				return '—';
 		}
@@ -214,7 +229,7 @@
 								Priority Level
 							</h3>
 							<Badge variant="outline" class={getPriorityColor(info.legal?.priority)}>
-								{getPriorityLabel(info.legal?.priority)}
+								{getPriorityLabel(info.legal?.priority, info.legal?.priority_number)}
 							</Badge>
 						</div>
 					</Tabs.Content>

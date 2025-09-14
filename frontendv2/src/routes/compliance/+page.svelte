@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { scale, fly } from 'svelte/transition';
+	import { quintOut } from 'svelte/easing';
 	import type { ChecklistState, ChecklistItem } from '$lib/types';
 	import { loadChecklistState, saveChecklistState } from '$lib/persistence';
 	// Remove hardcoded imports - we'll load from backend instead
@@ -14,13 +16,15 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Badge } from '$lib/components/ui/badge';
 	import { ProgressBar } from '$lib/components/ui/progress-bar';
+	import { Label } from '$lib/components/ui/label';
+	import * as Select from '$lib/components/ui/select';
 	import ChecklistItemComponent from '$lib/components/compliance/checklist-item.svelte';
 	import ExportDialog from '$lib/components/compliance/ExportDialog.svelte';
 	import BusinessUnitCard from '$lib/components/compliance/BusinessUnitCard.svelte';
 	import { assetStore } from '$lib/stores/assets.svelte';
 	import { businessUnitsStore } from '$lib/stores/businessUnits.svelte';
 	import { checklistStore } from '$lib/stores/checklist.svelte';
-	import { Radar, Upload, Download } from '@lucide/svelte';
+	import { Radar, Upload, Download, Shield, Building, Users, TrendingUp, ArrowRight, ArrowLeft, CheckCircle } from '@lucide/svelte';
 	import { getGuideByIdSync, getAllTemplates } from '$lib/guide/data';
 
 	let checklistState: ChecklistState = $state(loadChecklistState());
@@ -42,9 +46,25 @@
 	// Export dialog state
 	let exportDialogOpen: boolean = $state(false);
 
+	// Intro guide dialog state
+	let introDialogOpen: boolean = $state(false);
+	let introStep: 'welcome' | 'company-info' | 'discovery' = $state('welcome');
+	let introDialogElement: HTMLElement | null = $state(null);
+	let companyInfo = $state({
+		name: '',
+		turnover: '',
+		employees: '',
+		industry: '',
+		country: 'Moldova'
+	});
+
 	// Update status tracking
 	let updatingItems: Set<string> = $state(new Set());
 	let updateError: string | null = $state(null);
+
+	// Floating progress bar state
+	let showFloatingProgress: boolean = $state(false);
+	let progressBarElement: HTMLElement | null = $state(null);
 
 	// Convert backend templates to sections format, filtered by type
 	// Note: This is reactive to activeView, backendTemplates, currentChecklistData, and checklistState
@@ -104,14 +124,30 @@
 	function convertTemplatesToSections(templates: any[]) {
 		if (!templates || templates.length === 0) return [];
 
-		// Sort templates by priority (must first), then category, then title
+		// Sort templates by priority (critical first), then category, then title
 		const sortedTemplates = [...templates].sort((a, b) => {
-			// Priority order: "must" comes before "should", then others
-			const priorityA = a.info?.priority || 'other';
-			const priorityB = b.info?.priority || 'other';
-			const priorityOrder: Record<string, number> = { must: 0, should: 1, other: 2 };
+			// Priority order: critical > high > medium > low
+			const priorityA = a.priority_number || a.priority || 'other';
+			const priorityB = b.priority_number || b.priority || 'other';
+			
+			// Use priority_number if available, otherwise fall back to priority text
+			let priorityComparisonA: number, priorityComparisonB: number;
+			
+			if (typeof priorityA === 'number') {
+				priorityComparisonA = priorityA;
+			} else {
+				const priorityOrder: Record<string, number> = { critical: 1, high: 2, medium: 3, low: 4, other: 5 };
+				priorityComparisonA = priorityOrder[priorityA] || 5;
+			}
+			
+			if (typeof priorityB === 'number') {
+				priorityComparisonB = priorityB;
+			} else {
+				const priorityOrder: Record<string, number> = { critical: 1, high: 2, medium: 3, low: 4, other: 5 };
+				priorityComparisonB = priorityOrder[priorityB] || 5;
+			}
 
-			const priorityComparison = (priorityOrder[priorityB] || 2) - (priorityOrder[priorityA] || 2);
+			const priorityComparison = priorityComparisonA - priorityComparisonB;
 			if (priorityComparison !== 0) return priorityComparison;
 
 			// Then by category
@@ -168,7 +204,9 @@
 				lastUpdated: savedItem?.lastUpdated || template.updated_at,
 				attachments: savedItem?.attachments || template.attachments || [], // Use saved attachments first, then template attachments
 				coveredAssets: template.covered_assets || [], // Templates now include covered assets from backend
-				info: template.info ? mapBackendInfoToInfoPanel(template.info) : undefined
+				info: template.info ? mapBackendInfoToInfoPanel(template.info) : undefined,
+				priority: template.priority,
+				priority_number: template.priority_number
 			};
 
 			// Debug logging
@@ -182,16 +220,25 @@
 			categoryMap.get(category).items.push(item);
 		});
 
-		// Convert to array and sort categories by priority (categories with "must" items first)
+		// Convert to array and sort categories by priority (categories with "critical" items first)
 		const sections = Array.from(categoryMap.values()).sort((a, b) => {
-			// Check if section has any "must" priority items
-			const aHasMust = a.items.some((item: any) => item.info?.priority === 'must');
-			const bHasMust = b.items.some((item: any) => item.info?.priority === 'must');
+			// Get the highest priority in each section (lowest number = highest priority)
+			const getHighestPriority = (items: any[]) => {
+				return Math.min(...items.map((item: any) => 
+					item.priority_number || 
+					(item.priority === 'critical' ? 1 : 
+					 item.priority === 'high' ? 2 : 
+					 item.priority === 'medium' ? 3 : 
+					 item.priority === 'low' ? 4 : 5)
+				));
+			};
 
-			if (aHasMust && !bHasMust) return -1;
-			if (!aHasMust && bHasMust) return 1;
+			const aPriority = getHighestPriority(a.items);
+			const bPriority = getHighestPriority(b.items);
 
-			// If both have must items or both don't, sort by category name
+			if (aPriority !== bPriority) return aPriority - bPriority;
+
+			// If same priority, sort by category name
 			return a.title.localeCompare(b.title);
 		});
 
@@ -202,14 +249,30 @@
 	function convertGlobalChecklistToSections(checklistItems: any[]) {
 		if (!checklistItems || checklistItems.length === 0) return [];
 
-		// Sort checklist items by priority (must first), then category, then title
+		// Sort checklist items by priority (critical first), then category, then title
 		const sortedItems = [...checklistItems].sort((a, b) => {
-			// Priority order: "must" comes before "should", then others
-			const priorityA = a.info?.priority || 'other';
-			const priorityB = b.info?.priority || 'other';
-			const priorityOrder: Record<string, number> = { must: 0, should: 1, other: 2 };
+			// Priority order: critical > high > medium > low
+			const priorityA = a.priority_number || a.priority || 'other';
+			const priorityB = b.priority_number || b.priority || 'other';
+			
+			// Use priority_number if available, otherwise fall back to priority text
+			let priorityComparisonA: number, priorityComparisonB: number;
+			
+			if (typeof priorityA === 'number') {
+				priorityComparisonA = priorityA;
+			} else {
+				const priorityOrder: Record<string, number> = { critical: 1, high: 2, medium: 3, low: 4, other: 5 };
+				priorityComparisonA = priorityOrder[priorityA] || 5;
+			}
+			
+			if (typeof priorityB === 'number') {
+				priorityComparisonB = priorityB;
+			} else {
+				const priorityOrder: Record<string, number> = { critical: 1, high: 2, medium: 3, low: 4, other: 5 };
+				priorityComparisonB = priorityOrder[priorityB] || 5;
+			}
 
-			const priorityComparison = (priorityOrder[priorityB] || 2) - (priorityOrder[priorityA] || 2);
+			const priorityComparison = priorityComparisonA - priorityComparisonB;
 			if (priorityComparison !== 0) return priorityComparison;
 
 			// Then by category
@@ -275,6 +338,8 @@
 				status: useBackendDataOnly ? item.status || 'na' : savedItem?.status || item.status || 'no',
 				recommendation: item.recommendation,
 				kind: item.kind || item.source || 'auto',
+				priority: item.priority,
+				priority_number: item.priority_number,
 				scope: item.scope, // Add scope field
 				readOnly: item.read_only || false, // Use actual read_only field from backend
 				// FOR BUSINESS UNITS: Use ONLY backend notes, ignore local state
@@ -301,16 +366,25 @@
 			categoryMap.get(category).items.push(frontendItem);
 		});
 
-		// Convert to array and sort categories by priority (categories with "must" items first)
+		// Convert to array and sort categories by priority (categories with "critical" items first)
 		const sections = Array.from(categoryMap.values()).sort((a, b) => {
-			// Check if section has any "must" priority items
-			const aHasMust = a.items.some((item: any) => item.info?.priority === 'must');
-			const bHasMust = b.items.some((item: any) => item.info?.priority === 'must');
+			// Get the highest priority in each section (lowest number = highest priority)
+			const getHighestPriority = (items: any[]) => {
+				return Math.min(...items.map((item: any) => 
+					item.priority_number || 
+					(item.priority === 'critical' ? 1 : 
+					 item.priority === 'high' ? 2 : 
+					 item.priority === 'medium' ? 3 : 
+					 item.priority === 'low' ? 4 : 5)
+				));
+			};
 
-			if (aHasMust && !bHasMust) return -1;
-			if (!aHasMust && bHasMust) return 1;
+			const aPriority = getHighestPriority(a.items);
+			const bPriority = getHighestPriority(b.items);
 
-			// If both have must items or both don't, sort by category name
+			if (aPriority !== bPriority) return aPriority - bPriority;
+
+			// If same priority, sort by category name
 			return a.title.localeCompare(b.title);
 		});
 
@@ -499,23 +573,19 @@
 		const sections = displaySections();
 		if (sections.length === 0) return 0;
 
+		// Only count required items that are not marked as "na" (not applicable)
 		const totalRequired = sections.reduce(
-			(acc, section) => acc + section.items.filter((item: any) => item.required).length,
+			(acc, section) => acc + section.items.filter((item: any) => item.required && item.status !== 'na').length,
 			0
 		);
 
-		// For manual items, check against saved state; for auto items, they don't have saved state
-		let completedRequired = 0;
-		if (activeView === 'manual') {
-			completedRequired = sections.reduce((acc, section) => {
-				const sectionState = checklistState.sections.find((s) => s.id === section.id);
-				if (!sectionState) return acc;
-				return (
-					acc +
-					sectionState.items.filter((item: any) => item.required && item.status === 'yes').length
-				);
-			}, 0);
-		}
+		// Count completed items directly from the displayed sections (they already have current status)
+		const completedRequired = sections.reduce((acc, section) => {
+			return (
+				acc +
+				section.items.filter((item: any) => item.required && item.status === 'yes').length
+			);
+		}, 0);
 
 		return totalRequired > 0 ? Math.round((completedRequired / totalRequired) * 100) : 0;
 	});
@@ -657,6 +727,49 @@
 		exportDialogOpen = true;
 	}
 
+	// Handle intro modal flow
+	function handleIntroNext() {
+		if (introStep === 'welcome') {
+			introStep = 'company-info';
+		} else if (introStep === 'company-info') {
+			introStep = 'discovery';
+		}
+		// Scroll to top when changing steps
+		setTimeout(() => {
+			if (introDialogElement) {
+				introDialogElement.scrollTop = 0;
+			}
+		}, 50);
+	}
+
+	function handleIntroBack() {
+		if (introStep === 'company-info') {
+			introStep = 'welcome';
+		} else if (introStep === 'discovery') {
+			introStep = 'company-info';
+		}
+		// Scroll to top when changing steps
+		setTimeout(() => {
+			if (introDialogElement) {
+				introDialogElement.scrollTop = 0;
+			}
+		}, 50);
+	}
+
+	function handleIntroComplete() {
+		// Close intro modal and open scan dialog
+		introDialogOpen = false;
+		introStep = 'welcome'; // Reset for next time
+		scanDialogOpen = true;
+	}
+
+	function handleIntroSkip() {
+		// Skip directly to scan dialog
+		introDialogOpen = false;
+		introStep = 'welcome'; // Reset for next time
+		scanDialogOpen = true;
+	}
+
 	// Handle file upload for templates
 	async function handleTemplateUpload(event: Event) {
 		const input = event.target as HTMLInputElement;
@@ -740,17 +853,37 @@
 			// Load assets and auto-open scan dialog if no assets exist
 			await assetStore.load();
 
-			// Check if no assets exist and auto-open scan dialog
+			// Check if no assets exist and auto-open intro dialog
 			if (!assetStore.data?.assets || assetStore.data.assets.length === 0) {
-				scanDialogOpen = true;
+				introDialogOpen = true;
 			}
 		}
 
 		init();
 
+		// Setup scroll listener for floating progress bar
+		const handleScroll = () => {
+			if (progressBarElement && activeView === 'manual') {
+				const rect = progressBarElement.getBoundingClientRect();
+				// Show floating progress when the original is out of view (above the viewport)
+				// Account for the sticky header height (approximately 80px)
+				showFloatingProgress = rect.bottom < 80;
+			} else {
+				showFloatingProgress = false;
+			}
+		};
+
+		window.addEventListener('scroll', handleScroll);
+		
+		// Also check on view changes
+		const checkFloatingProgress = () => {
+			setTimeout(handleScroll, 100); // Small delay to ensure DOM is updated
+		};
+
 		// Cleanup function
 		return () => {
 			assetStore.unregisterComplianceRefreshCallback(refreshComplianceData);
+			window.removeEventListener('scroll', handleScroll);
 		};
 	});
 
@@ -762,11 +895,38 @@
 		dataRefreshTimestamp = Date.now();
 		console.log('🔄 Data refresh timestamp updated:', dataRefreshTimestamp);
 	}
+
+	// Reactive statement to handle view changes
+	$effect(() => {
+		// When activeView changes, check floating progress after a short delay
+		if (typeof window !== 'undefined') {
+			setTimeout(() => {
+				if (progressBarElement && activeView === 'manual') {
+					const rect = progressBarElement.getBoundingClientRect();
+					showFloatingProgress = rect.bottom < 80;
+				} else {
+					showFloatingProgress = false;
+				}
+			}, 100);
+		}
+	});
+
+	// Reactive statement to scroll to top when intro dialog opens
+	$effect(() => {
+		if (introDialogOpen && introDialogElement) {
+			setTimeout(() => {
+				if (introDialogElement) {
+					introDialogElement.scrollTop = 0;
+				}
+			}, 100);
+		}
+	});
 </script>
 
-<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-	<div class="mb-8">
-		<div class="mb-4 flex items-center justify-between">
+<!-- Sticky Header -->
+<div class="sticky top-0 z-50 bg-background border-b border-border">
+	<div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+		<div class="flex items-center justify-between">
 			<h1 class="text-foreground text-3xl font-bold">Compliance Checklist</h1>
 			<div class="flex items-center gap-4">
 				<div class="flex gap-2">
@@ -802,6 +962,42 @@
 				</div>
 			</div>
 		</div>
+	</div>
+</div>
+
+<!-- Floating Progress Bar (shown when original scrolls out of view) -->
+{#if showFloatingProgress && activeView === 'manual'}
+	<div 
+		class="fixed top-20 left-1/2 transform -translate-x-1/2 z-40 bg-background border border-border rounded-4xl shadow-md px-3 py-2 w-[20rem]"
+		in:fly={{ y: -20, duration: 400, easing: quintOut }}
+		out:scale={{ start: 0.95, duration: 200, easing: quintOut }}
+	>
+		<div class="flex items-center justify-between gap-2 mt-1">
+			<span class="text-xs text-muted-foreground font-medium">
+				{displaySections().reduce((acc, section) => {
+					return (
+						acc +
+						section.items.filter(
+							(item: any) => item.required && item.status === 'yes'
+						).length
+					);
+				}, 0)}/{displaySections().reduce(
+					(acc, section) =>
+						acc + section.items.filter((item: any) => item.required && item.status !== 'na').length,
+					0
+				)}
+			</span>
+			<ProgressBar value={complianceScore()} size="sm" />
+			<span class="text-xs text-muted-foreground font-medium">{complianceScore()}%</span>
+		</div>
+		<div class="text-xs text-muted-foreground mt-1 text-center">
+		</div>
+	</div>
+{/if}
+
+<!-- Main Content -->
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+	<div class="mb-8">
 
 		<!-- Upload Status Messages -->
 		{#if uploadSuccess}
@@ -942,7 +1138,8 @@
 					<div class="mb-6">
 						<BusinessUnitCard onBusinessUnitChange={handleBusinessUnitChange} />
 					</div>
-					<Card.Root class="mb-6">
+					<div bind:this={progressBarElement}>
+						<Card.Root class="mb-6">
 						<Card.Header>
 							<Card.Title>Manual Compliance Templates</Card.Title>
 							<Card.Description>
@@ -955,17 +1152,15 @@
 								<div class="text-muted-foreground mt-2 flex justify-between text-sm">
 									<span>
 										{displaySections().reduce((acc, section) => {
-											const sectionState = checklistState.sections.find((s) => s.id === section.id);
-											if (!sectionState) return acc;
 											return (
 												acc +
-												sectionState.items.filter(
+												section.items.filter(
 													(item: any) => item.required && item.status === 'yes'
 												).length
 											);
 										}, 0)} of {displaySections().reduce(
 											(acc, section) =>
-												acc + section.items.filter((item: any) => item.required).length,
+												acc + section.items.filter((item: any) => item.required && item.status !== 'na').length,
 											0
 										)} required items completed
 									</span>
@@ -980,6 +1175,7 @@
 							{/if}
 						</Card.Content>
 					</Card.Root>
+					</div>
 
 					{#if templatesLoading}
 						<div class="flex items-center justify-center p-8">
@@ -1050,10 +1246,59 @@
 							</Card.Description>
 						</Card.Header>
 						<Card.Content>
-							<div class="text-muted-foreground bg-muted/30 rounded-md p-4 text-sm">
-								<strong>Note:</strong> Only showing automatic compliance checks that have non-compliant
-								assets. These require immediate attention to ensure compliance.
-							</div>
+							<!-- Priority Overview -->
+							{#if displaySections().length > 0}
+								{@const priorityCounts = displaySections().reduce((counts, section) => {
+									section.items.forEach((item: any) => {
+										const priority = item.priority || 'other';
+										counts[priority] = (counts[priority] || 0) + 1;
+									});
+									return counts;
+								}, {})}
+								
+								<div class="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+									{#if priorityCounts.critical > 0}
+										<div class="rounded-lg border border-red-200 bg-red-50 p-3">
+											<div class="text-center">
+												<div class="text-2xl font-bold text-red-700">{priorityCounts.critical}</div>
+												<div class="text-xs text-red-600">Critical</div>
+											</div>
+										</div>
+									{/if}
+									{#if priorityCounts.high > 0}
+										<div class="rounded-lg border border-orange-200 bg-orange-50 p-3">
+											<div class="text-center">
+												<div class="text-2xl font-bold text-orange-700">{priorityCounts.high}</div>
+												<div class="text-xs text-orange-600">High</div>
+											</div>
+										</div>
+									{/if}
+									{#if priorityCounts.medium > 0}
+										<div class="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+											<div class="text-center">
+												<div class="text-2xl font-bold text-yellow-700">{priorityCounts.medium}</div>
+												<div class="text-xs text-yellow-600">Medium</div>
+											</div>
+										</div>
+									{/if}
+									{#if priorityCounts.low > 0}
+										<div class="rounded-lg border border-blue-200 bg-blue-50 p-3">
+											<div class="text-center">
+												<div class="text-2xl font-bold text-blue-700">{priorityCounts.low}</div>
+												<div class="text-xs text-blue-600">Low</div>
+											</div>
+										</div>
+									{/if}
+									{#if priorityCounts.other > 0}
+										<div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
+											<div class="text-center">
+												<div class="text-2xl font-bold text-gray-700">{priorityCounts.other}</div>
+												<div class="text-xs text-gray-600">Other</div>
+											</div>
+										</div>
+									{/if}
+								</div>
+							{/if}
 						</Card.Content>
 					</Card.Root>
 
@@ -1121,6 +1366,226 @@
 		</div>
 	</div>
 </div>
+
+<!-- Intro Guide Dialog -->
+<Dialog.Root bind:open={introDialogOpen}>
+	<Dialog.Content class="max-w-2xl max-h-[90vh] overflow-y-auto" bind:this={introDialogElement}>
+		{#if introStep === 'welcome'}
+			<Dialog.Header>
+				<Dialog.Title class="flex items-center gap-2 text-2xl">
+					<Shield class="h-6 w-6 text-blue-600" />
+					Welcome to RegTech Compliance
+				</Dialog.Title>
+				<Dialog.Description>
+					Your comprehensive solution for Moldova's Cybersecurity Law compliance
+				</Dialog.Description>
+			</Dialog.Header>
+			
+			<div class="space-y-6 py-4">
+				<div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+					<h3 class="font-semibold text-blue-900 mb-2">About Moldova's Cybersecurity Law</h3>
+					<p class="text-blue-800 text-sm leading-relaxed">
+						The Republic of Moldova's Cybersecurity Law establishes comprehensive requirements for organizations to protect their digital infrastructure and sensitive data. This law mandates specific security measures, incident reporting procedures, and compliance documentation.
+					</p>
+				</div>
+
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+					<div class="border rounded-lg p-4">
+						<div class="flex items-center gap-2 mb-2">
+							<CheckCircle class="h-5 w-5 text-green-600" />
+							<h4 class="font-medium">Automated Scanning</h4>
+						</div>
+						<p class="text-sm text-muted-foreground">
+							Our platform automatically scans your infrastructure to identify potential compliance gaps and security vulnerabilities.
+						</p>
+					</div>
+
+					<div class="border rounded-lg p-4">
+						<div class="flex items-center gap-2 mb-2">
+							<CheckCircle class="h-5 w-5 text-green-600" />
+							<h4 class="font-medium">Manual Compliance</h4>
+						</div>
+						<p class="text-sm text-muted-foreground">
+							Track manual compliance requirements with guided checklists, documentation templates, and progress monitoring.
+						</p>
+					</div>
+
+					<div class="border rounded-lg p-4">
+						<div class="flex items-center gap-2 mb-2">
+							<CheckCircle class="h-5 w-5 text-green-600" />
+							<h4 class="font-medium">Reporting & Export</h4>
+						</div>
+						<p class="text-sm text-muted-foreground">
+							Generate comprehensive compliance reports and export documentation for regulatory submissions.
+						</p>
+					</div>
+
+					<div class="border rounded-lg p-4">
+						<div class="flex items-center gap-2 mb-2">
+							<CheckCircle class="h-5 w-5 text-green-600" />
+							<h4 class="font-medium">Continuous Monitoring</h4>
+						</div>
+						<p class="text-sm text-muted-foreground">
+							Stay up-to-date with ongoing compliance monitoring and alerts for any changes in your security posture.
+						</p>
+					</div>
+				</div>
+
+				<div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+					<h4 class="font-medium text-amber-900 mb-1">Getting Started</h4>
+					<p class="text-amber-800 text-sm">
+						We'll collect some basic information about your organization and then help you discover your digital assets to begin the compliance assessment.
+					</p>
+				</div>
+			</div>
+
+			<Dialog.Footer class="flex justify-between">
+				<Button variant="outline" onclick={handleIntroSkip}>
+					Skip Introduction
+				</Button>
+				<Button onclick={handleIntroNext} class="flex items-center gap-2">
+					Get Started
+					<ArrowRight class="h-4 w-4" />
+				</Button>
+			</Dialog.Footer>
+
+		{:else if introStep === 'company-info'}
+			<Dialog.Header>
+				<Dialog.Title class="flex items-center gap-2 text-xl">
+					<Building class="h-5 w-5 text-blue-600" />
+					Company Information
+				</Dialog.Title>
+				<Dialog.Description>
+					Help us customize the compliance experience for your organization
+				</Dialog.Description>
+			</Dialog.Header>
+
+			<div class="space-y-4 py-4">
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+					<div class="space-y-2">
+						<Label for="company-name">Company Name</Label>
+						<Input
+							id="company-name"
+							bind:value={companyInfo.name}
+							placeholder="Enter your company name"
+						/>
+					</div>
+
+					<div class="space-y-2">
+						<Label for="industry">Industry</Label>
+						<Input
+							id="industry"
+							bind:value={companyInfo.industry}
+							placeholder="e.g., Financial Services, Healthcare"
+						/>
+					</div>
+				</div>
+
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+					<div class="space-y-2">
+						<Label for="employees">Number of Employees</Label>
+						<Select.Root>
+							<Select.Trigger>
+								<Select.Value placeholder="Select employee count" />
+							</Select.Trigger>
+							<Select.Content>
+								<Select.Item value="1-10">1-10 employees</Select.Item>
+								<Select.Item value="11-50">11-50 employees</Select.Item>
+								<Select.Item value="51-200">51-200 employees</Select.Item>
+								<Select.Item value="201-500">201-500 employees</Select.Item>
+								<Select.Item value="500+">500+ employees</Select.Item>
+							</Select.Content>
+						</Select.Root>
+					</div>
+
+					<div class="space-y-2">
+						<Label for="turnover">Annual Turnover (EUR)</Label>
+						<Select.Root>
+							<Select.Trigger>
+								<Select.Value placeholder="Select turnover range" />
+							</Select.Trigger>
+							<Select.Content>
+								<Select.Item value="under-100k">Under €100,000</Select.Item>
+								<Select.Item value="100k-500k">€100,000 - €500,000</Select.Item>
+								<Select.Item value="500k-2m">€500,000 - €2,000,000</Select.Item>
+								<Select.Item value="2m-10m">€2,000,000 - €10,000,000</Select.Item>
+								<Select.Item value="over-10m">Over €10,000,000</Select.Item>
+							</Select.Content>
+						</Select.Root>
+					</div>
+				</div>
+
+				<div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+					<div class="flex items-start gap-2">
+						<TrendingUp class="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+						<div>
+							<h4 class="font-medium text-blue-900 mb-1">Why we collect this information</h4>
+							<p class="text-blue-800 text-sm">
+								This information helps us tailor compliance requirements and recommendations specific to your organization's size and industry. All data is stored securely and used only to enhance your compliance experience.
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<Dialog.Footer class="flex justify-between">
+				<Button variant="outline" onclick={handleIntroBack} class="flex items-center gap-2">
+					<ArrowLeft class="h-4 w-4" />
+					Back
+				</Button>
+				<Button onclick={handleIntroNext} class="flex items-center gap-2">
+					Continue
+					<ArrowRight class="h-4 w-4" />
+				</Button>
+			</Dialog.Footer>
+
+		{:else if introStep === 'discovery'}
+			<Dialog.Header>
+				<Dialog.Title class="flex items-center gap-2 text-xl">
+					<Radar class="h-5 w-5 text-blue-600" />
+					Asset Discovery
+				</Dialog.Title>
+				<Dialog.Description>
+					Let's discover your digital assets to begin the compliance assessment
+				</Dialog.Description>
+			</Dialog.Header>
+
+			<div class="space-y-4 py-4">
+				<div class="bg-green-50 border border-green-200 rounded-lg p-4">
+					<h4 class="font-medium text-green-900 mb-2">Ready to Start!</h4>
+					<p class="text-green-800 text-sm mb-3">
+						We'll now scan your network to discover servers, services, and potential security issues. This helps us provide accurate compliance recommendations.
+					</p>
+					<div class="text-green-700 text-sm">
+						<strong>Company:</strong> {companyInfo.name || 'Not specified'}<br>
+						<strong>Industry:</strong> {companyInfo.industry || 'Not specified'}
+					</div>
+				</div>
+
+				<div class="border rounded-lg p-4">
+					<h4 class="font-medium mb-2">What happens next?</h4>
+					<ul class="text-sm text-muted-foreground space-y-1">
+						<li>• Enter your domains and IP addresses for scanning</li>
+						<li>• Our platform will discover active services and potential vulnerabilities</li>
+						<li>• Review automated compliance findings and manual checklist items</li>
+						<li>• Generate reports and track your compliance progress</li>
+					</ul>
+				</div>
+			</div>
+
+			<Dialog.Footer class="flex justify-between">
+				<Button variant="outline" onclick={handleIntroBack} class="flex items-center gap-2">
+					<ArrowLeft class="h-4 w-4" />
+					Back
+				</Button>
+				<Button onclick={handleIntroComplete} class="flex items-center gap-2">
+					Start Asset Discovery
+					<Radar class="h-4 w-4" />
+				</Button>
+			</Dialog.Footer>
+		{/if}
+	</Dialog.Content>
+</Dialog.Root>
 
 <!-- Scan Discovery Dialog -->
 <Dialog.Root bind:open={scanDialogOpen}>

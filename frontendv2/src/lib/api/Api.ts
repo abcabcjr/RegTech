@@ -59,8 +59,10 @@ export interface ModelChecklistItemInfo {
   guide?: ModelChecklistItemGuide;
   law_refs?: string[];
   legal?: ModelChecklistItemLegal;
-  /** "must", "should", "may" */
+  /** "critical", "high", "medium", "low" */
   priority?: string;
+  /** Numeric priority (1=critical, 2=high, 3=medium, 4=low) */
+  priority_number?: number;
   resources?: ModelChecklistItemResource[];
   risks?: ModelChecklistItemRisks;
   what_it_means?: string;

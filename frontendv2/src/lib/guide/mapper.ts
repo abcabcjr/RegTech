@@ -26,6 +26,7 @@ export interface InfoPanelData {
     requirement_summary?: string;
     article_refs?: string[];
     priority?: string;
+    priority_number?: number;
   };
   resources: GuideResource[];
   evidence_template?: EvidenceTemplate;
@@ -112,7 +113,8 @@ export function convertRawInfoToGuide(rawTemplate: any): Guide {
       article_refs: info.law_refs || []
     },
     resources: info.resources || [],
-    priority: info.priority as "must" | "should",
+    priority: info.priority as "critical" | "high" | "medium" | "low",
+    priority_number: info.priority_number,
     // Additional guide information from JSON
     scope_caveats: info.guide?.scope_caveats || null,
     acceptance_summary: info.guide?.acceptance_summary || null,
@@ -127,7 +129,8 @@ export function convertRawInfoToGuide(rawTemplate: any): Guide {
       requirement_summary: info.legal.requirement_summary || info.what_it_means,
       article_refs: info.legal.article_refs || info.law_refs || [],
       quotes: info.legal.quotes || [],
-      priority: info.legal.priority || info.priority
+      priority: info.legal.priority || info.priority,
+      priority_number: info.legal.priority_number || info.priority_number
     } : undefined
   };
 }
@@ -173,7 +176,8 @@ export function mapBackendInfoToInfoPanel(backendInfo: any): InfoPanelData | nul
     legal: {
       requirement_summary: backendInfo.legal?.requirement_summary || backendInfo.law?.requirement_summary || "—",
       article_refs: backendInfo.legal?.article_refs || backendInfo.law?.article_refs || [],
-      priority: (backendInfo.legal?.priority || backendInfo.priority as "must" | "should") || "should"
+      priority: (backendInfo.legal?.priority || backendInfo.priority as "critical" | "high" | "medium" | "low") || "medium",
+      priority_number: backendInfo.legal?.priority_number || backendInfo.priority_number
     },
     resources: backendInfo.resources || []
   };
@@ -205,7 +209,8 @@ export function createPlaceholderInfoPanel(): InfoPanelData {
     legal: {
       requirement_summary: "—",
       article_refs: [],
-      priority: "should"
+      priority: "medium",
+      priority_number: 3
     },
     resources: []
   };

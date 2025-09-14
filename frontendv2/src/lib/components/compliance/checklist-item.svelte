@@ -33,12 +33,15 @@
 	
 	// Debug logging
 	$effect(() => {
+		console.log('Item:', item);
 		console.log('Checklist item data:', {
 			title: item.title,
 			info: item.info,
 			helpText: item.helpText,
 			whyMatters: item.whyMatters,
 			businessUnitId: businessUnitId,
+			priority: item.priority,
+			priorityNumber: item.priority_number,
 			checklistKey: checklistKey()
 		});
 	});
@@ -69,7 +72,7 @@
 		onUpdate({ evidence: target.value, lastUpdated: new Date().toISOString() });
 	}
 
-	// Generate checklist key for this item based on context
+	// Generate checklist key for this item based on contex
 	let checklistKey = $derived(() => {
 		if (businessUnitId) {
 			// For business unit items: business_unit:{businessUnitId}:{itemId}
@@ -149,10 +152,26 @@
 					{#if item.required}
 						<Badge variant="outline" class="text-xs">Required</Badge>
 					{/if}
-					{#if item.info?.priority === 'must'}
-						<Badge variant="destructive" class="text-xs">Must</Badge>
-					{:else if item.info?.priority === 'should'}
-						<Badge variant="secondary" class="text-xs">Should</Badge>
+					{#if item.priority}
+						{@const priority = item.priority}
+						{@const priorityNumber = item.priority_number}
+						{#if priority === 'critical'}
+							<Badge variant="destructive" class="text-xs bg-red-100 text-red-800 border-red-200">
+								Critical{priorityNumber ? ` (P${priorityNumber})` : ''}
+							</Badge>
+						{:else if priority === 'high'}
+							<Badge variant="secondary" class="text-xs bg-orange-100 text-orange-800 border-orange-200">
+								High{priorityNumber ? ` (P${priorityNumber})` : ''}
+							</Badge>
+						{:else if priority === 'medium'}
+							<Badge variant="outline" class="text-xs bg-yellow-100 text-yellow-800 border-yellow-200">
+								Medium{priorityNumber ? ` (P${priorityNumber})` : ''}
+							</Badge>
+						{:else if priority === 'low'}
+							<Badge variant="outline" class="text-xs bg-green-100 text-green-800 border-green-200">
+								Low{priorityNumber ? ` (P${priorityNumber})` : ''}
+							</Badge>
+						{/if}
 					{/if}
 				</div>
 			</div>
@@ -239,11 +258,13 @@
 								legal: item.info?.legal ? {
 									requirement_summary: item.info.legal.requirement_summary || "",
 									article_refs: item.info.legal.article_refs || [],
-									priority: (item.info.legal.priority as "must" | "should") || "should"
+									priority: (item.info.legal.priority as "critical" | "high" | "medium" | "low") || "medium",
+									priority_number: item.info.legal.priority_number
 								} : {
 									requirement_summary: "",
 									article_refs: [],
-									priority: "should"
+									priority: "medium",
+									priority_number: 3
 								},
 								resources: (item.info?.resources) || [],
 								pdf_guide: pdfGuide
