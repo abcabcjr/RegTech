@@ -559,15 +559,10 @@
 			// For scanner view, all displayed items are already non-compliant
 			return section.items.length;
 		} else {
-			// For manual view, count items with status 'no' or not set
-			const sectionState = checklistState.sections.find((s) => s.id === section.id);
-			if (!sectionState) {
-				// If no saved state, all items are non-compliant by default
-				return section.items.length;
-			}
-
-			// Count items with status 'no' or not set
-			return sectionState.items.filter((item: any) => {
+			// For manual view, count items with status 'no' from the actual section data
+			// The section.items already contains the correct status from backend or local state
+			// Only 'no' status is non-compliant; 'yes' and 'na' are both considered compliant
+			return section.items.filter((item: any) => {
 				const status = item.status || 'no';
 				return status === 'no';
 			}).length;
@@ -997,9 +992,14 @@
 								{#each displaySections() as section}
 									<Tabs.Trigger value={section.id} class="flex items-center gap-1 p-1 text-xs">
 										<span>{section.title.split(' ')[0]}</span>
-										{#if getNonCompliantSectionCount(section) > 0}
+										{@const nonCompliantCount = getNonCompliantSectionCount(section)}
+										{#if nonCompliantCount > 0}
 											<Badge variant="destructive" class="h-4 min-w-[16px] px-1 py-0 text-xs">
-												{getNonCompliantSectionCount(section)}
+												{nonCompliantCount}
+											</Badge>
+										{:else}
+											<Badge class="!bg-green-50 !text-green-700 !border-green-200 h-4 min-w-[16px] px-1 py-0 text-xs">
+												✓
 											</Badge>
 										{/if}
 									</Tabs.Trigger>
@@ -1068,9 +1068,14 @@
 								{#each displaySections() as section}
 									<Tabs.Trigger value={section.id} class="flex items-center gap-1 p-1 text-xs">
 										<span>{section.title.split(' ')[0]}</span>
-										{#if getNonCompliantSectionCount(section) > 0}
+										{@const nonCompliantCount = getNonCompliantSectionCount(section)}
+										{#if nonCompliantCount > 0}
 											<Badge variant="destructive" class="h-4 min-w-[16px] px-1 py-0 text-xs">
-												{getNonCompliantSectionCount(section)}
+												{nonCompliantCount}
+											</Badge>
+										{:else}
+											<Badge class="!bg-green-50 !text-green-700 !border-green-200 h-4 min-w-[16px] px-1 py-0 text-xs">
+												✓
 											</Badge>
 										{/if}
 									</Tabs.Trigger>
