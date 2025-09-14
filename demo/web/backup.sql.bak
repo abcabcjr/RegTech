@@ -1,0 +1,23 @@
+-- Database backup file (vulnerable - exposed)
+-- This file should not be accessible via web!
+
+CREATE DATABASE vulnerable_backup;
+USE vulnerable_backup;
+
+-- User credentials (plain text - vulnerable!)
+INSERT INTO users VALUES 
+(1, 'admin', 'supersecret123', 'admin@company.com'),
+(2, 'dbadmin', 'database_password_2023', 'dba@company.com'),
+(3, 'service_account', 'service_key_prod_2023', 'service@company.com');
+
+-- API Keys and secrets
+INSERT INTO api_keys VALUES
+('sk_live_prod_key_123456789abcdef', 'stripe', 'production'),
+('AIzaSyRealGoogleAPIKey123456789', 'google_maps', 'production'),
+('aws_access_key_AKIAIOSFODNN7EXAMPLE', 'aws_s3', 'production');
+
+-- Internal server information
+-- Production DB: db-prod-01.internal.company.com:5432
+-- Staging DB: db-staging-01.internal.company.com:5432
+-- Admin Panel: https://admin.internal.company.com
+-- Monitoring: https://monitoring.internal.company.com

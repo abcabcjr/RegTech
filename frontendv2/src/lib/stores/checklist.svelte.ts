@@ -135,9 +135,9 @@ export class ChecklistStore {
 	getStatusLabel(status?: string): string {
 		switch (status) {
 			case 'yes':
-				return 'Yes';
+				return 'Compliant';
 			case 'no':
-				return 'No';
+				return 'Non-Compliant';
 			case 'na':
 				return 'N/A';
 			default:

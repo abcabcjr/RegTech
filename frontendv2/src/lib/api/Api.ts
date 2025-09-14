@@ -209,6 +209,8 @@ export interface V1AssetSummary {
   scan_count: number;
   /** @example "discovered,scanning,scanned,error" */
   status: string;
+  /** Tags like "http", "cf-proxied", etc. */
+  tags?: string[];
   /** @example "domain,subdomain,ip,service" */
   type: string;
   value: string;

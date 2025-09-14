@@ -24,6 +24,7 @@
 	import Database from '@lucide/svelte/icons/database';
 	import Mail from '@lucide/svelte/icons/mail';
 	import FileText from '@lucide/svelte/icons/file-text';
+	import { ChevronsLeftRightEllipsis } from '@lucide/svelte';
 
 	let { assets = [] }: { assets: V1AssetSummary[] } = $props();
 
@@ -140,8 +141,8 @@
 		color: string;
 		bgColor: string;
 	} {
-		const assetDetails = assetStore.assetDetails[asset.id];
-		const tags = assetDetails?.tags || [];
+		const tags = asset.tags || [];
+		console.log(tags);
 
 		// Check for special tag-based icons first
 		if (tags.includes('cf-proxied')) {
@@ -152,7 +153,11 @@
 			return { icon: 'terminal', color: '#000000', bgColor: '#F5F5F5' }; // SSH terminal
 		}
 
-		if (tags.includes('mail-server') || tags.includes('mx')) {
+		if (tags.includes('ftp')) {
+			return { icon: 'drive', color: '#EA4335', bgColor: '#FCE8E6' }; // HTTP red
+		}
+
+		if (tags.includes('mail-server') || tags.includes('mx') || tags.includes('smtp-tcp')) {
 			return { icon: 'mail', color: '#4285F4', bgColor: '#E8F0FE' }; // Mail blue
 		}
 
@@ -175,12 +180,12 @@
 			case 'subdomain':
 				return { icon: 'network', color: '#2196F3', bgColor: '#E3F2FD' }; // Blue
 			case 'ip':
-				return { icon: 'server', color: '#FF9800', bgColor: '#FFF3E0' }; // Orange
+				return { icon: 'ip', color: '#FF9800', bgColor: '#FFF3E0' }; // Orange
 			case 'service':
 				if (tags.includes('web') || tags.includes('http') || tags.includes('https')) {
 					return { icon: 'wifi', color: '#9C27B0', bgColor: '#F3E5F5' }; // Purple for web services
 				}
-				return { icon: 'shield', color: '#9C27B0', bgColor: '#F3E5F5' }; // Purple
+				return { icon: 'server', color: '#9C27B0', bgColor: '#F3E5F5' }; // Purple
 			default:
 				return { icon: 'file-text', color: '#666666', bgColor: '#F5F5F5' }; // Gray
 		}
@@ -194,9 +199,11 @@
 		size: number = 24
 	): string {
 		const iconMap: Record<string, string> = {
+			drive: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-hard-drive-icon lucide-hard-drive"><line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/></svg>`,
+			ip: `<svg xmlns="http://www.w3.org/2000/svg" stroke="${color}" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevrons-left-right-ellipsis-icon lucide-chevrons-left-right-ellipsis"><path d="M12 12h.01"/><path d="M16 12h.01"/><path d="m17 7 5 5-5 5"/><path d="m7 7-5 5 5 5"/><path d="M8 12h.01"/></svg>`,
 			globe: `<circle cx="12" cy="12" r="10" stroke="${color}" stroke-width="2" fill="none"/><path d="m2 12 20 0" stroke="${color}" stroke-width="2"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="${color}" stroke-width="2" fill="none"/>`,
 			network: `<path d="m3 16 4-4-4-4" stroke="${color}" stroke-width="2" fill="none"/><path d="m21 20-4-4 4-4" stroke="${color}" stroke-width="2" fill="none"/><path d="M6.5 12h11" stroke="${color}" stroke-width="2"/>`,
-			server: `<rect width="20" height="8" x="2" y="2" rx="2" ry="2" stroke="${color}" stroke-width="2" fill="none"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2" stroke="${color}" stroke-width="2" fill="none"/><line x1="6" x2="6.01" y1="6" y2="6" stroke="${color}" stroke-width="2"/><line x1="6" x2="6.01" y1="18" y2="18" stroke="${color}" stroke-width="2"/>`,
+			server: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-server-icon lucide-server"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>`,
 			wifi: `<path d="M5 12.55a11 11 0 0 1 14.08 0" stroke="${color}" stroke-width="2" fill="none"/><path d="M1.42 9a16 16 0 0 1 21.16 0" stroke="${color}" stroke-width="2" fill="none"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0" stroke="${color}" stroke-width="2" fill="none"/><line x1="12" x2="12.01" y1="20" y2="20" stroke="${color}" stroke-width="2"/>`,
 			shield: `<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" stroke="${color}" stroke-width="2" fill="none"/>`,
 			lock: `<rect width="18" height="11" x="3" y="11" rx="2" ry="2" stroke="${color}" stroke-width="2" fill="none"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="${color}" stroke-width="2" fill="none"/>`,
@@ -1071,11 +1078,11 @@
 						<span>Subdomains</span>
 					</div>
 					<div class="legend-item">
-						<Server class="legend-icon" size={16} color="#FF9800" />
+						<ChevronsLeftRightEllipsis class="legend-icon" size={16} color="#FF9800" />
 						<span>IP Addresses</span>
 					</div>
 					<div class="legend-item">
-						<Shield class="legend-icon" size={16} color="#9C27B0" />
+						<Server class="legend-icon" size={16} color="#9C27B0" />
 						<span>Services</span>
 					</div>
 				</div>

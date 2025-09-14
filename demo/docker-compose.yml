@@ -1,0 +1,216 @@
+services:
+  # Vulnerable HTTP Server with Expired SSL Certificate
+  vulnerable-web:
+    image: nginx:1.20
+    container_name: vulnerable-web
+    ports:
+      - "8081:80"
+      - "8443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./certs:/etc/nginx/certs
+      - ./web:/usr/share/nginx/html
+    depends_on:
+      - vulnerable-db
+    networks:
+      - vulnerable-net
+
+  # Vulnerable SMTP Server (Postfix with weak configuration)
+  vulnerable-smtp:
+    image: boky/postfix:latest
+    container_name: vulnerable-smtp
+    ports:
+      - "25:25"
+      - "587:587"
+    environment:
+      - ALLOWED_SENDER_DOMAINS=vulnerable.local
+      - HOSTNAME=mail.vulnerable.local
+      - RELAYHOST_USERNAME=admin
+      - RELAYHOST_PASSWORD=weakpassword123
+    networks:
+      - vulnerable-net
+
+  # Vulnerable MySQL Database
+  vulnerable-db:
+    image: mysql:8.0
+    container_name: vulnerable-db
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=vulnerable_app
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=admin123
+    volumes:
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+    command: --sql-mode="" --default-authentication-plugin=mysql_native_password --disable-log-bin
+    networks:
+      - vulnerable-net
+
+  # Vulnerable FTP Server
+  vulnerable-ftp:
+    image: delfer/alpine-ftp-server
+    container_name: vulnerable-ftp
+    ports:
+      - "21:21"
+      - "30000-30009:30000-30009"
+    environment:
+      - USERS=ftpuser|ftppass123|/ftp|1001
+      - ADDRESS=0.0.0.0
+    volumes:
+      - ./ftp-data:/ftp
+    networks:
+      - vulnerable-net
+
+  # Vulnerable SSH Server (OpenSSH with weak configuration)
+  vulnerable-ssh:
+    image: linuxserver/openssh-server:latest
+    container_name: vulnerable-ssh
+    ports:
+      - "2222:2222"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - PUBLIC_KEY_FILE=/config/authorized_keys
+      - SUDO_ACCESS=true
+      - PASSWORD_ACCESS=true
+      - USER_PASSWORD=weakpassword123
+      - USER_NAME=sshuser
+    volumes:
+      - ./ssh/sshd_config:/config/ssh_host_keys/sshd_config
+      - ./ssh-data:/config
+    networks:
+      - vulnerable-net
+
+  # Vulnerable Redis (No Authentication)
+  vulnerable-redis:
+    image: redis:6.2-alpine
+    container_name: vulnerable-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass "" --protected-mode no
+    networks:
+      - vulnerable-net
+
+  # Vulnerable MongoDB (No Authentication)
+  vulnerable-mongo:
+    image: mongo:7.0
+    container_name: vulnerable-mongo
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=vulnerable_app
+    volumes:
+      - ./mongo/init.js:/docker-entrypoint-initdb.d/init.js
+    command: mongod --noauth --bind_ip_all
+    networks:
+      - vulnerable-net
+
+  # Vulnerable Elasticsearch (No Authentication)
+  vulnerable-elasticsearch:
+    image: elasticsearch:8.11.0
+    container_name: vulnerable-elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    networks:
+      - vulnerable-net
+
+  # Vulnerable Memcached (No Authentication)
+  vulnerable-memcached:
+    image: memcached:1.6-alpine
+    container_name: vulnerable-memcached
+    ports:
+      - "11211:11211"
+    command: memcached -m 64 -u memcache -l 0.0.0.0
+    networks:
+      - vulnerable-net
+
+  # Vulnerable LDAP Server
+  vulnerable-ldap:
+    image: osixia/openldap:1.5.0
+    container_name: vulnerable-ldap
+    ports:
+      - "389:389"
+      - "636:636"
+    environment:
+      - LDAP_ORGANISATION="Vulnerable Corp"
+      - LDAP_DOMAIN="vulnerable.local"
+      - LDAP_ADMIN_PASSWORD=admin123
+      - LDAP_CONFIG_PASSWORD=config123
+      - LDAP_READONLY_USER=true
+      - LDAP_READONLY_USER_USERNAME=readonly
+      - LDAP_READONLY_USER_PASSWORD=readonly123
+    volumes:
+      - ./ldap:/container/service/slapd/assets/config/bootstrap/ldif/custom
+    networks:
+      - vulnerable-net
+
+  # Vulnerable DNS Server (Bind9 with zone transfer enabled)
+  vulnerable-dns:
+    image: ubuntu/bind9:9.18-22.04_beta
+    container_name: vulnerable-dns
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    volumes:
+      - ./dns/named.conf:/etc/bind/named.conf
+      - ./dns/zones:/etc/bind/zones
+    networks:
+      - vulnerable-net
+
+  # Vulnerable SNMP Service
+  vulnerable-snmp:
+    image: polinux/snmpd
+    container_name: vulnerable-snmp
+    ports:
+      - "161:161/udp"
+    environment:
+      - SNMP_COMMUNITY=public
+    volumes:
+      - ./snmp/snmpd.conf:/etc/snmp/snmpd.conf
+    networks:
+      - vulnerable-net
+
+  # Vulnerable Telnet Server
+  vulnerable-telnet:
+    image: alpine:latest
+    container_name: vulnerable-telnet
+    ports:
+      - "23:23"
+    command: sh -c "apk add --no-cache busybox-extras && telnetd -F -l /bin/sh"
+    networks:
+      - vulnerable-net
+
+  # Vulnerable VNC Server
+  vulnerable-vnc:
+    image: kasmweb/desktop:1.14.0
+    container_name: vulnerable-vnc
+    ports:
+      - "5901:5901"
+      - "6901:6901"
+    environment:
+      - VNC_PW=password123
+      - KASM_PORT=6901
+    networks:
+      - vulnerable-net
+
+networks:
+  vulnerable-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+
+volumes:
+  mysql-data:
+  mongo-data:
+  elasticsearch-data:
