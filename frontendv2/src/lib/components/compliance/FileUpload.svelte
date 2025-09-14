@@ -319,7 +319,9 @@
 			{#each attachments as attachment}
 				<div class="flex items-center justify-between p-3 bg-muted/30 rounded-md border">
 					<div class="flex items-center gap-3 flex-1">
-						<svelte:component this={getFileIcon(attachment.content_type)} class="w-4 h-4 text-muted-foreground" />
+						{#each [getFileIcon(attachment.content_type)] as IconComponent}
+							<IconComponent class="w-4 h-4 text-muted-foreground" />
+						{/each}
 						<div class="flex-1 min-w-0">
 							<div class="flex items-center gap-2">
 								<button
@@ -389,7 +391,9 @@
 			<div class="space-y-4">
 				<div class="p-3 bg-muted/30 rounded-md">
 					<div class="flex items-center gap-2">
-						<svelte:component this={getFileIcon(selectedFile.type)} class="w-4 h-4 text-muted-foreground" />
+						{#each [getFileIcon(selectedFile.type)] as IconComponent}
+							<IconComponent class="w-4 h-4 text-muted-foreground" />
+						{/each}
 						<div>
 							<p class="text-sm font-medium">{selectedFile.name}</p>
 							<p class="text-xs text-muted-foreground">
@@ -455,7 +459,9 @@
 		{#if fileToDelete}
 			<div class="p-3 bg-muted/30 rounded-md">
 				<div class="flex items-center gap-2">
-					<svelte:component this={getFileIcon(fileToDelete.content_type)} class="w-4 h-4 text-muted-foreground" />
+					{#each [getFileIcon(fileToDelete.content_type)] as IconComponent}
+						<IconComponent class="w-4 h-4 text-muted-foreground" />
+					{/each}
 					<div>
 						<p class="text-sm font-medium">{fileToDelete.original_name}</p>
 						<p class="text-xs text-muted-foreground">

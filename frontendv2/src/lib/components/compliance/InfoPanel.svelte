@@ -99,7 +99,7 @@
 								</svg>
 								How attackers could use this
 							</h3>
-							{#if info.risks.attack_vectors.length > 0}
+							{#if info.risks?.attack_vectors && info.risks.attack_vectors.length > 0}
 								<ul class="space-y-2">
 									{#each info.risks.attack_vectors as vector}
 										<li class="flex items-start gap-2">
@@ -122,7 +122,7 @@
 								</svg>
 								Potential impact
 							</h3>
-							{#if info.risks.potential_impact.length > 0}
+							{#if info.risks?.potential_impact && info.risks.potential_impact.length > 0}
 								<ul class="space-y-2">
 									{#each info.risks.potential_impact as impact}
 										<li class="flex items-start gap-2">
@@ -152,7 +152,7 @@
 								<p class="text-sm text-blue-800 mb-3 font-medium">
 									💡 The platform explains what needs to be done, but doesn't automatically fix issues. Follow these steps to address this requirement:
 								</p>
-								{#if info.guide.non_technical_steps.length > 0}
+								{#if info.guide?.non_technical_steps && info.guide.non_technical_steps.length > 0}
 									<ol class="space-y-2">
 										{#each info.guide.non_technical_steps as step, index}
 											<li class="flex items-start gap-3">
@@ -181,7 +181,7 @@
 							</h3>
 							<div class="bg-red-50 border border-red-200 rounded-lg p-4">
 								<p class="text-red-800 text-sm leading-relaxed">
-									{info.legal.requirement_summary || '—'}
+									{info.legal?.requirement_summary || '—'}
 								</p>
 							</div>
 						</div>
@@ -193,7 +193,7 @@
 								</svg>
 								Article References
 							</h3>
-							{#if info.legal.article_refs && info.legal.article_refs.length > 0}
+							{#if info.legal?.article_refs && info.legal.article_refs.length > 0}
 								<div class="flex flex-wrap gap-2">
 									{#each info.legal.article_refs as ref}
 										<Badge variant="outline" class="text-xs">
@@ -213,8 +213,8 @@
 								</svg>
 								Priority Level
 							</h3>
-							<Badge variant="outline" class={getPriorityColor(info.legal.priority)}>
-								{getPriorityLabel(info.legal.priority)}
+							<Badge variant="outline" class={getPriorityColor(info.legal?.priority)}>
+								{getPriorityLabel(info.legal?.priority)}
 							</Badge>
 						</div>
 					</Tabs.Content>
