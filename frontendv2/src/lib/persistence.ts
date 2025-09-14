@@ -1,5 +1,4 @@
 import type { ChecklistState } from './types';
-import { defaultChecklistSections } from './checklist-data';
 
 const STORAGE_KEY = 'cybercare-checklist-state';
 
@@ -10,7 +9,7 @@ export function loadChecklistState(): ChecklistState {
       const parsed = JSON.parse(stored);
       // Ensure we have all required fields
       return {
-        sections: parsed.sections || defaultChecklistSections,
+        sections: parsed.sections || [],
         lastUpdated: parsed.lastUpdated || new Date().toISOString(),
         complianceScore: parsed.complianceScore || 0
       };
@@ -21,7 +20,7 @@ export function loadChecklistState(): ChecklistState {
 
   // Return default state if loading fails
   return {
-    sections: defaultChecklistSections,
+    sections: [],
     lastUpdated: new Date().toISOString(),
     complianceScore: 0
   };

@@ -6,6 +6,7 @@
 	// import { manualChecklistSections } from '$lib/checklist/items.manual';
 	// import { autoTemplateSections } from '$lib/checklist/items.auto.template';
 	import { apiClient } from '$lib/api/client';
+	import { mapBackendInfoToInfoPanel } from '$lib/guide/mapper';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import * as Tabs from '$lib/components/ui/tabs';
@@ -23,6 +24,7 @@
 	let activeView: 'manual' | 'scanner' = $state('manual');
 	let backendTemplates: any[] = $state([]);
 	let backendGlobalChecklist: any[] = $state([]);
+	let jsonTemplatesData: any = $state(null);
 	let templatesLoading: boolean = $state(false);
 	let globalChecklistLoading: boolean = $state(false);
 	let uploading: boolean = $state(false);
@@ -148,17 +150,7 @@
 				lastUpdated: savedItem?.lastUpdated || template.updated_at,
 				attachments: savedItem?.attachments || template.attachments || [], // Use saved attachments first, then template attachments
 				coveredAssets: template.covered_assets || [], // Templates now include covered assets from backend
-				info: template.info ? {
-					whatItMeans: template.info.what_it_means,
-					whyItMatters: template.info.why_it_matters,
-					lawRefs: template.info.law_refs || [],
-					priority: template.info.priority,
-					resources: template.info.resources || [],
-					non_technical_steps: template.info.non_technical_steps || [],
-					scope_caveats: template.info.scope_caveats || null,
-					acceptance_summary: template.info.acceptance_summary || null,
-					faq: template.info.faq || []
-				} : undefined
+				info: template.info ? mapBackendInfoToInfoPanel(template.info) : undefined
 			};
 
 			// Debug logging
@@ -238,6 +230,12 @@
 			);
 			const savedItem = savedSection?.items.find((i) => i.id === item.id);
 
+			// Get guide data from JSON templates
+			let guideInfo = null;
+			if (jsonTemplatesData) {
+				guideInfo = getGuideByIdSync(item.id, jsonTemplatesData);
+			}
+
 			// Convert backend checklist item to frontend item format (includes asset coverage)
 			const frontendItem = {
 				id: item.id,
@@ -256,17 +254,7 @@
 				lastUpdated: savedItem?.lastUpdated || item.updated_at,
 				coveredAssets: item.covered_assets || [], // This is the key difference!
 				attachments: savedItem?.attachments || item.attachments || [], // Use saved attachments first
-				info: item.info ? {
-					whatItMeans: item.info.what_it_means,
-					whyItMatters: item.info.why_it_matters,
-					lawRefs: item.info.law_refs || [],
-					priority: item.info.priority,
-					resources: item.info.resources || [],
-					non_technical_steps: item.info.non_technical_steps || [],
-					scope_caveats: item.info.scope_caveats || null,
-					acceptance_summary: item.info.acceptance_summary || null,
-					faq: item.info.faq || []
-				} : undefined
+				info: guideInfo ? mapBackendInfoToInfoPanel(guideInfo) : (item.info ? mapBackendInfoToInfoPanel(item.info) : undefined)
 			};
 
 			categoryMap.get(category).items.push(frontendItem);
@@ -288,19 +276,31 @@
 		return sections;
 	}
 
-	// Load backend templates
-	async function loadBackendTemplates() {
+	// Load templates from backend API
+	async function loadTemplates() {
 		templatesLoading = true;
 		try {
 			const response = await apiClient.checklist.templatesList();
 			backendTemplates = response.data || [];
-			console.log('Loaded backend templates:', backendTemplates);
+			console.log('Loaded templates from backend:', backendTemplates);
+			const securityAudit = backendTemplates.find(t => t.id === 'security-audit');
+			console.log('Security Audit template:', securityAudit);
 		} catch (err) {
-			console.error('Failed to load backend templates:', err);
-			// Fallback to empty array if backend is not available
+			console.error('Failed to load templates from backend:', err);
 			backendTemplates = [];
 		} finally {
 			templatesLoading = false;
+		}
+	}
+
+	// Load JSON templates data
+	async function loadJsonTemplates() {
+		try {
+			jsonTemplatesData = await getAllTemplates();
+			console.log('Loaded JSON templates data:', jsonTemplatesData);
+		} catch (err) {
+			console.error('Failed to load JSON templates data:', err);
+			jsonTemplatesData = null;
 		}
 	}
 
@@ -598,7 +598,7 @@
 			console.log('Upload response:', response);
 
 			// Reload templates after successful upload
-			await loadBackendTemplates(); // This now includes covered assets
+			await loadTemplates(); // This now includes covered assets
 			await loadBackendGlobalChecklist(); // Still needed for manual view
 
 			uploadSuccess = `Successfully uploaded ${templates.length} templates!`;
@@ -621,7 +621,7 @@
 	// Create refresh callback function
 	async function refreshComplianceData() {
 		console.log('Refreshing compliance data...');
-		await loadBackendTemplates();
+		loadTemplates();
 		await loadBackendGlobalChecklist();
 		// Update timestamp to force reactivity
 		dataRefreshTimestamp = Date.now();
@@ -631,7 +631,8 @@
 	onMount(() => {
 		async function init() {
 			checklistState = loadChecklistState();
-			await loadBackendTemplates(); // Load enhanced templates from backend (now with covered assets)
+			await loadTemplates(); // Load templates from backend API
+			await loadJsonTemplates(); // Load JSON templates data for rich guide information
 			await loadBackendGlobalChecklist(); // Load global checklist (still needed for manual view)
 
 			// Register compliance refresh callback with asset store
@@ -916,7 +917,7 @@
 								No checklist templates available. Please ensure the backend is running and templates
 								are loaded.
 							</p>
-							<Button variant="outline" class="mt-4" onclick={loadBackendTemplates}>Retry</Button>
+							<Button variant="outline" class="mt-4" onclick={loadTemplates}>Retry</Button>
 						</div>
 					{/if}
 				</Tabs.Content>
@@ -988,7 +989,7 @@
 								<li>• No assets have been scanned yet</li>
 								<li>• No automatic templates are configured</li>
 							</ul>
-							<Button variant="outline" class="mt-4" onclick={loadBackendTemplates}>Refresh</Button>
+							<Button variant="outline" class="mt-4" onclick={loadTemplates}>Refresh</Button>
 						</div>
 					{/if}
 				</Tabs.Content>

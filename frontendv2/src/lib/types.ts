@@ -5,10 +5,21 @@ export interface InfoBlock {
   lawRefs: string[];        // e.g., ["Art. 11", "NU-49-MDED-2025 §…"]
   priority?: 'must' | 'should';
   resources?: { title: string; url: string }[];
-  non_technical_steps?: string[];
-  scope_caveats?: string | null;
-  acceptance_summary?: string | null;
-  faq?: Array<{q: string; a: string}>;
+  guide?: {
+    non_technical_steps?: string[];
+    scope_caveats?: string | null;
+    acceptance_summary?: string | null;
+    faq?: Array<{q: string; a: string}>;
+  };
+  risks?: {
+    attack_vectors?: string[];
+    potential_impact?: string[];
+  };
+  legal?: {
+    requirement_summary?: string;
+    article_refs?: string[];
+    priority?: string;
+  };
 }
 
 export interface AssetCoverage {
@@ -48,7 +59,7 @@ export interface ChecklistItem {
   recommendation?: string;
   kind: 'manual' | 'auto';
   readOnly?: boolean;
-  info?: InfoBlock;
+  info?: any; // InfoPanelData from mapBackendInfoToInfoPanel
   notes?: string;
   coveredAssets?: AssetCoverage[];
   attachments?: string[]; // Array of file IDs

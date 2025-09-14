@@ -1,15 +1,14 @@
 // Import the templates data from the backend JSON file
 import type { TemplatesData, Guide } from './types';
 import { mockTemplatesData } from './mock-data';
+import { loadTemplatesData as loadFromJson } from './json-loader';
 
-// Import the JSON data directly
-// Note: In a real implementation, this could be fetched from an API
-// For now, we'll use mock data that simulates the updated JSON structure
+// Cache for loaded data
 let templatesData: TemplatesData | null = null;
 
 /**
  * Load the templates data from the JSON file
- * This is a placeholder implementation that would normally fetch from an API
+ * This loads the actual data from checklist_templates_full.json
  */
 async function loadTemplatesData(): Promise<TemplatesData> {
   if (templatesData) {
@@ -17,19 +16,11 @@ async function loadTemplatesData(): Promise<TemplatesData> {
   }
 
   try {
-    // In a real implementation, this would be an API call
-    // For now, we'll use mock data
-    // const response = await fetch('/api/checklist/templates');
-    // if (!response.ok) {
-    //   throw new Error('Failed to load templates data');
-    // }
-    // templatesData = await response.json();
-    
-    // Using mock data for now
-    templatesData = mockTemplatesData;
+    // Load from the actual JSON file
+    templatesData = await loadFromJson();
     return templatesData;
   } catch (error) {
-    console.error('Failed to load templates data:', error);
+    console.error('Failed to load templates data from JSON:', error);
     // Fallback to mock data
     templatesData = mockTemplatesData;
     return templatesData;

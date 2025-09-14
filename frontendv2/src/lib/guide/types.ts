@@ -27,6 +27,22 @@ export interface Guide {
   schemas?: GuideSchema[];
   // Evidence template support
   evidence_template?: EvidenceTemplate;
+  // Additional guide information from JSON
+  scope_caveats?: string | null;
+  acceptance_summary?: string | null;
+  faq?: Array<{q: string; a: string}>;
+  // Risks information from JSON
+  risks?: {
+    attack_vectors?: string[];
+    potential_impact?: string[];
+  };
+  // Legal information from JSON
+  legal?: {
+    requirement_summary?: string;
+    article_refs?: string[];
+    quotes?: Array<{text: string; source: string}>;
+    priority?: string;
+  };
 }
 
 export interface EvidenceTemplate {

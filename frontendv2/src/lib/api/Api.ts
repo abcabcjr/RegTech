@@ -55,6 +55,38 @@ export interface ModelChecklistItemInfo {
   resources?: ModelChecklistItemResource[];
   what_it_means?: string;
   why_it_matters?: string;
+  risks?: ModelChecklistItemRisks;
+  guide?: ModelChecklistItemGuide;
+  legal?: ModelChecklistItemLegal;
+}
+
+export interface ModelChecklistItemRisks {
+  attack_vectors?: string[];
+  potential_impact?: string[];
+}
+
+export interface ModelChecklistItemGuide {
+  non_technical_steps?: string[];
+  scope_caveats?: string;
+  acceptance_summary?: string;
+  faq?: ModelChecklistItemFAQ[];
+}
+
+export interface ModelChecklistItemFAQ {
+  q?: string;
+  a?: string;
+}
+
+export interface ModelChecklistItemLegal {
+  requirement_summary?: string;
+  article_refs?: string[];
+  priority?: string;
+  quotes?: ModelChecklistItemQuote[];
+}
+
+export interface ModelChecklistItemQuote {
+  text?: string;
+  source?: string;
 }
 
 export interface ModelChecklistItemResource {

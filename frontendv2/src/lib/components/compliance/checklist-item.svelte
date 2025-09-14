@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ChecklistItem, FileAttachment } from '$lib/types';
+	import type { InfoPanelData } from '$lib/guide/mapper';
 	import { StatusBadge } from '$lib/components/ui/status-badge';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
@@ -14,7 +15,7 @@
 	import { getPdfGuide } from '$lib/data/pdf-guides';
 
 	interface Props {
-		item: ChecklistItem;
+		item: ChecklistItem & { info?: InfoPanelData };
 		onUpdate: (updates: Partial<ChecklistItem>) => void;
 		readOnly?: boolean;
 		updating?: boolean;
@@ -203,62 +204,39 @@
 							expanded={infoPanelExpanded}
 							info={{
 								overview: {
-									what_it_means: (item.info?.whatItMeans) || item.helpText || "This compliance requirement helps ensure your organization meets cybersecurity standards and legal obligations.",
-									why_it_matters: (item.info?.whyItMatters) || item.whyMatters || "Implementing this requirement protects your business from cyber threats and ensures regulatory compliance."
+									what_it_means: (item.info?.overview?.what_it_means) || item.helpText || "This compliance requirement helps ensure your organization meets cybersecurity standards and legal obligations.",
+									why_it_matters: (item.info?.overview?.why_it_matters) || item.whyMatters || "Implementing this requirement protects your business from cyber threats and ensures regulatory compliance."
 								},
-								risks: {
-									attack_vectors: [
-										"Attackers could exploit missing security controls",
-										"Weak implementation creates vulnerabilities",
-										"Non-compliance exposes organization to penalties"
-									],
-									potential_impact: [
-										"Data breaches and unauthorized access",
-										"Business disruption and operational damage", 
-										"Legal penalties and compliance violations",
-										"Loss of customer trust and reputation damage"
-									]
+								risks: item.info?.risks ? {
+									attack_vectors: item.info.risks.attack_vectors || [],
+									potential_impact: item.info.risks.potential_impact || []
+								} : {
+									attack_vectors: [],
+									potential_impact: []
 								},
 								guide: {
-									non_technical_steps: (item.info?.non_technical_steps) || [
-										"Review your current security policies and procedures",
-										"Identify gaps between current state and requirements",
-										"Develop an implementation plan with clear timelines",
-										"Assign responsibility to specific team members",
-										"Implement the required controls and processes",
-										"Document all changes and maintain evidence",
-										"Test and validate the implementation",
-										"Schedule regular reviews and updates"
-									],
-									scope_caveats: item.info?.scope_caveats || null,
-									acceptance_summary: item.info?.acceptance_summary || null,
-									faq: item.info?.faq || []
+									non_technical_steps: (item.info?.guide?.non_technical_steps) || [],
+									scope_caveats: item.info?.guide?.scope_caveats || null,
+									acceptance_summary: item.info?.guide?.acceptance_summary || null,
+									faq: item.info?.guide?.faq || []
 								},
 								media: {
 									images: [],
 									videos: [],
 									schemas: []
 								},
-								legal: {
-									requirement_summary: "This requirement is mandated by Moldova's Cybersecurity Law to protect critical infrastructure and sensitive data. Organizations must implement appropriate security measures and maintain proper documentation.",
-									article_refs: (item.info?.lawRefs) || ["Art. 11 - Security Requirements", "NU-49-MDED-2025"],
-									priority: (item.info?.priority) || "should"
+								legal: item.info?.legal ? {
+									requirement_summary: item.info.legal.requirement_summary || "",
+									article_refs: item.info.legal.article_refs || [],
+									priority: (item.info.legal.priority as "must" | "should") || "should"
+								} : {
+									requirement_summary: "",
+									article_refs: [],
+									priority: "should"
 								},
-								resources: (item.info?.resources) || [
-									{
-										title: "Implementation Guide",
-										url: "https://example.com/implementation-guide",
-										type: "document",
-										description: "Step-by-step guide for implementing this requirement"
-									},
-									{
-										title: "Best Practices",
-										url: "https://example.com/best-practices",
-										type: "document", 
-										description: "Industry best practices and recommendations"
-									}
-								],
+								resources: (item.info?.resources) || [],
 								pdf_guide: pdfGuide
+
 							}}
 						/>
 					</div>

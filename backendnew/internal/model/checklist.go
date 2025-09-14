@@ -30,6 +30,42 @@ type ChecklistItemInfo struct {
 	LawRefs      []string                `json:"law_refs,omitempty"`
 	Priority     string                  `json:"priority,omitempty"` // "must", "should", "may"
 	Resources    []ChecklistItemResource `json:"resources,omitempty"`
+	Risks        *ChecklistItemRisks     `json:"risks,omitempty"`
+	Guide        *ChecklistItemGuide     `json:"guide,omitempty"`
+	Legal        *ChecklistItemLegal     `json:"legal,omitempty"`
+}
+
+// ChecklistItemRisks contains risk-related information
+type ChecklistItemRisks struct {
+	AttackVectors   []string `json:"attack_vectors,omitempty"`
+	PotentialImpact []string `json:"potential_impact,omitempty"`
+}
+
+// ChecklistItemGuide contains guide information
+type ChecklistItemGuide struct {
+	NonTechnicalSteps []string `json:"non_technical_steps,omitempty"`
+	ScopeCaveats      string   `json:"scope_caveats,omitempty"`
+	AcceptanceSummary string   `json:"acceptance_summary,omitempty"`
+	FAQ               []FAQ    `json:"faq,omitempty"`
+}
+
+// FAQ represents a frequently asked question
+type FAQ struct {
+	Q string `json:"q"`
+	A string `json:"a"`
+}
+
+// ChecklistItemLegal contains legal information
+type ChecklistItemLegal struct {
+	RequirementSummary string   `json:"requirement_summary,omitempty"`
+	ArticleRefs        []string `json:"article_refs,omitempty"`
+	Quotes             []Quote  `json:"quotes,omitempty"`
+}
+
+// Quote represents a legal quote
+type Quote struct {
+	Text   string `json:"text"`
+	Source string `json:"source"`
 }
 
 // ChecklistItemResource represents a helpful resource link

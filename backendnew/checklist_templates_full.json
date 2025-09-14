@@ -7,20 +7,73 @@
       "category": "Governance & Risk Management",
       "required": true,
       "scope": "global",
-      "recommendation": "Conduct a formal cybersecurity risk assessment and document the findings",
-      "help_text": "Upload or reference your latest cybersecurity risk assessment document",
-      "why_matters": "Required by law to identify and document cybersecurity risks to your business operations",
+      "recommendation": "Conduct and document a formal cybersecurity risk assessment; keep a living risk register and treatment plan",
+      "help_text": "Upload your latest risk assessment report and risk register (with treatment plan, owners, deadlines, and residual risk sign-off).",
+      "why_matters": "This is a core legal obligation. It drives what controls you prioritize, how you mitigate risks, and what residual risks leadership accepts.",
       "kind": "manual",
       "read_only": false,
       "info": {
-        "what_it_means": "A formal document that identifies, analyzes, and evaluates cybersecurity risks to your organization's information systems and data.",
-        "why_it_matters": "Required by Moldova's Cybersecurity Law to demonstrate proactive risk management and compliance with regulatory requirements.",
-        "law_refs": ["Art. 11 - Risk Assessment", "NU-49-MDED-2025 §3.2"],
+        "what_it_means": "A structured process and report that IDENTIFIES assets and third-party dependencies; MAPS threats, vulnerabilities, and single points of failure; ESTIMATES likelihood and impact; RATES risks; SELECTS and PRIORITIZES treatment options; ASSIGNS owners and deadlines; TRACKS residual risk with management approval. Output = Risk Assessment Report + Risk Register + Risk Treatment Plan.",
+        "why_it_matters": "Required by Moldova’s cyber law and implementing decision. It proves you manage risk systematically, supports budgeting and board oversight, and underpins audits, continuity planning, and incident thresholds.",
+        "law_refs": [
+          "Legea nr. 48/2023, art. 11(2) pct. 1 (evaluarea vulnerabilităților și riscurilor și raport de evaluare)",
+          "HG NU-49-MDED-2025, cap. II, pct. 5–8 (evaluări de risc documentate, plan de tratare, criterii, toleranță, actualizare cel puțin anual)"
+        ],
         "priority": "must",
         "resources": [
-          {"title": "Cybersecurity Risk Assessment Guide", "url": "https://example.com/risk-assessment"},
-          {"title": "Moldova Cybersecurity Law", "url": "https://example.com/cyber-law"}
-        ]
+          { "title": "ENISA Risk Management Approach (NIS2)", "url": "https://www.enisa.europa.eu/publications/risk-management" },
+          { "title": "NIST SP 800-30 Rev.1 – Guide for Conducting Risk Assessments", "url": "https://csrc.nist.gov/publications/detail/sp/800-30/rev-1/final" },
+          { "title": "ISO/IEC 27005 (overview) – Information security risk management", "url": "https://www.iso.org/standard/80585.html" },
+          { "title": "CIS Risk Assessment Method (CIS RAM)", "url": "https://www.cisecurity.org/white-papers/cis-ram" }
+        ],
+        "risks": {
+          "attack_vectors": [
+            "Unmapped internet-facing services or single points of failure",
+            "Third-party/vendor dependencies not assessed",
+            "Legacy systems without owners or patch paths"
+          ],
+          "potential_impact": [
+            "Service outages or data breaches with significant impact",
+            "Regulatory non-compliance during supervision or audits",
+            "Poor prioritization wastes security budget on low-value controls"
+          ]
+        },
+        "guide": {
+          "non_technical_steps": [
+            "Define scope (services, locations, systems, third parties).",
+            "Set risk criteria (likelihood/impact scales), risk appetite & tolerance.",
+            "Inventory assets and internet-exposed services; note single points of failure.",
+            "Identify threats & vulnerabilities; include third-party and supply-chain risks.",
+            "Analyze & evaluate risk (likelihood × impact) and rank a top-N list.",
+            "Choose treatment per risk: avoid, mitigate (controls), transfer, or accept.",
+            "Create a Risk Treatment Plan (control, owner, deadline, success metric).",
+            "Record residual risk and obtain management sign-off.",
+            "Review & update at least annually and after major changes/incidents."
+          ],
+          "scope_caveats": "Assess the full service chain (internal + suppliers). Document assumptions and exclusions—auditors will check them.",
+          "acceptance_summary": "Residual risks must be explicitly accepted by management with traceable justification; revisit after changes or incidents."
+        },
+        "legal": {
+          "requirement_summary": "You must perform and DOCUMENT risk assessments, establish and monitor a risk treatment plan, define risk criteria/tolerance, and update at least annually and after significant changes or incidents.",
+          "article_refs": [
+            "Legea nr. 48/2023, art. 11(2) pct. 1",
+            "HG NU-49-MDED-2025, cap. II, pct. 5–8"
+          ],
+          "quotes": [
+            {
+              "text": "Furnizorii de servicii efectuează și documentează evaluări ale riscurilor și, pe baza rezultatelor, stabilesc, pun în aplicare și monitorizează un plan de tratare a riscurilor.",
+              "source": "HG NU-49-MDED-2025, cap. II, pct. 5"
+            },
+            {
+              "text": "…identifică, analizează, evaluează, tratează riscurile; stabilesc toleranța la risc, criterii relevante; documentează măsurile într-un plan de tratare și motivele acceptării riscurilor reziduale.",
+              "source": "HG NU-49-MDED-2025, cap. II, pct. 6.1–6.10"
+            },
+            {
+              "text": "…examinează și, dacă este adecvat, actualizează rezultatele evaluării riscurilor și planul de tratare… cel puțin o dată pe an sau la modificări semnificative ori incidente cu impact semnificativ.",
+              "source": "HG NU-49-MDED-2025, cap. II, pct. 8"
+            }
+          ]
+        }
       }
     },
     {
@@ -30,19 +83,58 @@
       "category": "Governance & Risk Management",
       "required": true,
       "scope": "global",
-      "recommendation": "Develop and approve a comprehensive cybersecurity policy",
-      "help_text": "A written policy covering cybersecurity roles, responsibilities, and procedures",
-      "why_matters": "Establishes the foundation for your cybersecurity program and compliance efforts",
+      "recommendation": "Develop, approve, publish, and review a comprehensive cybersecurity policy at least annually",
+      "help_text": "A written policy covering scope, roles, responsibilities, mandatory controls, exceptions, approval, and review cycle",
+      "why_matters": "Sets the rules for how your organization protects information and meets legal obligations; gives staff clear guidance and auditors clear evidence.",
       "kind": "manual",
       "read_only": false,
       "info": {
-        "what_it_means": "A comprehensive written document that outlines your organization's approach to cybersecurity, including roles, responsibilities, and procedures.",
-        "why_it_matters": "Provides clear guidance for employees and demonstrates management commitment to cybersecurity compliance.",
-        "law_refs": ["Art. 12 - Security Policies", "NU-49-MDED-2025 §4.1"],
+        "what_it_means": "A top-level, approved document that defines your security objectives, scope (who/what it applies to), roles and responsibilities, and the mandatory requirements your organization follows (risk management, incident response, access control, cryptography, logging/monitoring, continuity/DR, supplier security, awareness). It references underlying procedures/standards and states how exceptions are requested and who approves them.",
+        "why_it_matters": "Without a policy, security is ad-hoc. A signed, communicated policy proves leadership commitment, aligns staff and suppliers, and is required under Moldova’s Cybersecurity Law (policies and procedures across risk, incidents, crypto, effectiveness reviews, continuity, HR/access, hygiene, secure communications).",
+        "law_refs": [
+          "Legea nr. 48/2023, art. 11(2) pct. 2) lit. a)–j) (politici/proceduri: risc, incidente, criptografie, evaluarea eficacității, continuitate/BCP, resurse umane & control acces, lanț de aprovizionare, igienă cibernetică & formare, autentificare & comunicații securizate)",
+          "HG NU-49-MDED-2025 (cerințe organizatorice: politici aprobate, roluri/ responsabilități, actualizare periodică, evidențe de conformitate)"
+        ],
         "priority": "must",
         "resources": [
-          {"title": "Policy Template", "url": "https://example.com/policy-template"}
-        ]
+          { "title": "SANS — Free Security Policy Templates", "url": "https://www.sans.org/information-security-policy/" },
+          { "title": "NCSC (UK) — Create or improve your cyber security policies", "url": "https://www.ncsc.gov.uk/collection/board-toolkit/appointing-a-board-level-lead/creating-security-policies" },
+          { "title": "ISO/IEC 27001:2022 — Overview (policy-driven ISMS)", "url": "https://www.iso.org/standard/27001" },
+          { "title": "CIS Controls v8 — Governance & Policy starters (IG1)", "url": "https://www.cisecurity.org/controls/implementation-groups/ig1" }
+        ],
+        "risks": {
+          "attack_vectors": [
+            "Inconsistent practices and shadow IT due to unclear rules",
+            "Role confusion during incidents and access provisioning",
+            "Gaps in crypto, logging, backups because expectations aren’t defined"
+          ],
+          "potential_impact": [
+            "Regulatory non-conformity and sanctions",
+            "Longer, costlier incidents due to chaos and unclear authority",
+            "Loss of customer trust and failed audits"
+          ]
+        },
+        "guide": {
+          "non_technical_steps": [
+            "Appoint an owner (CISO/IT lead) and an approver (CEO/Board).",
+            "Define scope & applicability (employees, contractors, systems, data).",
+            "Structure the policy: Purpose; Scope; Roles & Responsibilities; Mandatory Requirements (risk mgmt, incidents, access/MFA, crypto, logging, backups/DR, vendor security, awareness); Exceptions; Enforcement; Review.",
+            "Reference supporting procedures/standards (e.g., Incident Response Plan, Access Control Standard, Backup/DR Plan).",
+            "Set review cycle (at least annually and after major changes/incidents) and version control.",
+            "Communicate: publish internally; capture employee acknowledgement for new starters.",
+            "Keep evidence: signed approval page/minutes, version history, change log, distribution/acknowledgement record."
+          ],
+          "scope_caveats": "Keep it concise (3–6 pages) and policy-level; put step-by-step instructions in separate procedures. If you outsource IT, include supplier responsibilities and minimum controls.",
+          "acceptance_summary": "Compliant if you can show a signed, in-date policy (≤12 months), clear roles, mandatory requirements mapped to the law, references to procedures, exception process, and proof it was communicated to staff."
+        },
+        "legal": {
+          "requirement_summary": "Maintain approved, current security policies and procedures covering (at minimum) risk analysis, incident management, cryptography, control effectiveness evaluation, continuity/DR, HR security & access control, supply-chain security, cyber hygiene & training, and secure authentication/communications.",
+          "article_refs": [
+            "Legea nr. 48/2023, art. 11(2) pct. 2) lit. a)–j)",
+            "HG NU-49-MDED-2025 (cerințe organizatorice privind politici, roluri, revizuire)"
+          ],
+          "priority": "must"
+        }
       }
     },
     {
@@ -58,13 +150,68 @@
       "kind": "manual",
       "read_only": false,
       "info": {
-        "what_it_means": "Multi-factor authentication requires users to provide two or more verification factors to access privileged accounts.",
-        "why_it_matters": "Significantly reduces the risk of unauthorized access even if passwords are compromised or stolen.",
-        "law_refs": ["Art. 8 - Access Controls", "NU-49-MDED-2025 §5.2"],
+        "what_it_means": "Users with administrative or other high-impact privileges must authenticate with two or more independent factors (e.g., password + authenticator app, hardware key, smartcard). The Government’s implementing rules require secure authentication and say users should be authenticated by multiple factors or continuous authentication, aligned to the classification of the asset being accessed. Admin/privileged access must use separate credentials.",
+        "why_it_matters": "Privileged accounts are the primary target in most breaches. MFA drastically reduces successful phishing, credential stuffing, and password reuse attacks, and is often required by customers and regulators.",
+        "law_refs": [
+          "HG NU-49-MDED-2025: pct. 129 (identity lifecycle), pct. 130–133 (secure authentication controls), pct. 134–135 (multifactor/continuous authentication per asset classification), pct. 131.6 (separate credentials for privileged/admin access)",
+          "Legea nr. 48/2023: art. 11(2) lit. g), j) (controlul accesului; soluții de autentificare)"
+        ],
         "priority": "must",
         "resources": [
-          {"title": "MFA Implementation Guide", "url": "https://example.com/mfa-guide"}
-        ]
+          { "title": "NCSC-UK: Multi-factor authentication (MFA) for online services", "url": "https://www.ncsc.gov.uk/guidance/multi-factor-authentication-mfa-for-online-services" },
+          { "title": "CISA: Phishing-Resistant MFA (FIDO2/WebAuthn)", "url": "https://www.cisa.gov/resources-tools/resources/phishing-resistant-mfa" },
+          { "title": "Microsoft Entra ID: Plan and deploy MFA", "url": "https://learn.microsoft.com/azure/active-directory/authentication/concept-mfa-howitworks" },
+          { "title": "Google Workspace: 2-Step Verification policies", "url": "https://support.google.com/a/answer/9176657" },
+          { "title": "Okta: Adaptive MFA Best Practices", "url": "https://help.okta.com/en-us/content/topics/security/mfa-best-practices.htm" },
+          { "title": "Yubico: Security Key (FIDO2/WebAuthn) overview", "url": "https://www.yubico.com/solutions/fido/" }
+        ],
+        "risks": {
+          "attack_vectors": [
+            "Phishing and credential theft against admins",
+            "Password reuse/credential stuffing on privileged accounts",
+            "Session hijacking without step-up authentication"
+          ],
+          "potential_impact": [
+            "Full domain or cloud tenant compromise",
+            "Data exfiltration and ransomware deployment",
+            "Service outages and regulatory penalties"
+          ]
+        },
+        "guide": {
+          "non_technical_steps": [
+            "Inventory privileged roles (domain admins, cloud tenant admins, root owners, billing, CI/CD, backups).",
+            "Turn on MFA tenant-wide and require it at least for all privileged roles/groups.",
+            "Prefer phishing-resistant factors (FIDO2/WebAuthn keys or smartcards) for admins.",
+            "Enforce separate admin credentials; prohibit everyday browsing/email on admin accounts.",
+            "Require step-up MFA for high-risk actions (e.g., policy changes, new keys, break-glass use).",
+            "Create emergency break-glass accounts (2), protect offline, test quarterly.",
+            "Monitor and alert on MFA disablements, factor resets, and failed admin logins.",
+            "Review MFA coverage monthly; re-certify privileged access quarterly."
+          ],
+          "scope_caveats": "MFA strength must match the sensitivity/classification of the asset being accessed. At minimum, privileged/admin access should always require MFA.",
+          "acceptance_summary": "Conforms when privileged/admin accounts use MFA with separate credentials and tenant policies enforce secure authentication in line with asset classification; procedures are documented and reviewed."
+        },
+        "legal": {
+          "requirement_summary": "Providers must implement secure authentication; users should be authenticated with multiple factors (or continuous mechanisms) according to the asset’s classification, and privileged/admin access must use separate credentials. Authentication procedures and technologies must be reviewed periodically.",
+          "article_refs": [
+            "HG NU-49-MDED-2025: pct. 129; 130–133; 134–135",
+            "Legea nr. 48/2023: art. 11(2) lit. g), j)"
+          ],
+          "quotes": [
+            {
+              "text": "Furnizorii de servicii pun în aplicare proceduri și tehnologii de autentificare securizată…",
+              "source": "HG NU-49-MDED-2025, pct. 130" 
+            },
+            {
+              "text": "…solicită acreditări separate pentru a obține acces privilegiat sau a avea acces la conturi administrative.",
+              "source": "HG NU-49-MDED-2025, pct. 131.6"
+            },
+            {
+              "text": "Furnizorii de servicii se asigură că utilizatorii sunt autentificați prin factori de autentificare multipli… în conformitate cu clasificarea activului…",
+              "source": "HG NU-49-MDED-2025, pct. 134–135"
+            }
+          ]
+        }
       }
     },
     {
@@ -74,19 +221,72 @@
       "category": "Identity & Access Management",
       "required": true,
       "scope": "global",
-      "recommendation": "Establish a quarterly access review process",
-      "help_text": "Review who has access to what systems at least annually",
-      "why_matters": "Ensures employees only have access to systems they need for their current role",
+      "recommendation": "Establish a quarterly access review process with documented outcomes and revocations",
+      "help_text": "At planned intervals (e.g., quarterly), each system owner reviews who has access, why, and approves/removes access. Keep an access registry and record evidence of changes.",
+      "why_matters": "Prevents privilege creep, orphaned accounts, and excessive permissions. Confirms least-privilege access based on role and current employment/contract status.",
       "kind": "manual",
       "read_only": false,
       "info": {
-        "what_it_means": "Regular review and validation of user access rights to ensure employees only have access to systems necessary for their current role.",
-        "why_it_matters": "Prevents privilege creep and reduces security risks by ensuring access rights remain appropriate over time.",
-        "law_refs": ["Art. 9 - Access Management", "NU-49-MDED-2025 §5.3"],
+        "what_it_means": "A scheduled, documented review where system/data owners verify every user’s access (employees, contractors, third-parties, service accounts) remains necessary, appropriately scoped, and approved. Results are recorded and access is adjusted (modified/revoked) as needed.",
+        "why_it_matters": "Access accumulates over time. Reviews reduce the risk of misuse or breach, ensure leavers/movers lose unneeded rights, and keep evidence of control operation for auditors and the Agency.",
+        "law_refs": [
+          "GD NU-49-MDED-2025: pts. 118–120 (grant/modify/remove, keep registry, journalize, review at planned intervals)",
+          "GD NU-49-MDED-2025: pts. 121–123 (privileged/admin accounts: strong auth incl. MFA, dedicated admin accounts, planned reviews)",
+          "GD NU-49-MDED-2025: pts. 115–117 (documented access control policy; only authenticated users get access; policy reviewed periodically)"
+        ],
         "priority": "must",
         "resources": [
-          {"title": "Access Review Checklist", "url": "https://example.com/access-review"}
-        ]
+          { "title": "Microsoft Entra ID — Access reviews (how-to)", "url": "https://learn.microsoft.com/azure/active-directory/governance/access-reviews-overview" },
+          { "title": "Okta — Access Certifications best practices", "url": "https://help.okta.com/oie/en-us/Content/Topics/identity-governance/access-certifications.htm" },
+          { "title": "NCSC (UK) — Managing user accounts and permissions", "url": "https://www.ncsc.gov.uk/collection/small-business-guide/controlling-access" },
+          { "title": "CIS Controls v8 — Control 6: Access Control Management", "url": "https://www.cisecurity.org/controls/access-control-management" }
+        ],
+        "risks": {
+          "attack_vectors": [
+            "Orphaned or stale accounts remain active after role change or termination",
+            "Excessive permissions enable lateral movement and data exfiltration",
+            "Shared/admin accounts without MFA are abused"
+          ],
+          "potential_impact": [
+            "Unauthorized access to sensitive systems/data",
+            "Regulatory non-compliance and sanctions",
+            "Fraud or service disruption due to privilege misuse"
+          ]
+        },
+        "guide": {
+          "non_technical_steps": [
+            "Inventory systems in scope and assign an accountable owner for each.",
+            "Export current user/role lists (employees, contractors, third-parties, service accounts).",
+            "Define review schedule (e.g., quarterly; more frequent for privileged access).",
+            "For each system, owner validates business need, least privilege, and SoD (segregation of duties).",
+            "Record outcomes: approved, modify (new role/scope), revoke; capture dates and approver.",
+            "Apply changes promptly; update the central Access Registry and keep an audit trail.",
+            "Document exceptions with compensating controls and review next cycle.",
+            "Report completion metrics and residual risks to management."
+          ],
+          "scope_caveats": "Include joiners/movers/leavers, contractors and vendors, shared/admin and service accounts, break-glass accounts, and third-party integrations. Keep evidence (review lists, approvals, change tickets).",
+          "acceptance_summary": "Evidence should show date, systems covered, reviewers, decisions (approve/modify/revoke), changes applied, updated Access Registry, and handling of exceptions. Privileged access must also show MFA and use of dedicated admin accounts."
+        },
+        "legal": {
+          "requirement_summary": "Maintain and periodically review access rights; grant/modify/remove per policy; keep a registry and journal of access-right changes; review privileged/admin access on a planned cadence with strong authentication and dedicated admin accounts.",
+          "article_refs": [
+            "GD NU-49-MDED-2025: pts. 118–120, 121–123, 115–117"
+          ],
+          "quotes": [
+            {
+              "text": "Furnizorii de servicii revizuiesc drepturile de acces la intervale planificate… și documentează rezultatele revizuirii.",
+              "source": "GD NU-49-MDED-2025, pct. 120"
+            },
+            {
+              "text": "Atribuie și revocă drepturi de acces pe baza… privilegiului minim și separării sarcinilor.",
+              "source": "GD NU-49-MDED-2025, pct. 119.1"
+            },
+            {
+              "text": "Țin un registru al drepturilor de acces acordate… [și] aplică jurnalizarea gestionării drepturilor de acces.",
+              "source": "GD NU-49-MDED-2025, pct. 119.5–119.6"
+            }
+          ]
+        }
       }
     },
     {
@@ -98,16 +298,137 @@
       "scope": "global",
       "recommendation": "Implement centralized logging for all critical systems",
       "help_text": "All security-relevant events should be collected in one place",
-      "why_matters": "Enables detection of security incidents and forensic investigation",
+      "why_matters": "Enables rapid detection, triage and investigation of incidents; supports legal retention and audit requirements.",
       "kind": "manual",
       "read_only": false,
       "info": {
-        "what_it_means": "Centralized collection and storage of security events from all systems in a single, searchable location.",
-        "why_it_matters": "Essential for detecting security incidents, conducting forensic investigations, and meeting compliance requirements.",
-        "law_refs": ["Art. 13 - Logging Requirements", "NU-49-MDED-2025 §6.1"],
+        "what_it_means": "Set up procedures and tooling (e.g., SIEM or log aggregator) to collect, store and review security-relevant events from servers, applications, endpoints, network devices and cloud services in one searchable place. Keep clocks synchronized, protect logs from tampering, keep them at least 12 months, and review them regularly with alert thresholds.",
+        "why_it_matters": "Without centralized logs you miss early indicators of attack (failed logons, privilege abuse, suspicious network traffic) and you can't reconstruct what happened. Central logging is explicitly required (monitoring & logging, periodic review, ≥12-month retention) and underpins incident classification, response and reporting.",
+        "law_refs": [
+          "HG NU-49-MDED-2025: Secțiunea a 2-a Monitorizare și jurnalizare, pct. 19–25",
+          "HG NU-49-MDED-2025: pct. 23 (păstrare jurnale ≥12 luni)",
+          "HG NU-49-MDED-2025: pct. 24 (sincronizare timp, listă active, redundanță)"
+        ],
         "priority": "must",
         "resources": [
-          {"title": "SIEM Implementation Guide", "url": "https://example.com/siem-guide"}
+          { "title": "NIST SP 800-92: Guide to Computer Security Log Management (PDF)", "url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-92.pdf" },
+          { "title": "RFC 5424: The Syslog Protocol", "url": "https://www.rfc-editor.org/rfc/rfc5424" },
+          { "title": "UK NCSC — Logging Made Easy", "url": "https://github.com/ukncsc/lme" },
+          { "title": "CISA — Security-by-Design: Logging Essentials", "url": "https://www.cisa.gov/resources-tools/resources/security-design-logging" },
+          { "title": "Microsoft Sentinel — Get started", "url": "https://learn.microsoft.com/azure/sentinel/quickstart-onboard" },
+          { "title": "Elastic Security (SIEM) — Getting started", "url": "https://www.elastic.co/guide/en/security/current/get-started.html" },
+          { "title": "Graylog — Documentation", "url": "https://docs.graylog.org/" },
+          { "title": "Wazuh — Centralized logging & SIEM", "url": "https://documentation.wazuh.com/current/" }
+        ],
+        "risks": {
+          "attack_vectors": [
+            "Gaps in log collection or retention hide attacker activity",
+            "Unsynced clocks prevent event correlation across systems",
+            "Logs stored locally can be tampered with or lost",
+            "No alert thresholds → slow or missed detection"
+          ],
+          "potential_impact": [
+            "Undetected breaches and prolonged dwell time",
+            "Inability to investigate or prove compliance",
+            "Regulatory findings and penalties for poor logging",
+            "Higher recovery costs and reputational damage"
+          ]
+        },
+        "guide": {
+          "non_technical_steps": [
+            "Name an owner and approve a simple logging policy",
+            "Inventory what must be logged (systems, apps, devices)",
+            "Choose a central solution (managed SIEM or self-hosted aggregator)",
+            "Enable time sync (NTP) everywhere",
+            "Forward required events (auth, admin activity, access, network, security tools)",
+            "Set retention ≥12 months and protect logs from edits/deletion",
+            "Define alert thresholds and who responds",
+            "Review dashboards weekly; do a monthly trend review",
+            "Test access to historical logs quarterly; fix gaps"
+          ],
+          "acceptance_summary": "Central place receives required events from in-scope assets; clocks are synchronized; alerts and reviews are defined; logs are protected and retained ≥12 months; periodic re-examination and asset list maintained.",
+          "scope_caveats": "Start with critical systems and expand. Cloud services (M365, Google Workspace, AWS, Azure, payment gateways) must also forward security logs."
+        },
+        "legal": {
+          "requirement_summary": "You must monitor and log activities to detect events that may be incidents, review logs periodically, set alarm thresholds, retain and back up logs for a predefined period (not less than 12 months), synchronize time sources, maintain a list of logged assets, ensure redundancy, and re-examine procedures and the asset list regularly.",
+          "article_refs": [
+            "HG NU-49-MDED-2025: pct. 19–25",
+            "HG NU-49-MDED-2025: pct. 23 (≥12 luni)",
+            "HG NU-49-MDED-2025: pct. 24 (sincronizare timp, redundanță)"
+          ],
+          "quotes": [
+            {
+              "text": "Furnizorii de servicii stabilesc proceduri și utilizează instrumente pentru monitorizarea și jurnalizarea activităților… pentru a detecta evenimentele… și pentru a răspunde în consecință.",
+              "source": "HG NU-49-MDED-2025, pct. 19"
+            },
+            {
+              "text": "Pe baza procedurilor… păstrează, documentează și revizuiesc jurnalele… Jurnalele includ, dacă este adecvat, [trafic rețea, autentificare, acces privilegiate, jurnale de la instrumente de securitate etc.].",
+              "source": "HG NU-49-MDED-2025, pct. 21"
+            },
+            {
+              "text": "Păstrează jurnalele… pentru o perioadă predefinită, dar nu mai mică de 12 luni…",
+              "source": "HG NU-49-MDED-2025, pct. 23"
+            },
+            {
+              "text": "…toate sistemele dispun de surse ale orei sincronizate… sistemele de monitorizare și de jurnalizare sunt redundante.",
+              "source": "HG NU-49-MDED-2025, pct. 24"
+            }
+          ]
+        }
+      },
+      "evidence_template": {
+        "required_documents": [
+          {
+            "name": "Logging policy & scope",
+            "description": "Approved policy, list of in-scope assets and events to log.",
+            "accepts": ["PDF", "DOCX", "Link"],
+            "examples": ["Policy excerpt with roles, thresholds, review cadence"]
+          },
+          {
+            "name": "Architecture diagram",
+            "description": "Diagram showing log sources → central platform (on-prem/cloud).",
+            "accepts": ["PNG", "PDF", "Draw.io"],
+            "examples": ["Firewalls, servers, M365, EDR → SIEM/collector"]
+          },
+          {
+            "name": "Platform screenshots",
+            "description": "Screens of data connectors, active data sources, and dashboards.",
+            "accepts": ["PNG", "JPEG", "PDF"],
+            "examples": ["Connector status page, event counts, alert rule list"]
+          },
+          {
+            "name": "Retention & protection settings",
+            "description": "Export or screenshots proving ≥12-month retention and write-protection.",
+            "accepts": ["PDF", "PNG"],
+            "examples": ["Retention policy page, immutable storage setting"]
+          },
+          {
+            "name": "Time synchronization proof",
+            "description": "Config or screenshots for NTP/chrony on representative systems.",
+            "accepts": ["PNG", "TXT", "PDF"],
+            "examples": ["NTP status, time source dashboard"]
+          },
+          {
+            "name": "Review & alert evidence",
+            "description": "Recent log review record and an example alert with response notes.",
+            "accepts": ["PDF", "DOCX"],
+            "examples": ["Monthly review checklist, ticket or email for an alert"]
+          }
+        ],
+        "acceptance_criteria": [
+          "Central platform receives events from critical assets (servers, endpoints, network, cloud)",
+          "Covers at least: auth events, admin/privileged actions, access to systems/apps, network ingress/egress, security tool events, config & backup file access (per pct. 21.1–21.12)",
+          "Retention configured ≥12 months; backups of logs enabled",
+          "Time sources synchronized; ability to correlate events across systems",
+          "Alert thresholds defined and tested; weekly reviews performed",
+          "Evidence of periodic re-examination of procedures and asset list"
+        ],
+        "red_flags": [
+          "Only local logs; no central collection",
+          "No evidence of reviews or alerts",
+          "Retention < 12 months or missing backups",
+          "System clocks out of sync by >2–5 minutes",
+          "Admins can delete or alter security logs"
         ]
       }
     },
@@ -118,18 +439,114 @@
       "category": "Logging & Monitoring",
       "required": true,
       "scope": "global",
-      "recommendation": "Configure log retention for at least 12 months",
-      "help_text": "Legal requirement to maintain logs for investigation purposes",
-      "why_matters": "Required by law for incident investigation and compliance audits",
+      "recommendation": "Configure retention ≥12 months and protect logs against deletion/modification",
+      "help_text": "Legal requirement to keep security logs for investigations and audits",
+      "why_matters": "If logs are missing or too short-lived, you can’t investigate incidents or prove compliance. Regulators expect you to retain, protect and review logs.",
       "kind": "manual",
       "read_only": false,
       "info": {
-        "what_it_means": "A documented policy that defines how long security logs must be retained, typically 12 months minimum.",
-        "why_it_matters": "Required by law to support incident investigation and compliance audits. Insufficient retention can result in penalties.",
-        "law_refs": ["Art. 14 - Data Retention", "NU-49-MDED-2025 §6.2"],
+        "what_it_means": "A documented retention policy and technical settings that keep security-relevant logs for at least 12 months, stored centrally, backed up, time-synchronized, and protected from unauthorized access or tampering (e.g., immutable/WORM). The policy also defines scope, storage location, backup, disposal, and review cadence.",
+        "why_it_matters": "Supports incident detection and forensics, enables legal/regulatory audits, and prevents attackers or insiders from covering their tracks by altering or deleting logs.",
+        "law_refs": [
+          "HG NU-49-MDED-2025: pct. 23 (păstrare min. 12 luni; protecție împotriva accesului/modificării neautorizate; copii de siguranță; accesibilitate)",
+          "HG NU-49-MDED-2025: pct. 24 (sincronizare timp; listă active; redundanță)",
+          "Legea nr. 48/2023: art. 11(2) pct. 4 (monitorizarea situației securității rețelelor și sistemelor)"
+        ],
         "priority": "must",
         "resources": [
-          {"title": "Log Retention Best Practices", "url": "https://example.com/log-retention"}
+          { "title": "NIST SP 800-92 — Guide to Computer Security Log Management (PDF)", "url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-92.pdf" },
+          { "title": "CISA — Logging Made Simple (essentials & retention)", "url": "https://www.cisa.gov/resources-tools/resources/security-design-logging" },
+          { "title": "Microsoft Sentinel — Retention & archive", "url": "https://learn.microsoft.com/azure/sentinel/billing#data-retention-and-archiving" },
+          { "title": "Elastic — Index Lifecycle Management (retention)", "url": "https://www.elastic.co/guide/en/elasticsearch/reference/current/index-lifecycle-management.html" },
+          { "title": "AWS S3 Object Lock (WORM) for immutable logs", "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html" },
+          { "title": "Azure Immutable Blob Storage (WORM)", "url": "https://learn.microsoft.com/azure/storage/blobs/immutable-storage-overview" },
+          { "title": "Graylog — Log retention & archiving", "url": "https://docs.graylog.org/" }
+        ],
+        "risks": {
+          "attack_vectors": [
+            "Short retention or local-only logs hide attacker dwell time",
+            "Admins can alter/delete logs without immutability or RBAC",
+            "Clock drift breaks correlation across systems"
+          ],
+          "potential_impact": [
+            "Inability to investigate incidents or meet reporting duties",
+            "Regulatory findings/penalties for inadequate evidence",
+            "Higher legal and recovery costs; reputational damage"
+          ]
+        },
+        "guide": {
+          "non_technical_steps": [
+            "Approve a retention policy that states ≥12 months, scope, ownership, storage, protection, backup and review cadence.",
+            "Configure central platform retention to ≥12 months; enable archive if needed for cost.",
+            "Protect logs: immutable/WORM or write-once tiers; strict RBAC; audit changes.",
+            "Ensure NTP/chrony everywhere; document time sources.",
+            "Back up logs and regularly test restore of historical data.",
+            "Define a monthly review to verify retention status and ingest coverage.",
+            "Keep an asset list of all log sources; update after changes.",
+            "Record evidence (screenshots/exports) of settings and periodic checks."
+          ],
+          "scope_caveats": "Include servers, endpoints, network devices, cloud/SaaS (M365, Google Workspace, IAM, EDR), security tools, and critical applications. Verify third-party platforms meet retention requirements.",
+          "acceptance_summary": "Conforms when policy exists, central retention is set ≥12 months, logs are protected (immutability/RBAC), time is synchronized, backups exist and are tested, and periodic reviews with evidence are performed."
+        },
+        "legal": {
+          "requirement_summary": "Retain security logs for not less than 12 months; protect them from unauthorized access/modification; create backups to ensure availability; synchronize time; maintain the list of logged assets; re-examine procedures and the asset list periodically.",
+          "article_refs": [
+            "HG NU-49-MDED-2025: pct. 23, 24, 25",
+            "Legea nr. 48/2023: art. 11(2) pct. 4"
+          ],
+          "quotes": [
+            {
+              "text": "Păstrează jurnalele... pentru o perioadă predefinită, dar nu mai mică de 12 luni... și le protejează împotriva accesului și modificărilor neautorizate; asigură realizarea copiilor de siguranță...",
+              "source": "HG NU-49-MDED-2025, pct. 23"
+            },
+            {
+              "text": "Toate sistemele dispun de surse ale orei sincronizate... sistemele de monitorizare și de jurnalizare sunt redundante... se ține lista activelor care generează jurnale.",
+              "source": "HG NU-49-MDED-2025, pct. 24"
+            }
+          ]
+        }
+      },
+      "evidence_template": {
+        "required_documents": [
+          {
+            "name": "Retention policy",
+            "description": "Approved policy stating ≥12 months and scope/roles.",
+            "accepts": ["PDF", "DOCX"]
+          },
+          {
+            "name": "Platform settings",
+            "description": "Screenshots/exports showing retention ≥12 months and immutable/WORM or RBAC protections.",
+            "accepts": ["PNG", "PDF"]
+          },
+          {
+            "name": "Backup & restore proof",
+            "description": "Recent backup logs and a restore test report for historical logs.",
+            "accepts": ["PDF", "DOCX"]
+          },
+          {
+            "name": "Time sync evidence",
+            "description": "NTP/chrony status or centralized time dashboard.",
+            "accepts": ["PNG", "TXT", "PDF"]
+          },
+          {
+            "name": "Monthly verification record",
+            "description": "Checklist/ticket proving periodic retention checks and asset list updates.",
+            "accepts": ["PDF", "DOCX"]
+          }
+        ],
+        "acceptance_criteria": [
+          "Retention configured ≥12 months across in-scope log sources",
+          "Logs protected against deletion/modification; access controlled and audited",
+          "Backups in place; successful restore of historical logs verified",
+          "Time synchronization documented for correlated forensics",
+          "Periodic retention verification and updated asset/source inventory"
+        ],
+        "red_flags": [
+          "Retention <12 months or unset",
+          "Admins can delete logs; no immutability",
+          "No proof of backups or restore tests",
+          "Clock drift preventing correlation",
+          "Third-party/SaaS logs not retained centrally"
         ]
       }
     },
@@ -146,13 +563,65 @@
       "kind": "manual",
       "read_only": false,
       "info": {
-        "what_it_means": "A comprehensive written plan that outlines how critical data is backed up, stored, and can be restored.",
-        "why_it_matters": "Essential for business continuity and recovery from data loss, ransomware attacks, or system failures.",
-        "law_refs": ["Art. 16 - Data Protection", "NU-49-MDED-2025 §8.1"],
+        "what_it_means": "A written plan that defines what data is backed up, how often, where backups are stored (including offsite/offline copies), who is responsible, retention periods, encryption, and how restores are tested—plus target recovery time (RTO) and recovery point (RPO).",
+        "why_it_matters": "Backups (with redundancy) are a legal expectation and the only reliable way to recover from ransomware, deletion, or disasters. The plan must include integrity checks and periodic restore tests so recovery actually works when needed.",
+        "law_refs": [
+          "Legea nr. 48/2023, art. 11 alin. (2) lit. e) — măsuri privind continuitatea activității și gestionarea crizelor",
+          "HG NU-49-MDED-2025, pct. 39–41 — Plan de continuitate și plan de recuperare în caz de dezastru (BIA, testare, revizuire)",
+          "HG NU-49-MDED-2025, pct. 42–47 — Gestionarea copiilor de rezervă și a redundanței (planuri de rezervă, stocare separată, controale de acces, verificări de integritate, testarea recuperării)"
+        ],
         "priority": "must",
         "resources": [
-          {"title": "Backup Strategy Template", "url": "https://example.com/backup-strategy"}
-        ]
+          { "title": "UK NCSC — Backing up your data (plain-English guide)", "url": "https://www.ncsc.gov.uk/collection/small-business-guide/backing-up-your-data" },
+          { "title": "CISA — Ransomware Guide (backup best practices)", "url": "https://www.cisa.gov/stopransomware/ransomware-guide" },
+          { "title": "NIST SP 800-34 Rev.1 — Contingency Planning (DR/BCP)", "url": "https://csrc.nist.gov/publications/detail/sp/800-34/rev-1/final" },
+          { "title": "NIST SP 800-184 — Guide for Cybersecurity Event Recovery", "url": "https://csrc.nist.gov/publications/detail/sp/800-184/final" }
+        ],
+        "risks": {
+          "attack_vectors": [
+            "Ransomware encrypts production AND online backups",
+            "Accidental deletion or insider error without recoverable copies",
+            "Site outage or disaster with no offsite/offline backups"
+          ],
+          "potential_impact": [
+            "Prolonged outage and revenue loss",
+            "Irreversible loss of critical data",
+            "Regulatory non-compliance and reputational damage"
+          ]
+        },
+        "guide": {
+          "non_technical_steps": [
+            "Identify critical data/systems and set business RTO/RPO targets (simple table).",
+            "Choose a 3-2-1 approach: 3 copies, 2 different media/locations, 1 offline or immutable.",
+            "Define encryption (in transit/at rest), access controls, and backup ownership/roles.",
+            "Write a retention schedule (business & legal needs) and document storage locations.",
+            "Schedule integrity checks and a quarterly restore test; record results and fixes.",
+            "Document a simple recovery playbook: who does what, in what order, from where.",
+            "Review after incidents or major changes; update plan and train staff."
+          ],
+          "acceptance_summary": "Compliant if you have a written backup & recovery plan covering scope, RTO/RPO, storage (including off-network/offsite), encryption & access controls, retention, integrity checks, and evidence of successful restore tests on a regular schedule."
+        },
+        "legal": {
+          "requirement_summary": "You must keep backups and ensure adequate redundancy; set backup plans driven by risk and BCP, store copies safely (separate network/location), control access, check integrity, and test recovery periodically. BCP/DR plans must be tested and updated.",
+          "article_refs": [
+            "Legea nr. 48/2023, art. 11 alin. (2) lit. e)",
+            "HG NU-49-MDED-2025, pct. 39–41; 42–47"
+          ],
+          "quotes": [
+            {
+              "text": "Furnizorii de servicii păstrează copii de rezervă ale datelor… pentru a asigura un nivel adecvat de redundanță.",
+              "source": "HG NU-49-MDED-2025, pct. 42"
+            },
+            {
+              "text": "…planuri de rezervă, care includ: termenele de recuperare… stocarea de copii de rezervă… într-un loc… care nu se află în aceeași rețea…",
+              "source": "HG NU-49-MDED-2025, pct. 43"
+            },
+            {
+              "text": "Furnizorii de servicii testează periodic recuperarea copiilor de rezervă.",
+              "source": "HG NU-49-MDED-2025, pct. 47"
+            }
+          ]
+        }
       }
     },
     {
@@ -162,19 +631,73 @@
       "category": "Backup & Disaster Recovery",
       "required": true,
       "scope": "global",
-      "recommendation": "Test backup restoration procedures at least quarterly",
+      "recommendation": "Test backup restoration procedures at least quarterly (and after major changes/incidents)",
       "help_text": "When did you last verify that backups can be successfully restored?",
-      "why_matters": "Backups are only useful if they can be successfully restored when needed",
+      "why_matters": "Backups are only useful if you can restore them within target time (RTO) and with acceptable data loss (RPO). Regular testing proves recoverability and prevents nasty surprises during a real incident.",
       "kind": "manual",
       "read_only": false,
       "info": {
-        "what_it_means": "Regular testing to verify that backup data can be successfully restored and systems can be recovered.",
-        "why_it_matters": "Backups are worthless if they cannot be restored. Regular testing ensures recovery procedures work when needed.",
-        "law_refs": ["Art. 17 - Recovery Testing", "NU-49-MDED-2025 §8.2"],
+        "what_it_means": "A planned, documented exercise where you restore data/systems from backup into a safe environment and verify integrity, completeness, and time-to-recover against your RTO/RPO. Include different test types (file-level, database point-in-time, full system/app) and evidence of results and fixes.",
+        "why_it_matters": "Un-tested backups often fail when needed (corruption, missing keys, wrong scope, too slow). Periodic restore testing is required by the implementing regulation and validates that your business can actually recover from ransomware, deletion, or outages.",
+        "law_refs": [
+          "HG NU-49-MDED-2025, pct. 47 (testarea periodică a recuperării copiilor de rezervă)",
+          "HG NU-49-MDED-2025, pct. 39–41 (plan de continuitate și testare)",
+          "Legea nr. 48/2023, art. 11(2) lit. e) (continuitatea activității și gestionarea crizelor)",
+          "Legea nr. 48/2023, art. 11(2) lit. d) (evaluarea eficacității măsurilor de securitate)"
+        ],
         "priority": "must",
         "resources": [
-          {"title": "Disaster Recovery Testing Guide", "url": "https://example.com/dr-testing"}
-        ]
+          { "title": "NCSC (UK) — Backing up your data (includes testing)", "url": "https://www.ncsc.gov.uk/collection/small-business-guide/backing-up-your-data" },
+          { "title": "CISA — Ransomware Guide (backup & restore testing)", "url": "https://www.cisa.gov/stopransomware/ransomware-guide" },
+          { "title": "NIST SP 800-184 — Guide for Cybersecurity Event Recovery", "url": "https://csrc.nist.gov/publications/detail/sp/800-184/final" },
+          { "title": "NIST SP 800-34 Rev.1 — Contingency Planning (DR/BCP)", "url": "https://csrc.nist.gov/publications/detail/sp/800-34/rev-1/final" }
+        ],
+        "risks": {
+          "attack_vectors": [
+            "Ransomware encrypts production and online backups (no offline/immutable copy)",
+            "Corrupted or incomplete backups discovered only during a real incident",
+            "Credentials/keys for backup or decryption missing at restore time",
+            "Restore takes longer than RTO or cannot meet point-in-time objective (RPO)"
+          ],
+          "potential_impact": [
+            "Extended outage and financial loss",
+            "Permanent data loss and regulatory exposure",
+            "Reputational damage and breach notifications"
+          ]
+        },
+        "guide": {
+          "non_technical_steps": [
+            "Publish a simple Restore Test Plan: scope, frequency, roles, RTO/RPO targets.",
+            "Select representative scenarios: file restore, DB point-in-time, full app/system.",
+            "Restore into an isolated/safe environment; never overwrite production.",
+            "Verify integrity (hash/row counts), app functionality, user access, dependencies.",
+            "Measure actual RTO/RPO vs targets; record gaps and root causes.",
+            "Produce a short Test Report with screenshots/logs and a corrective action list.",
+            "Retest after material changes or incidents; keep evidence for audits."
+          ],
+          "scope_caveats": "Tests must reflect your critical services and include at least one full restore scenario. Include offline/immutable backup sources where applicable.",
+          "acceptance_summary": "Compliant if you have a dated Restore Test Report (≤ 3–6 months old) showing scope, steps, environment, integrity checks, measured RTO/RPO, results (PASS/FAIL), issues found, corrective actions, and sign-off."
+        },
+        "legal": {
+          "requirement_summary": "You must test recovery of backups periodically as part of business continuity; plans must be tested and updated. Testing evidences the effectiveness of the security measures.",
+          "article_refs": [
+            "HG NU-49-MDED-2025, pct. 47",
+            "HG NU-49-MDED-2025, pct. 39–41",
+            "Legea nr. 48/2023, art. 11(2) lit. e)",
+            "Legea nr. 48/2023, art. 11(2) lit. d)"
+          ],
+          "quotes": [
+            {
+              "text": "Furnizorii de servicii testează periodic recuperarea copiilor de rezervă.",
+              "source": "HG NU-49-MDED-2025, pct. 47"
+            },
+            {
+              "text": "Planurile de continuitate și recuperare se testează și se revizuiesc periodic.",
+              "source": "HG NU-49-MDED-2025, pct. 39–41"
+            }
+          ],
+          "priority": "must"
+        }
       }
     },
     {
@@ -186,85 +709,292 @@
       "scope": "global",
       "recommendation": "Configure SPF, DKIM, and DMARC records for your email domain",
       "help_text": "These protocols help prevent email spoofing and phishing attacks",
-      "why_matters": "Protects your domain from being used in phishing attacks and improves email deliverability",
+      "why_matters": "Protects your domain from being abused in phishing and improves deliverability; aligns with legal expectations for secure communications, cryptography use, and basic cyber hygiene.",
       "kind": "manual",
       "read_only": false,
       "info": {
-        "what_it_means": "Email authentication protocols that verify the legitimacy of emails sent from your domain.",
-        "why_it_matters": "Prevents email spoofing and phishing attacks, improving email security and deliverability.",
-        "law_refs": ["Art. 15 - Email Security", "NU-49-MDED-2025 §7.3"],
+        "what_it_means": "SPF lists your authorized mail senders in DNS; DKIM adds a cryptographic signature to your emails (public key in DNS); DMARC tells receivers how to handle messages that fail alignment (p=none/quarantine/reject) and sends you aggregate/forensic reports (rua/ruf).",
+        "why_it_matters": "Stops easy domain spoofing, reduces phishing risk for your customers and staff, and shows you manage communications security using authentication and cryptography—core expectations under Moldova’s cybersecurity framework.",
+        "law_refs": [
+          "HG NU-49-MDED-2025: Autentificare și MFA (pct. 130–134); Criptografie (pct. 102–104); Igienă cibernetică și formare (pct. 94–101)",
+          "Legea nr. 48/2023: art. 11(2) – măsuri tehnice/organizatorice (inclusiv criptografie, control acces, comunicări securizate, igienă cibernetică)"
+        ],
         "priority": "should",
         "resources": [
-          {"title": "Email Authentication Guide", "url": "https://example.com/email-auth"}
-        ]
+          {"title": "DMARC — Overview (dmarc.org)", "url": "https://dmarc.org/overview/"},
+          {"title": "RFC 7489 — DMARC", "url": "https://www.rfc-editor.org/rfc/rfc7489"},
+          {"title": "RFC 6376 — DKIM", "url": "https://www.rfc-editor.org/rfc/rfc6376"},
+          {"title": "RFC 7208 — SPF", "url": "https://www.rfc-editor.org/rfc/rfc7208"},
+          {"title": "Google Workspace — SPF setup", "url": "https://support.google.com/a/answer/33786"},
+          {"title": "Google Workspace — DKIM setup", "url": "https://support.google.com/a/answer/174124"},
+          {"title": "Google Workspace — About & set up DMARC", "url": "https://support.google.com/a/answer/2466563"},
+          {"title": "Microsoft 365 — Set up SPF", "url": "https://learn.microsoft.com/microsoft-365/security/office-365-security/how-to-set-up-spf"},
+          {"title": "Microsoft 365 — Use DKIM", "url": "https://learn.microsoft.com/microsoft-365/security/office-365-security/use-dkim-to-validate-outbound-email"},
+          {"title": "Microsoft 365 — Use DMARC", "url": "https://learn.microsoft.com/microsoft-365/security/office-365-security/use-dmarc-to-validate-mail"},
+          {"title": "Cloudflare — Email security DNS records", "url": "https://developers.cloudflare.com/dns/manage-dns-records/how-to/email-security/"}
+        ],
+        "risks": {
+          "attack_vectors": [
+            "Impersonation/spoofing of your domain in phishing campaigns",
+            "Delivery of unsigned/unaligned emails that bypass recipient filters",
+            "Compromise via third-party senders not included in SPF/DKIM"
+          ],
+          "potential_impact": [
+            "Fraud/phishing against customers and staff",
+            "Reputational damage and loss of trust",
+            "Email deliverability issues and business disruption"
+          ]
+        },
+        "guide": {
+          "non_technical_steps": [
+            "Inventory all senders: your mail server, cloud email (e.g., M365/Google), marketing platforms, CRMs, ticketing tools, etc.",
+            "Publish an SPF TXT record that includes every authorized sender (minimize DNS lookups; avoid ~all for long term).",
+            "Enable DKIM for each sender: generate keys, publish CNAME/TXT selectors in DNS, rotate keys periodically.",
+            "Publish a DMARC record with rua reporting and start at p=none; monitor aggregate reports for at least 2–4 weeks.",
+            "Tighten DMARC policy to p=quarantine then p=reject once alignment issues are fixed.",
+            "Maintain: update SPF/DKIM when adding/removing vendors; review DMARC reports monthly; rotate DKIM keys yearly."
+          ],
+          "scope_caveats": "SPF applies per domain; subdomains may need separate records. DMARC alignment must match From: domain. Include all third-party platforms that send mail as your domain.",
+          "acceptance_summary": "Not legally mandated by name, but strong evidence of controls for secure communications, cryptography, and basic hygiene. Keep evidence: DNS screenshots, DMARC aggregate report samples, and an email header showing SPF/DKIM/DMARC pass."
+        },
+        "legal": {
+          "requirement_summary": "Email authentication supports required measures on authentication, cryptography, and user awareness. It’s a practical way to demonstrate you’ve implemented secure communications and cyber-hygiene measures expected by the framework.",
+          "article_refs": [
+            "HG NU-49-MDED-2025: pct. 130–134 (Autentificare/MFA), pct. 102–104 (Criptografie), pct. 94–101 (Igienă & Formare)",
+            "Legea nr. 48/2023: art. 11(2) (măsuri tehnice/organizatorice: criptografie, politici de securitate, control acces, igienă cibernetică)"
+          ],
+          "priority": "should"
+        }
       }
     },
     {
       "id": "security-audit",
       "title": "Security Audit (≤3 years)",
-      "description": "External security audit within the last 3 years",
+      "description": "Information security audit at least every 3 years (submit report to the Agency within 1 month)",
       "category": "Audits & Certifications",
       "required": true,
       "scope": "global",
-      "recommendation": "Schedule an external security audit",
-      "help_text": "Independent assessment of your cybersecurity controls",
-      "why_matters": "Provides objective validation of your security measures",
+      "recommendation": "Plan and complete an information security audit; submit the audit report to the National Cybersecurity Agency within 1 month",
+      "help_text": "Independent review of how well your security measures meet the regulation’s annex requirements",
+      "why_matters": "Confirms your real level of conformity, finds blind spots before inspectors or attackers do, and is explicitly required on a 3-year cycle.",
       "kind": "manual",
       "read_only": false,
       "info": {
-        "what_it_means": "An independent, third-party assessment of your organization's cybersecurity controls and practices.",
-        "why_it_matters": "Provides objective validation of security measures and helps identify gaps that internal teams might miss.",
-        "law_refs": ["Art. 18 - External Audits", "NU-49-MDED-2025 §9.1"],
+        "what_it_means": "A formal information security audit that evaluates your conformity with the Government Decision’s annexed security measures. The audit should be objective and competent (typically by an independent internal audit function or an external auditor). Findings are documented in an audit report.",
+        "why_it_matters": "Audits provide evidence that required measures are implemented and effective. They surface gaps for remediation, reduce enforcement risk, and demonstrate due care to customers and partners.",
+        "law_refs": [
+          "HG NU-49-MDED-2025, pct. 9 (audit at least every 3 years; report due to the Agency in 1 month)",
+          "Legea nr. 48/2023, art. 11(2) pct. 6 (verifying completeness incl. via security audits)"
+        ],
         "priority": "must",
         "resources": [
-          {"title": "Security Audit Checklist", "url": "https://example.com/security-audit"}
-        ]
+          { "title": "ISO 19011 — Guidelines for auditing management systems (overview)", "url": "https://www.iso.org/standard/70017.html" },
+          { "title": "ISACA — IT Audit Basics & Resources", "url": "https://www.isaca.org/resources/it-audit" },
+          { "title": "IAF CertSearch — find accredited certification bodies", "url": "https://www.iafcertsearch.org/" },
+          { "title": "MOLDAC — National Accreditation Center (MD)", "url": "https://acreditare.md/en/" }
+        ],
+        "risks": {
+          "attack_vectors": [
+            "Controls drift (measures not implemented as designed)",
+            "Unnoticed misconfigurations or outdated systems",
+            "Unmanaged third-party/supply-chain exposures"
+          ],
+          "potential_impact": [
+            "Regulatory non-conformity and sanctions",
+            "Service disruption or data compromise",
+            "Loss of trust and contracts due to weak assurance"
+          ]
+        },
+        "guide": {
+          "non_technical_steps": [
+            "Define audit scope aligned to the annex measures and your service footprint.",
+            "Select a competent, independent auditor (internal audit or external provider).",
+            "Prepare evidence pack: policies, risk assessment, logs/retention, backup tests, IAM reviews, incident process, etc.",
+            "Hold the audit: interviews, sampling, control testing, evidence verification.",
+            "Receive report, classify findings by risk, and create a remediation plan with owners & deadlines.",
+            "Submit the audit report (and any independent examination reports) to the Agency within 1 month of completion.",
+            "Track remediation to closure and schedule the next audit (≤3 years, or sooner if required)."
+          ],
+          "scope_caveats": "The audit must cover the security measures applicable to your services and systems. If parts are out of scope, document and justify them.",
+          "acceptance_summary": "An on-time audit and report demonstrate active conformity management. The Agency may still review or request additional evidence."
+        },
+        "legal": {
+          "requirement_summary": "You must perform information security audits at least once every 3 years (or more often if the annex requires) and submit the audit report to the National Cybersecurity Agency within 1 month of completion.",
+          "article_refs": [
+            "HG NU-49-MDED-2025, pct. 9",
+            "Legea nr. 48/2023, art. 11(2) pct. 6"
+          ],
+          "quotes": [
+            {
+              "text": "Furnizorii de servicii efectuează audituri privind securitatea informațiilor… cel puțin o dată la trei ani… Raportul de audit… se prezintă Agenției… în termen de o lună de la data efectuării.",
+              "source": "HG NU-49-MDED-2025, pct. 9"
+            }
+          ]
+        }
       }
-    },
+    }
+    ,
     {
       "id": "iso27001",
-      "title": "ISO 27001 Certification",
-      "description": "ISO 27001 information security management certification",
+      "title": "ISO 27001 CertificationXXXX",
+      "description": "ISO/IEC 27001 information security management certification",
       "category": "Audits & Certifications",
       "required": false,
       "scope": "global",
-      "recommendation": "Consider pursuing ISO 27001 certification",
-      "help_text": "International standard for information security management",
-      "why_matters": "Demonstrates commitment to information security best practices",
+      "recommendation": "Consider pursuing ISO/IEC 27001:2022 certification",
+      "help_text": "International standard for information security management (ISMS)",
+      "why_matters": "Demonstrates a systematic approach to information security and provides strong supporting evidence for compliance, but does not replace specific legal obligations.",
       "kind": "manual",
       "read_only": false,
       "info": {
-        "what_it_means": "ISO/IEC 27001:2022 is the international standard for an Information Security Management System (ISMS). Certification is issued by an accredited body after a two-stage audit (Stage 1 – documentation/readiness; Stage 2 – implementation/effectiveness). Certificates are typically valid for three years with annual surveillance and apply only to a defined scope (services/locations).",
-        "why_it_matters": "Certification shows you manage security risks systematically (policies, risk treatment, controls, continual improvement). It builds customer trust and shortens due-diligence. For Moldova’s Cybersecurity Law it is strong supporting evidence, but not a substitute: you must still meet specific obligations (e.g., access reviews, backups & restore tests, logging, and incident reporting).",
-        "law_refs": ["Art. 19 - Standards Compliance", "NU-49-MDED-2025 §9.2"],
+        "what_it_means": "ISO/IEC 27001:2022 is the international ISMS standard. Certification is granted by an accredited body after a two-stage audit (Stage 1 = documentation/readiness; Stage 2 = implementation/effectiveness). Certificates typically cover a defined scope (services, locations) and are issued for three years with annual surveillance.",
+        "why_it_matters": "Shows you manage security risks systematically (policies, risk treatment, controls, continuous improvement). Builds trust, shortens due-diligence, and—under Moldova’s implementing regulation—can exempt you from the detailed annex measures if you hold a valid SM ISO/IEC 27001 certificate filed with the Agency. The Agency may still review you.",
+        "law_refs": [
+          "HG NU-49-MDED-2025, pct. 10 (SM ISO/IEC 27001 certificate may substitute annex measures)",
+          "HG NU-49-MDED-2025, pct. 9 (security audits at least once every 3 years)",
+          "Legea nr. 48/2023, art. 11(4)(a) (Guvernul asigură aprobarea standardelor naționale)"
+        ],
         "priority": "should",
-        "resources": [
-          {"title": "ISO 27001 Implementation Guide", "url": "https://example.com/iso27001"}
-        ]
+  "resources": [
+  { "title": "ISO/IEC 27001:2022 — official ISO overview", "url": "https://www.iso.org/standard/27001" },
+  { "title": "ISO/IEC 27001:2022/Amd 1:2024 — Climate action changes", "url": "https://www.iso.org/standard/88435.html" },
+  { "title": "SM ISO/IEC 27001 — listare standard național (ISM)", "url": "https://shop.standard.md/ro/standard_details/653200" },
+  { "title": "Legea nr. 48/2023 privind securitatea cibernetică (legis.md)", "url": "https://www.legis.md/cautare/getResults?doc_id=136732&lang=ro" },
+  { "title": "HG NU-49-MDED-2025 — Regulament de aplicare (PDF oficial)", "url": "https://gov.md/sites/default/files/media/documents/sedinte-de-guvern/2025-09/NU-49-MDED-2025.pdf" },
+  { "title": "ENISA — Implementation guidance on security measures (NIS2)", "url": "https://www.enisa.europa.eu/sites/default/files/2024-11/Implementation%20guidance%20on%20security%20measures_FOR%20PUBLIC%20CONSULTATION.pdf" },
+  { "title": "SBS (UE) — Ghid pentru IMM-uri: implementarea ISO/IEC 27001 (PDF)", "url": "https://sbs-sme.eu/wp-content/uploads/2024/02/SME-Guide-for-the-implementation-of-ISOIEC-27001-on-information-security-management-min-1-2.pdf" },
+  { "title": "NCSC (UK) — Small Business Guide to Cyber Security", "url": "https://www.ncsc.gov.uk/collection/small-business-guide" },
+  { "title": "CIS Controls v8 — Implementation Group 1 (IG1)", "url": "https://www.cisecurity.org/controls/implementation-groups/ig1" },
+  { "title": "IAF CertSearch — verifică certificate ISO acreditate", "url": "https://www.iafcertsearch.org/" },
+  { "title": "MOLDAC — organismul național de acreditare", "url": "https://acreditare.md/en/" }
+]
+,
+        "risks": {
+          "attack_vectors": [
+            "Lack of systematic security management creates uncontrolled gaps",
+            "Weak or ad-hoc risk assessment misses critical exposures",
+            "Controls not implemented or maintained consistently across scope"
+          ],
+          "potential_impact": [
+            "Regulatory non-compliance and penalties",
+            "Security breaches due to unmanaged risks",
+            "Loss of customer trust and contracts"
+          ]
+        },
+        "guide": {
+          "non_technical_steps": [
+            "Define ISMS scope (services, locations, assets)",
+            "Do a gap analysis vs. ISO/IEC 27001:2022",
+            "Establish policy set and governance roles",
+            "Run risk assessment & risk treatment plan",
+            "Map and implement Annex A controls as needed",
+            "Launch awareness/training and internal audit cycle",
+            "Management review → Stage 1 & Stage 2 certification audits",
+            "Maintain continuous improvement (surveillance audits yearly)"
+          ],
+          "scope_caveats": "Certification applies only to the defined ISMS scope. Ensure all relevant processes, systems, and third parties are included.",
+          "acceptance_summary": "A valid SM ISO/IEC 27001 certificate filed with the Agency can substitute the annex measures; the Agency can still evaluate your conformity."
+        },
+        "legal": {
+          "requirement_summary": "With a valid SM ISO/IEC 27001 certificate presented to the Agency, the annex security-measure requirements of the Government Decision do not apply; however, the Agency reserves the right to assess conformity. Independent security audits must be performed at least every 3 years.",
+          "article_refs": [
+            "HG NU-49-MDED-2025, pct. 10",
+            "HG NU-49-MDED-2025, pct. 9",
+            "Legea nr. 48/2023, art. 11(4)(a)"
+          ],
+          "quotes": [
+            {
+              "text": "Cerințele prevăzute în anexă nu se aplică furnizorilor de servicii dacă… sunt conforme cu… SM ISO/IEC 27001 și… a prezentat… un certificat valabil.",
+              "source": "HG NU-49-MDED-2025, pct. 10"
+            },
+            {
+              "text": "Furnizorii de servicii efectuează audituri… cel puțin o dată la trei ani",
+              "source": "HG NU-49-MDED-2025, pct. 9"
+            }
+          ]
+        }
       }
+    }    
+,
+{
+  "id": "security-training",
+  "title": "Last Security Awareness Training",
+  "description": "Date of most recent cybersecurity training for employees",
+  "category": "Awareness & Training",
+  "required": true,
+  "scope": "global",
+  "recommendation": "Provide periodic, role-based cybersecurity awareness training and track completion",
+  "help_text": "All staff (incl. management, relevant suppliers) should receive recurring training; new starters must be covered promptly",
+  "why_matters": "People are the first line of defense. Well-trained employees spot phishing, handle data safely, and react correctly to incidents.",
+  "kind": "manual",
+  "read_only": false,
+  "info": {
+    "what_it_means": "An organization-wide, planned program that repeatedly trains staff on cyber risks, safe behavior, and how to act on security events. It must align with your security policies, cover new hires, be role-based for sensitive functions, and its effectiveness should be evaluated and updated periodically.",
+    "why_it_matters": "Most incidents start with human error or social engineering. A structured, recurring program measurably reduces risk and is explicitly required by Moldova’s implementing regulation and the law’s mandate for cyber hygiene and training.",
+    "law_refs": [
+      "HG NU-49-MDED-2025, Cap. VIII, pct. 94–96 (Sensibilizare/igienă cibernetică)",
+      "HG NU-49-MDED-2025, Cap. VIII, pct. 97–99 (Formare rol-bazată, evaluarea eficacității)",
+      "Legea nr. 48/2023, art. 11 alin. (2) pct. 2) lit. i) (igienă cibernetică și formare)"
+    ],
+    "priority": "must",
+    "resources": [
+      { "title": "ENISA — Awareness & Training (EU)", "url": "https://www.enisa.europa.eu/topics/cybersecurity-education/awareness-raising" },
+      { "title": "ENISA — Cybersecurity Training", "url": "https://www.enisa.europa.eu/topics/cybersecurity-education/training" },
+      { "title": "NCSC (UK) — Top tips for staff", "url": "https://www.ncsc.gov.uk/collection/top-tips-for-staff" },
+      { "title": "NCSC (UK) — Small Business Guide", "url": "https://www.ncsc.gov.uk/collection/small-business-guide" },
+      { "title": "CIS Controls — Security Awareness & Skills Training", "url": "https://www.cisecurity.org/controls/security-awareness-and-skills-training" },
+      { "title": "Google Phishing Quiz (practice)", "url": "https://phishingquiz.withgoogle.com/" }
+    ],
+    "risks": {
+      "attack_vectors": [
+        "Phishing/social engineering trick staff into revealing credentials",
+        "Unsafe handling of data and devices",
+        "Delayed or wrong response to security events"
+      ],
+      "potential_impact": [
+        "Account takeover and ransomware",
+        "Personal/data breach and regulatory penalties",
+        "Service outages, reputational damage, lost revenue"
+      ]
     },
-    {
-      "id": "security-training",
-      "title": "Last Security Awareness Training",
-      "description": "Date of most recent cybersecurity training for employees",
-      "category": "Awareness & Training",
-      "required": true,
-      "scope": "global",
-      "recommendation": "Provide annual cybersecurity awareness training for all employees",
-      "help_text": "All employees should receive cybersecurity awareness training",
-      "why_matters": "Employees are the first line of defense against cyber attacks",
-      "kind": "manual",
-      "read_only": false,
-      "info": {
-        "what_it_means": "Regular training programs that educate employees about cybersecurity threats, best practices, and their role in protecting organizational data.",
-        "why_it_matters": "Employees are often the first line of defense against cyber attacks. Well-trained staff significantly reduce security risks.",
-        "law_refs": ["Art. 20 - Security Training", "NU-49-MDED-2025 §10.1"],
-        "priority": "must",
-        "resources": [
-          {"title": "Security Awareness Training Materials", "url": "https://example.com/security-training"}
-        ]
-      }
+    "guide": {
+      "non_technical_steps": [
+        "Appoint an owner; define audience groups and roles (e.g., finance, admins).",
+        "Publish a short Training Policy and a 12-month Plan (sessions + onboarding).",
+        "Map topics to risks and policies (phishing, passwords/MFA, data handling, incident reporting).",
+        "Deliver short, frequent modules; ensure new starters are trained within their first month.",
+        "Run simple effectiveness checks (quizzes, simulated phishing) and track completion.",
+        "Update content at planned intervals based on incidents/threats and collect feedback.",
+        "Keep evidence: policy, plan, materials, attendance/logs, quiz/simulation stats, updates."
+      ],
+      "scope_caveats": "Training must cover all staff and relevant suppliers where appropriate; some roles need deeper, role-specific training (e.g., admins, incident responders).",
+      "acceptance_summary": "Regulator will look for a documented, repeated, role-based program that aligns to your policies, covers new hires, and is evaluated for effectiveness."
     },
+    "legal": {
+      "requirement_summary": "Mandatory: a planned, recurring awareness program for all staff (including new hires) aligned with security policy; role-based training where needed; evaluate effectiveness and keep it up to date.",
+      "article_refs": [
+        "HG NU-49-MDED-2025: pct. 94–96, 97–99 (Cap. VIII)",
+        "Legea nr. 48/2023: art. 11(2) pct. 2) lit. i)"
+      ],
+      "quotes": [
+        {
+          "text": "Angajații… sunt sensibilizați… și aplică practici de igienă cibernetică.",
+          "source": "HG NU-49-MDED-2025, pct. 94"
+        },
+        {
+          "text": "Programul de sensibilizare este planificat… repetat și acoperă noii angajați.",
+          "source": "HG NU-49-MDED-2025, pct. 95.1"
+        },
+        {
+          "text": "Formarea trebuie să fie relevantă pentru funcția postului… iar eficacitatea sa trebuie să fie evaluată.",
+          "source": "HG NU-49-MDED-2025, pct. 99"
+        }
+      ],
+      "priority": "must"
+    }
+  }
+}
+,
     {
       "id": "ssl-certificate-validation-012",
       "title": "SSL Certificate Validation",
