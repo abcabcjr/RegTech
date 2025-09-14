@@ -434,18 +434,18 @@
 											</div>
 											<div class="flex-1">
 												{#if item.description}
-													<p class="text-sm text-gray-600 mb-2">{item.description}</p>
+													<p class="text-sm text-gray-600 mb-2">{@html item.description}</p>
 												{/if}
 												{#if item.notes}
 													<div class="text-sm mb-2">
 														<span class="font-medium text-gray-700">Notes:</span>
-														<span class="text-gray-600">{item.notes}</span>
+														<span class="text-gray-600">{@html item.notes}</span>
 													</div>
 												{/if}
 												{#if item.recommendation}
 													<div class="text-sm">
 														<span class="font-medium text-gray-700">Recommendation:</span>
-														<span class="text-gray-600">{item.recommendation}</span>
+														<span class="text-gray-600">{@html item.recommendation}</span>
 													</div>
 												{/if}
 											</div>

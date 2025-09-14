@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -450,6 +451,33 @@ func (s *JSONStorage) ListChecklistStatuses(ctx context.Context) (map[string]*mo
 		result[k] = v
 	}
 	return result, nil
+}
+
+func (s *JSONStorage) ClearChecklistStatusesByAsset(ctx context.Context, assetID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Find and delete all checklist statuses for this asset
+	// Asset checklist keys have format: "asset:{assetId}:{itemId}"
+	assetPrefix := "asset:" + assetID + ":"
+	var keysToDelete []string
+
+	for key := range s.checklistStatuses {
+		if strings.HasPrefix(key, assetPrefix) {
+			keysToDelete = append(keysToDelete, key)
+		}
+	}
+
+	// Delete the keys
+	for _, key := range keysToDelete {
+		delete(s.checklistStatuses, key)
+	}
+
+	if len(keysToDelete) > 0 {
+		fmt.Printf("[JSONStorage] Cleared %d checklist statuses for asset %s\n", len(keysToDelete), assetID)
+	}
+
+	return s.saveChecklistStatuses()
 }
 
 // Utility operations

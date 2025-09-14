@@ -49,6 +49,7 @@ type Storage interface {
 	SetChecklistStatus(ctx context.Context, key string, status *model.SimpleChecklistStatus) error
 	GetChecklistStatus(ctx context.Context, key string) (*model.SimpleChecklistStatus, error)
 	ListChecklistStatuses(ctx context.Context) (map[string]*model.SimpleChecklistStatus, error)
+	ClearChecklistStatusesByAsset(ctx context.Context, assetID string) error
 
 	// File attachment operations
 	CreateFileAttachment(ctx context.Context, attachment *model.FileAttachment) error

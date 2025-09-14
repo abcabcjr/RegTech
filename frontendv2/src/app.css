@@ -123,3 +123,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* In your globals.css or a Tailwind layer */
+.link {
+  @apply text-blue-600 underline-offset-2 transition-colors duration-200;
+}
+
+.link:hover {
+  @apply text-blue-800 underline;
+}
+
+.link:focus {
+  @apply outline-none ring-2 ring-blue-400 rounded-sm;
+}

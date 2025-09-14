@@ -520,6 +520,23 @@ else
         end
     end
     
+    -- If TLS is not detected and not required, exit early
+    if not should_have_tls then
+        log("TLS not detected and not required for this service type - marking as N/A")
+        set_metadata("tls_cipher_strength.assessment", "not_applicable")
+        set_metadata("tls_cipher_strength.is_tls_service", false)
+        
+        na_checklist("tls-cipher-strength-016", "TLS not required for this service type")
+        na_checklist("cryptographic-controls-017", "TLS not required for this service type")
+        
+        add_tag("non-tls-service")
+        add_tag("tls-not-required")
+        
+        log("TLS CIPHER STRENGTH: N/A - TLS not required for this service type")
+        pass()
+        return
+    end
+    
     if should_have_tls then
         -- Service SHOULD have TLS but doesn't - this is NON_COMPLIANT
         set_metadata("tls_cipher_strength.assessment", "non_compliant_missing_tls")
@@ -556,19 +573,6 @@ else
         
         log("TLS CIPHER STRENGTH: NON_COMPLIANT - Service requires TLS but none detected")
         reject("Required TLS encryption missing")
-        
-    else
-        -- Service genuinely doesn't need TLS (e.g., SSH, FTP, etc.)
-        set_metadata("tls_cipher_strength.assessment", "not_applicable")
-        
-        na_checklist("tls-cipher-strength-016", "TLS not required for this service type")
-        na_checklist("cryptographic-controls-017", "TLS not required for this service type")
-        
-        add_tag("non-tls-service")
-        add_tag("tls-not-required")
-        
-        log("TLS CIPHER STRENGTH: N/A - TLS not required for this service type")
-        pass()
     end
 end
 

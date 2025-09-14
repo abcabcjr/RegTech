@@ -39,3 +39,4 @@ regtech
 
 # Node modules
 /frontend/node_modules
+demo/ssh-data

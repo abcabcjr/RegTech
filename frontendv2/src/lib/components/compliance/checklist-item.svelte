@@ -320,7 +320,7 @@
 									</Badge>
 									<span class="font-mono text-sm">{asset.asset_value}</span>
 									{#if asset.notes}
-										<span class="text-xs text-muted-foreground">{asset.notes}</span>
+										<span class="text-xs text-muted-foreground">{@html asset.notes}</span>
 									{/if}
 								</div>
 							</div>

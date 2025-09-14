@@ -742,10 +742,22 @@ func (h *AssetsHandler) runAssetScan(jobID string, asset *model.Asset, scriptNam
 		fmt.Printf("[AssetsHandler] Cleared previous scan results for asset %s\n", asset.ID)
 	}
 
+	// Clear previous checklist statuses for this asset to avoid stale compliance data
+	if err := h.storage.ClearChecklistStatusesByAsset(ctx, asset.ID); err != nil {
+		fmt.Printf("[AssetsHandler] Warning: Failed to clear previous checklist statuses for asset %s: %v\n", asset.ID, err)
+	} else {
+		fmt.Printf("[AssetsHandler] Cleared previous checklist statuses for asset %s\n", asset.ID)
+	}
+
 	// Reset asset's scan results array and count for fresh start
 	asset.ScanResults = []model.ScanResult{}
 	asset.ScanCount = 0
 	asset.LastScannedAt = nil
+
+	// Save the asset with cleared results to storage before scanning
+	if err := h.storage.UpdateAsset(ctx, asset); err != nil {
+		fmt.Printf("[AssetsHandler] Warning: Failed to save cleared asset state for %s: %v\n", asset.ID, err)
+	}
 
 	// Run scan
 	results, err := h.scanner.ScanAsset(ctx, asset, scriptNames)
@@ -819,12 +831,17 @@ func (h *AssetsHandler) runAllAssetsScan(jobID string, assets []*model.Asset, sc
 				fmt.Printf("[AssetsHandler] Warning: Failed to clear previous scan results for asset %s: %v\n", asset.ID, err)
 			}
 
+			// Clear previous checklist statuses for this asset to avoid stale compliance data
+			if err := h.storage.ClearChecklistStatusesByAsset(ctx, asset.ID); err != nil {
+				fmt.Printf("[AssetsHandler] Warning: Failed to clear previous checklist statuses for asset %s: %v\n", asset.ID, err)
+			}
+
 			// Reset asset's scan results array and count for fresh start
 			asset.ScanResults = []model.ScanResult{}
 			asset.ScanCount = 0
 			asset.LastScannedAt = nil
 
-			// Update asset status
+			// Update asset status and save cleared state
 			asset.Status = model.AssetStatusScanning
 			h.storage.UpdateAsset(ctx, asset)
 

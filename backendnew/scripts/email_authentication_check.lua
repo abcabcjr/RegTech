@@ -6,13 +6,6 @@
 -- @author RegTech Scanner
 -- @version 1.0
 -- @asset_types domain,subdomain
--- @requires_passed basic_info.lua
-
--- Only run on domain assets
-if asset.type ~= "domain" and asset.type ~= "subdomain" then
-    log("Skipping email authentication check - not a domain asset")
-    return
-end
 
 -- Extract domain name
 local domain = asset.value
@@ -52,37 +45,55 @@ local common_dkim_selectors = {
     "selector1", "selector2", "dkim", "key1", "key2"
 }
 
--- Function to perform DNS lookup
-local function dns_lookup(lookup_domain, record_type)
-    log("Looking up " .. record_type .. " record for: " .. lookup_domain)
+-- Function to get DNS records from asset data (no external lookups needed)
+local function get_dns_records(lookup_domain, record_type)
+    log("Getting " .. record_type .. " records for: " .. lookup_domain .. " from asset data")
     
-    -- Use a simple HTTP-based DNS lookup since we don't have direct DNS access
-    -- This is a simplified approach - in production you'd want proper DNS resolution
-    local lookup_url = "https://dns.google/resolve?name=" .. lookup_domain .. "&type=" .. record_type
-    
-    local status, body, headers, err = http.get(lookup_url, {
-        ["Accept"] = "application/dns-json"
-    }, 10)
-    
-    if err then
-        log("DNS lookup failed for " .. lookup_domain .. ": " .. err)
-        return false, err, nil
+    if not asset.dns_records then
+        log("No DNS records available in asset data")
+        return false, "No DNS data", {}
     end
     
-    if status ~= 200 then
-        log("DNS lookup returned status " .. status .. " for " .. lookup_domain)
-        return false, "HTTP " .. status, nil
-    end
-    
-    -- Parse JSON response (simplified parsing)
     local records = {}
     
-    -- Look for TXT records in the response
-    if string.match(body, '"Status":0') then
-        -- Extract TXT record data
-        for record_data in string.gmatch(body, '"data":"([^"]+)"') do
-            table.insert(records, record_data)
-            log("Found DNS record: " .. record_data)
+    if record_type == "TXT" then
+        if lookup_domain == domain then
+            -- SPF records are in the main domain's TXT records
+            if asset.dns_records.txt then
+                for _, txt_record in ipairs(asset.dns_records.txt) do
+                    table.insert(records, txt_record)
+                    log("Found TXT record: " .. txt_record)
+                end
+            end
+        elseif lookup_domain == "_dmarc." .. domain then
+            -- DMARC records would be in TXT records for _dmarc subdomain
+            -- For now, we'll check if any TXT records contain DMARC
+            if asset.dns_records.txt then
+                for _, txt_record in ipairs(asset.dns_records.txt) do
+                    if string.match(txt_record, "v=DMARC1") then
+                        table.insert(records, txt_record)
+                        log("Found DMARC record: " .. txt_record)
+                    end
+                end
+            end
+        elseif string.match(lookup_domain, "_domainkey%." .. domain .. "$") then
+            -- DKIM records would be in TXT records for selector._domainkey subdomain
+            -- For now, we'll check if any TXT records contain DKIM
+            if asset.dns_records.txt then
+                for _, txt_record in ipairs(asset.dns_records.txt) do
+                    if string.match(txt_record, "v=DKIM1") or string.match(txt_record, "p=") then
+                        table.insert(records, txt_record)
+                        log("Found DKIM record: " .. txt_record)
+                    end
+                end
+            end
+        end
+    elseif record_type == "MX" then
+        if asset.dns_records.mx then
+            for _, mx_record in ipairs(asset.dns_records.mx) do
+                table.insert(records, mx_record)
+                log("Found MX record: " .. mx_record)
+            end
         end
     end
     
@@ -338,6 +349,20 @@ local function analyze_dkim_record(dkim_record)
     return analysis
 end
 
+-- Function to check if domain has email services configured
+local function has_email_services()
+    -- Check for MX records in asset data
+    log("Checking for MX records in asset data to determine if email is configured")
+    
+    if asset.dns_records and asset.dns_records.mx and #asset.dns_records.mx > 0 then
+        log("Found MX records in asset data - email services are configured")
+        return true, asset.dns_records.mx
+    end
+    
+    log("No MX records found in asset data - email services not configured")
+    return false, {}
+end
+
 -- Main analysis function
 local function analyze_email_authentication()
     local results = {
@@ -347,12 +372,17 @@ local function analyze_email_authentication()
         dkim = { found = false, records = {}, analysis = nil, selectors_checked = {} },
         total_score = 0,
         max_possible_score = 10, -- SPF(3) + DMARC(4) + DKIM(3)
-        compliance_issues = {}
+        compliance_issues = {},
+        has_email_services = false,
+        mx_records = {}
     }
+    
+    -- Check if email services are configured
+    results.has_email_services, results.mx_records = has_email_services()
     
     -- Check SPF record
     log("Checking SPF record for " .. domain)
-    local spf_ok, spf_err, spf_records = dns_lookup(domain, "TXT")
+    local spf_ok, spf_err, spf_records = get_dns_records(domain, "TXT")
     
     if spf_ok and spf_records then
         for _, record in ipairs(spf_records) do
@@ -379,7 +409,7 @@ local function analyze_email_authentication()
     
     -- Check DMARC record
     log("Checking DMARC record for _dmarc." .. domain)
-    local dmarc_ok, dmarc_err, dmarc_records = dns_lookup("_dmarc." .. domain, "TXT")
+    local dmarc_ok, dmarc_err, dmarc_records = get_dns_records("_dmarc." .. domain, "TXT")
     
     if dmarc_ok and dmarc_records then
         for _, record in ipairs(dmarc_records) do
@@ -410,7 +440,7 @@ local function analyze_email_authentication()
         local dkim_domain = selector .. "._domainkey." .. domain
         table.insert(results.dkim.selectors_checked, selector)
         
-        local dkim_ok, dkim_err, dkim_records = dns_lookup(dkim_domain, "TXT")
+        local dkim_ok, dkim_err, dkim_records = get_dns_records(dkim_domain, "TXT")
         
         if dkim_ok and dkim_records then
             for _, record in ipairs(dkim_records) do
@@ -444,14 +474,31 @@ local function analyze_email_authentication()
     return results
 end
 
--- Perform email authentication analysis
+-- Check if email services are configured first
 log("Starting email authentication analysis for: " .. domain)
+local has_email, mx_records = has_email_services()
+
+if not has_email then
+    log("No email services configured (no MX records found) - skipping email authentication checks")
+    add_tag("no-email-services")
+    set_metadata("email_auth.has_email_services", false)
+    set_metadata("email_auth.domain", domain)
+    set_metadata("email_auth.skip_reason", "No MX records found")
+    pass()
+    return
+end
+
+log("Email services detected - proceeding with authentication analysis")
 local email_results = analyze_email_authentication()
 
 -- Set comprehensive metadata
 set_metadata("email_auth.domain", email_results.domain)
 set_metadata("email_auth.total_score", email_results.total_score)
 set_metadata("email_auth.max_possible_score", email_results.max_possible_score)
+set_metadata("email_auth.has_email_services", email_results.has_email_services)
+if #email_results.mx_records > 0 then
+    set_metadata("email_auth.mx_records", table.concat(email_results.mx_records, ", "))
+end
 
 -- Calculate compliance percentage
 local compliance_percentage = 0
@@ -550,6 +597,17 @@ set_metadata("email_auth.compliance_level", compliance_level)
 set_metadata("email_auth.compliance_status", compliance_status)
 set_metadata("email_auth.required_records_found", required_records_found)
 
+-- Check if domain is using ImprovMX
+local using_improvmx = false
+if email_results.spf.found and email_results.spf.records[1] then
+    if string.match(email_results.spf.records[1], "include:spf%.improvmx%.com") then
+        using_improvmx = true
+        log("Detected ImprovMX usage in SPF record")
+        add_tag("uses-improvmx")
+        set_metadata("email_auth.provider", "improvmx")
+    end
+end
+
 -- Update compliance checklists based on results
 if compliance_status == "pass" then
     local pass_message = compliance_level:gsub("^%l", string.upper) .. " email authentication"
@@ -560,7 +618,6 @@ if compliance_status == "pass" then
     
     log("Email authentication compliance: PASS - " .. compliance_level)
     pass()
-    
 elseif compliance_status == "conditional" then
     local conditional_message = "Email authentication partially configured"
     if #email_results.compliance_issues > 0 then
@@ -568,24 +625,51 @@ elseif compliance_status == "conditional" then
     end
     conditional_message = conditional_message .. " (" .. compliance_percentage .. "% compliance)"
     
-    pass_checklist("email-security-authentication-014", conditional_message)
-    fail_checklist("email-spoofing-prevention-020", "Email authentication incomplete")
-    
-    log("Email authentication compliance: CONDITIONAL - " .. conditional_message)
-    pass()
+    -- Special handling for ImprovMX users
+    if using_improvmx and (not email_results.dmarc.found or not email_results.dkim.found) then
+        local improvmx_message = "ImprovMX detected but missing DKIM/DMARC records. "
+        improvmx_message = improvmx_message .. "Configure DKIM and DMARC for ImprovMX SMTP: "
+        improvmx_message = improvmx_message .. "<a class='link' href='https://improvmx.com/guides/adding-dkim-dmarc-records-for-smtp-sending'>https://improvmx.com/guides/adding-dkim-dmarc-records-for-smtp-sending</a>"
+        
+        fail_checklist("email-security-authentication-014", improvmx_message)
+        fail_checklist("email-spoofing-prevention-020", "ImprovMX email authentication incomplete - DKIM/DMARC setup required")
+        
+        log("Email authentication compliance: FAIL - ImprovMX requires DKIM/DMARC setup")
+        reject("ImprovMX email authentication incomplete")
+    else
+        fail_checklist("email-security-authentication-014", conditional_message)
+        fail_checklist("email-spoofing-prevention-020", "Email authentication incomplete")
+        
+        log("Email authentication compliance: CONDITIONAL - " .. conditional_message)
+        reject("Email authentication partially configured but insufficient")
+    end
     
 else
+    -- Email services configured but authentication is insufficient
     local fail_message = "Email authentication insufficient or missing"
     if #email_results.compliance_issues > 0 then
         fail_message = fail_message .. ": " .. table.concat(email_results.compliance_issues, "; ")
     end
     fail_message = fail_message .. " (" .. compliance_percentage .. "% compliance)"
     
-    fail_checklist("email-security-authentication-014", fail_message)
-    fail_checklist("email-spoofing-prevention-020", "Email authentication not configured")
-    
-    log("Email authentication compliance: FAIL - " .. fail_message)
-    reject("Email authentication insufficient")
+    -- Special handling for ImprovMX users
+    if using_improvmx then
+        local improvmx_fail_message = "ImprovMX detected but email authentication is insufficient. "
+        improvmx_fail_message = improvmx_fail_message .. "Setup DKIM and DMARC records: "
+        improvmx_fail_message = improvmx_fail_message .. "<a class='link' href='https://improvmx.com/guides/adding-dkim-dmarc-records-for-smtp-sending'>https://improvmx.com/guides/adding-dkim-dmarc-records-for-smtp-sending</a>"
+        
+        fail_checklist("email-security-authentication-014", improvmx_fail_message)
+        fail_checklist("email-spoofing-prevention-020", "ImprovMX email authentication not properly configured")
+        
+        log("Email authentication compliance: FAIL - ImprovMX setup incomplete")
+        reject("ImprovMX email authentication setup required")
+    else
+        fail_checklist("email-security-authentication-014", fail_message)
+        fail_checklist("email-spoofing-prevention-020", "Email authentication not configured")
+        
+        log("Email authentication compliance: FAIL - " .. fail_message)
+        reject("Email authentication insufficient")
+    end
 end
 
 -- Add descriptive tags

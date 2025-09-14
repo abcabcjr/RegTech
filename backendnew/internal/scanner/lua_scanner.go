@@ -148,6 +148,7 @@ func (s *LuaScanner) ScanAsset(ctx context.Context, asset *model.Asset, scriptNa
 		// Run all applicable scripts
 		scriptNames = s.getApplicableScripts(asset.Type)
 	}
+	fmt.Println("scriptNames", scriptNames)
 
 	var results []*model.ScanResult
 	executed := make(map[string]bool)
@@ -198,6 +199,7 @@ func (s *LuaScanner) ScanAsset(ctx context.Context, asset *model.Asset, scriptNa
 				<-s.workerPool
 				defer func() { s.workerPool <- struct{}{} }()
 
+				fmt.Println("executing script", sc.Name)
 				r := s.executeScript(ctx, asset, sc)
 				mu.Lock()
 				phaseResults = append(phaseResults, r)
