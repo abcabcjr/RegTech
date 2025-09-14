@@ -25,14 +25,15 @@ type ChecklistItemTemplate struct {
 
 // ChecklistItemInfo contains detailed information about a checklist item
 type ChecklistItemInfo struct {
-	WhatItMeans  string                  `json:"what_it_means,omitempty"`
-	WhyItMatters string                  `json:"why_it_matters,omitempty"`
-	LawRefs      []string                `json:"law_refs,omitempty"`
-	Priority     string                  `json:"priority,omitempty"` // "must", "should", "may"
-	Resources    []ChecklistItemResource `json:"resources,omitempty"`
-	Risks        *ChecklistItemRisks     `json:"risks,omitempty"`
-	Guide        *ChecklistItemGuide     `json:"guide,omitempty"`
-	Legal        *ChecklistItemLegal     `json:"legal,omitempty"`
+	WhatItMeans    string                  `json:"what_it_means,omitempty"`
+	WhyItMatters   string                  `json:"why_it_matters,omitempty"`
+	LawRefs        []string                `json:"law_refs,omitempty"`
+	Priority       string                  `json:"priority,omitempty"`        // "critical", "high", "medium", "low"
+	PriorityNumber int                     `json:"priority_number,omitempty"` // Numeric priority (1=critical, 2=high, 3=medium, 4=low)
+	Resources      []ChecklistItemResource `json:"resources,omitempty"`
+	Risks          *ChecklistItemRisks     `json:"risks,omitempty"`
+	Guide          *ChecklistItemGuide     `json:"guide,omitempty"`
+	Legal          *ChecklistItemLegal     `json:"legal,omitempty"`
 }
 
 // ChecklistItemRisks contains risk-related information
@@ -99,13 +100,15 @@ type ChecklistAssignment struct {
 // This is not stored directly but computed on-the-fly for API responses
 type DerivedChecklistItem struct {
 	ChecklistItemTemplate
-	Status        string                 `json:"status"`                   // "yes", "no", "na"
-	Source        string                 `json:"source"`                   // "auto" or "manual"
-	Evidence      map[string]interface{} `json:"evidence,omitempty"`       // Relevant metadata for auto-derived status
-	Notes         string                 `json:"notes,omitempty"`          // From manual assignment
-	UpdatedAt     *time.Time             `json:"updated_at,omitempty"`     // From manual assignment
-	Attachments   []string               `json:"attachments,omitempty"`    // File attachment IDs
-	CoveredAssets []AssetCoverage        `json:"covered_assets,omitempty"` // Assets covered by this check
+	Status         string                 `json:"status"`                    // "yes", "no", "na"
+	Source         string                 `json:"source"`                    // "auto" or "manual"
+	Evidence       map[string]interface{} `json:"evidence,omitempty"`        // Relevant metadata for auto-derived status
+	Notes          string                 `json:"notes,omitempty"`           // From manual assignment
+	UpdatedAt      *time.Time             `json:"updated_at,omitempty"`      // From manual assignment
+	Attachments    []string               `json:"attachments,omitempty"`     // File attachment IDs
+	CoveredAssets  []AssetCoverage        `json:"covered_assets,omitempty"`  // Assets covered by this check
+	Priority       string                 `json:"priority,omitempty"`        // "critical", "high", "medium", "low"
+	PriorityNumber int                    `json:"priority_number,omitempty"` // Numeric priority (1=critical, 2=high, 3=medium, 4=low)
 }
 
 // AssetCoverage represents an asset that is covered by a compliance check

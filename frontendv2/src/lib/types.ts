@@ -3,7 +3,8 @@ export interface InfoBlock {
   whatItMeans: string;
   whyItMatters: string;
   lawRefs: string[];        // e.g., ["Art. 11", "NU-49-MDED-2025 §…"]
-  priority?: 'must' | 'should';
+  priority?: 'critical' | 'high' | 'medium' | 'low';
+  priority_number?: number;  // 1=critical, 2=high, 3=medium, 4=low
   resources?: { title: string; url: string }[];
   guide?: {
     non_technical_steps?: string[];
@@ -19,6 +20,7 @@ export interface InfoBlock {
     requirement_summary?: string;
     article_refs?: string[];
     priority?: string;
+    priority_number?: number;
   };
 }
 
@@ -57,6 +59,8 @@ export interface ChecklistItem {
   evidence?: string;
   lastUpdated?: string;
   recommendation?: string;
+  priority?: 'critical' | 'high' | 'medium' | 'low';
+  priority_number?: number;  // 1=critical, 2=high, 3=medium, 4=low
   kind: 'manual' | 'auto';
   readOnly?: boolean;
   info?: any; // InfoPanelData from mapBackendInfoToInfoPanel

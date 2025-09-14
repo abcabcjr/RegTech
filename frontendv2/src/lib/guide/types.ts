@@ -20,7 +20,8 @@ export interface Guide {
   non_technical_steps: string[];
   law: GuideLaw;
   resources: GuideResource[];
-  priority: "must" | "should";
+  priority: "critical" | "high" | "medium" | "low";
+  priority_number?: number;  // 1=critical, 2=high, 3=medium, 4=low
   // Rich content support
   images?: GuideImage[];
   videos?: GuideVideo[];
@@ -42,6 +43,7 @@ export interface Guide {
     article_refs?: string[];
     quotes?: Array<{text: string; source: string}>;
     priority?: string;
+    priority_number?: number;
   };
 }
 
@@ -106,5 +108,6 @@ export interface InfoBlock {
   why_it_matters: string;
   law_refs: string[];
   priority: string;
+  priority_number?: number;
   resources: GuideResource[];
 }

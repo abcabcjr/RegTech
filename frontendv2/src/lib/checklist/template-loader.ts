@@ -18,7 +18,8 @@ interface JsonTemplate {
     what_it_means: string;
     why_it_matters: string;
     law_refs: string[];
-    priority?: 'must' | 'should';
+    priority?: 'critical' | 'high' | 'medium' | 'low';
+    priority_number?: number;
     resources?: Array<{ title: string; url: string }>;
     non_technical_steps?: string[];
     scope_caveats?: string;
@@ -84,7 +85,8 @@ function convertJsonTemplateToChecklistItem(template: JsonTemplate): ChecklistIt
     whatItMeans: template.info.what_it_means,
     whyItMatters: template.info.why_it_matters,
     lawRefs: template.info.law_refs,
-    priority: template.info.priority,
+    priority: template.priority,
+    priority_number: template.priority_number,
     resources: template.info.resources,
     guide: {
       non_technical_steps: template.info.non_technical_steps,

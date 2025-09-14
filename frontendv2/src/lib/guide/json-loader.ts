@@ -30,6 +30,8 @@ export function convertRawTemplatesToEnhanced(rawData: RawTemplatesData): Templa
       kind: rawTemplate.kind,
       read_only: rawTemplate.read_only,
       script_controlled: rawTemplate.script_controlled,
+      priority: rawTemplate.priority,
+      priority_number: rawTemplate.priority_number,
       guide: guide
     };
   });

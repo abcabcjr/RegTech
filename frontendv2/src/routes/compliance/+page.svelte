@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { scale, fly } from 'svelte/transition';
+	import { quintOut } from 'svelte/easing';
 	import type { ChecklistState, ChecklistItem } from '$lib/types';
 	import { loadChecklistState, saveChecklistState } from '$lib/persistence';
 	// Remove hardcoded imports - we'll load from backend instead
@@ -45,6 +47,10 @@
 	// Update status tracking
 	let updatingItems: Set<string> = $state(new Set());
 	let updateError: string | null = $state(null);
+
+	// Floating progress bar state
+	let showFloatingProgress: boolean = $state(false);
+	let progressBarElement: HTMLElement | null = $state(null);
 
 	// Convert backend templates to sections format, filtered by type
 	// Note: This is reactive to activeView, backendTemplates, currentChecklistData, and checklistState
@@ -104,14 +110,30 @@
 	function convertTemplatesToSections(templates: any[]) {
 		if (!templates || templates.length === 0) return [];
 
-		// Sort templates by priority (must first), then category, then title
+		// Sort templates by priority (critical first), then category, then title
 		const sortedTemplates = [...templates].sort((a, b) => {
-			// Priority order: "must" comes before "should", then others
-			const priorityA = a.info?.priority || 'other';
-			const priorityB = b.info?.priority || 'other';
-			const priorityOrder: Record<string, number> = { must: 0, should: 1, other: 2 };
+			// Priority order: critical > high > medium > low
+			const priorityA = a.priority_number || a.priority || 'other';
+			const priorityB = b.priority_number || b.priority || 'other';
+			
+			// Use priority_number if available, otherwise fall back to priority text
+			let priorityComparisonA: number, priorityComparisonB: number;
+			
+			if (typeof priorityA === 'number') {
+				priorityComparisonA = priorityA;
+			} else {
+				const priorityOrder: Record<string, number> = { critical: 1, high: 2, medium: 3, low: 4, other: 5 };
+				priorityComparisonA = priorityOrder[priorityA] || 5;
+			}
+			
+			if (typeof priorityB === 'number') {
+				priorityComparisonB = priorityB;
+			} else {
+				const priorityOrder: Record<string, number> = { critical: 1, high: 2, medium: 3, low: 4, other: 5 };
+				priorityComparisonB = priorityOrder[priorityB] || 5;
+			}
 
-			const priorityComparison = (priorityOrder[priorityB] || 2) - (priorityOrder[priorityA] || 2);
+			const priorityComparison = priorityComparisonA - priorityComparisonB;
 			if (priorityComparison !== 0) return priorityComparison;
 
 			// Then by category
@@ -168,7 +190,9 @@
 				lastUpdated: savedItem?.lastUpdated || template.updated_at,
 				attachments: savedItem?.attachments || template.attachments || [], // Use saved attachments first, then template attachments
 				coveredAssets: template.covered_assets || [], // Templates now include covered assets from backend
-				info: template.info ? mapBackendInfoToInfoPanel(template.info) : undefined
+				info: template.info ? mapBackendInfoToInfoPanel(template.info) : undefined,
+				priority: template.priority,
+				priority_number: template.priority_number
 			};
 
 			// Debug logging
@@ -182,16 +206,25 @@
 			categoryMap.get(category).items.push(item);
 		});
 
-		// Convert to array and sort categories by priority (categories with "must" items first)
+		// Convert to array and sort categories by priority (categories with "critical" items first)
 		const sections = Array.from(categoryMap.values()).sort((a, b) => {
-			// Check if section has any "must" priority items
-			const aHasMust = a.items.some((item: any) => item.info?.priority === 'must');
-			const bHasMust = b.items.some((item: any) => item.info?.priority === 'must');
+			// Get the highest priority in each section (lowest number = highest priority)
+			const getHighestPriority = (items: any[]) => {
+				return Math.min(...items.map((item: any) => 
+					item.priority_number || 
+					(item.priority === 'critical' ? 1 : 
+					 item.priority === 'high' ? 2 : 
+					 item.priority === 'medium' ? 3 : 
+					 item.priority === 'low' ? 4 : 5)
+				));
+			};
 
-			if (aHasMust && !bHasMust) return -1;
-			if (!aHasMust && bHasMust) return 1;
+			const aPriority = getHighestPriority(a.items);
+			const bPriority = getHighestPriority(b.items);
 
-			// If both have must items or both don't, sort by category name
+			if (aPriority !== bPriority) return aPriority - bPriority;
+
+			// If same priority, sort by category name
 			return a.title.localeCompare(b.title);
 		});
 
@@ -202,14 +235,30 @@
 	function convertGlobalChecklistToSections(checklistItems: any[]) {
 		if (!checklistItems || checklistItems.length === 0) return [];
 
-		// Sort checklist items by priority (must first), then category, then title
+		// Sort checklist items by priority (critical first), then category, then title
 		const sortedItems = [...checklistItems].sort((a, b) => {
-			// Priority order: "must" comes before "should", then others
-			const priorityA = a.info?.priority || 'other';
-			const priorityB = b.info?.priority || 'other';
-			const priorityOrder: Record<string, number> = { must: 0, should: 1, other: 2 };
+			// Priority order: critical > high > medium > low
+			const priorityA = a.priority_number || a.priority || 'other';
+			const priorityB = b.priority_number || b.priority || 'other';
+			
+			// Use priority_number if available, otherwise fall back to priority text
+			let priorityComparisonA: number, priorityComparisonB: number;
+			
+			if (typeof priorityA === 'number') {
+				priorityComparisonA = priorityA;
+			} else {
+				const priorityOrder: Record<string, number> = { critical: 1, high: 2, medium: 3, low: 4, other: 5 };
+				priorityComparisonA = priorityOrder[priorityA] || 5;
+			}
+			
+			if (typeof priorityB === 'number') {
+				priorityComparisonB = priorityB;
+			} else {
+				const priorityOrder: Record<string, number> = { critical: 1, high: 2, medium: 3, low: 4, other: 5 };
+				priorityComparisonB = priorityOrder[priorityB] || 5;
+			}
 
-			const priorityComparison = (priorityOrder[priorityB] || 2) - (priorityOrder[priorityA] || 2);
+			const priorityComparison = priorityComparisonA - priorityComparisonB;
 			if (priorityComparison !== 0) return priorityComparison;
 
 			// Then by category
@@ -275,6 +324,8 @@
 				status: useBackendDataOnly ? item.status || 'na' : savedItem?.status || item.status || 'no',
 				recommendation: item.recommendation,
 				kind: item.kind || item.source || 'auto',
+				priority: item.priority,
+				priority_number: item.priority_number,
 				scope: item.scope, // Add scope field
 				readOnly: item.read_only || false, // Use actual read_only field from backend
 				// FOR BUSINESS UNITS: Use ONLY backend notes, ignore local state
@@ -301,16 +352,25 @@
 			categoryMap.get(category).items.push(frontendItem);
 		});
 
-		// Convert to array and sort categories by priority (categories with "must" items first)
+		// Convert to array and sort categories by priority (categories with "critical" items first)
 		const sections = Array.from(categoryMap.values()).sort((a, b) => {
-			// Check if section has any "must" priority items
-			const aHasMust = a.items.some((item: any) => item.info?.priority === 'must');
-			const bHasMust = b.items.some((item: any) => item.info?.priority === 'must');
+			// Get the highest priority in each section (lowest number = highest priority)
+			const getHighestPriority = (items: any[]) => {
+				return Math.min(...items.map((item: any) => 
+					item.priority_number || 
+					(item.priority === 'critical' ? 1 : 
+					 item.priority === 'high' ? 2 : 
+					 item.priority === 'medium' ? 3 : 
+					 item.priority === 'low' ? 4 : 5)
+				));
+			};
 
-			if (aHasMust && !bHasMust) return -1;
-			if (!aHasMust && bHasMust) return 1;
+			const aPriority = getHighestPriority(a.items);
+			const bPriority = getHighestPriority(b.items);
 
-			// If both have must items or both don't, sort by category name
+			if (aPriority !== bPriority) return aPriority - bPriority;
+
+			// If same priority, sort by category name
 			return a.title.localeCompare(b.title);
 		});
 
@@ -499,23 +559,19 @@
 		const sections = displaySections();
 		if (sections.length === 0) return 0;
 
+		// Only count required items that are not marked as "na" (not applicable)
 		const totalRequired = sections.reduce(
-			(acc, section) => acc + section.items.filter((item: any) => item.required).length,
+			(acc, section) => acc + section.items.filter((item: any) => item.required && item.status !== 'na').length,
 			0
 		);
 
-		// For manual items, check against saved state; for auto items, they don't have saved state
-		let completedRequired = 0;
-		if (activeView === 'manual') {
-			completedRequired = sections.reduce((acc, section) => {
-				const sectionState = checklistState.sections.find((s) => s.id === section.id);
-				if (!sectionState) return acc;
-				return (
-					acc +
-					sectionState.items.filter((item: any) => item.required && item.status === 'yes').length
-				);
-			}, 0);
-		}
+		// Count completed items directly from the displayed sections (they already have current status)
+		const completedRequired = sections.reduce((acc, section) => {
+			return (
+				acc +
+				section.items.filter((item: any) => item.required && item.status === 'yes').length
+			);
+		}, 0);
 
 		return totalRequired > 0 ? Math.round((completedRequired / totalRequired) * 100) : 0;
 	});
@@ -753,9 +809,29 @@
 
 		init();
 
+		// Setup scroll listener for floating progress bar
+		const handleScroll = () => {
+			if (progressBarElement && activeView === 'manual') {
+				const rect = progressBarElement.getBoundingClientRect();
+				// Show floating progress when the original is out of view (above the viewport)
+				// Account for the sticky header height (approximately 80px)
+				showFloatingProgress = rect.bottom < 80;
+			} else {
+				showFloatingProgress = false;
+			}
+		};
+
+		window.addEventListener('scroll', handleScroll);
+		
+		// Also check on view changes
+		const checkFloatingProgress = () => {
+			setTimeout(handleScroll, 100); // Small delay to ensure DOM is updated
+		};
+
 		// Cleanup function
 		return () => {
 			assetStore.unregisterComplianceRefreshCallback(refreshComplianceData);
+			window.removeEventListener('scroll', handleScroll);
 		};
 	});
 
@@ -767,11 +843,27 @@
 		dataRefreshTimestamp = Date.now();
 		console.log('🔄 Data refresh timestamp updated:', dataRefreshTimestamp);
 	}
+
+	// Reactive statement to handle view changes
+	$effect(() => {
+		// When activeView changes, check floating progress after a short delay
+		if (typeof window !== 'undefined') {
+			setTimeout(() => {
+				if (progressBarElement && activeView === 'manual') {
+					const rect = progressBarElement.getBoundingClientRect();
+					showFloatingProgress = rect.bottom < 80;
+				} else {
+					showFloatingProgress = false;
+				}
+			}, 100);
+		}
+	});
 </script>
 
-<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-	<div class="mb-8">
-		<div class="mb-4 flex items-center justify-between">
+<!-- Sticky Header -->
+<div class="sticky top-0 z-50 bg-background border-b border-border">
+	<div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+		<div class="flex items-center justify-between">
 			<h1 class="text-foreground text-3xl font-bold">Compliance Checklist</h1>
 			<div class="flex items-center gap-4">
 				<div class="flex gap-2">
@@ -807,6 +899,42 @@
 				</div>
 			</div>
 		</div>
+	</div>
+</div>
+
+<!-- Floating Progress Bar (shown when original scrolls out of view) -->
+{#if showFloatingProgress && activeView === 'manual'}
+	<div 
+		class="fixed top-20 left-1/2 transform -translate-x-1/2 z-40 bg-background border border-border rounded-4xl shadow-md px-3 py-2 w-[20rem]"
+		in:fly={{ y: -20, duration: 400, easing: quintOut }}
+		out:scale={{ start: 0.95, duration: 200, easing: quintOut }}
+	>
+		<div class="flex items-center justify-between gap-2 mt-1">
+			<span class="text-xs text-muted-foreground font-medium">
+				{displaySections().reduce((acc, section) => {
+					return (
+						acc +
+						section.items.filter(
+							(item: any) => item.required && item.status === 'yes'
+						).length
+					);
+				}, 0)}/{displaySections().reduce(
+					(acc, section) =>
+						acc + section.items.filter((item: any) => item.required && item.status !== 'na').length,
+					0
+				)}
+			</span>
+			<ProgressBar value={complianceScore()} size="sm" />
+			<span class="text-xs text-muted-foreground font-medium">{complianceScore()}%</span>
+		</div>
+		<div class="text-xs text-muted-foreground mt-1 text-center">
+		</div>
+	</div>
+{/if}
+
+<!-- Main Content -->
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+	<div class="mb-8">
 
 		<!-- Upload Status Messages -->
 		{#if uploadSuccess}
@@ -947,7 +1075,8 @@
 					<div class="mb-6">
 						<BusinessUnitCard onBusinessUnitChange={handleBusinessUnitChange} />
 					</div>
-					<Card.Root class="mb-6">
+					<div bind:this={progressBarElement}>
+						<Card.Root class="mb-6">
 						<Card.Header>
 							<Card.Title>Manual Compliance Templates</Card.Title>
 							<Card.Description>
@@ -960,17 +1089,15 @@
 								<div class="text-muted-foreground mt-2 flex justify-between text-sm">
 									<span>
 										{displaySections().reduce((acc, section) => {
-											const sectionState = checklistState.sections.find((s) => s.id === section.id);
-											if (!sectionState) return acc;
 											return (
 												acc +
-												sectionState.items.filter(
+												section.items.filter(
 													(item: any) => item.required && item.status === 'yes'
 												).length
 											);
 										}, 0)} of {displaySections().reduce(
 											(acc, section) =>
-												acc + section.items.filter((item: any) => item.required).length,
+												acc + section.items.filter((item: any) => item.required && item.status !== 'na').length,
 											0
 										)} required items completed
 									</span>
@@ -985,6 +1112,7 @@
 							{/if}
 						</Card.Content>
 					</Card.Root>
+					</div>
 
 					{#if templatesLoading}
 						<div class="flex items-center justify-center p-8">
@@ -1050,10 +1178,59 @@
 							</Card.Description>
 						</Card.Header>
 						<Card.Content>
-							<div class="text-muted-foreground bg-muted/30 rounded-md p-4 text-sm">
-								<strong>Note:</strong> Only showing automatic compliance checks that have non-compliant
-								assets. These require immediate attention to ensure compliance.
-							</div>
+							<!-- Priority Overview -->
+							{#if displaySections().length > 0}
+								{@const priorityCounts = displaySections().reduce((counts, section) => {
+									section.items.forEach((item: any) => {
+										const priority = item.priority || 'other';
+										counts[priority] = (counts[priority] || 0) + 1;
+									});
+									return counts;
+								}, {})}
+								
+								<div class="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+									{#if priorityCounts.critical > 0}
+										<div class="rounded-lg border border-red-200 bg-red-50 p-3">
+											<div class="text-center">
+												<div class="text-2xl font-bold text-red-700">{priorityCounts.critical}</div>
+												<div class="text-xs text-red-600">Critical</div>
+											</div>
+										</div>
+									{/if}
+									{#if priorityCounts.high > 0}
+										<div class="rounded-lg border border-orange-200 bg-orange-50 p-3">
+											<div class="text-center">
+												<div class="text-2xl font-bold text-orange-700">{priorityCounts.high}</div>
+												<div class="text-xs text-orange-600">High</div>
+											</div>
+										</div>
+									{/if}
+									{#if priorityCounts.medium > 0}
+										<div class="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+											<div class="text-center">
+												<div class="text-2xl font-bold text-yellow-700">{priorityCounts.medium}</div>
+												<div class="text-xs text-yellow-600">Medium</div>
+											</div>
+										</div>
+									{/if}
+									{#if priorityCounts.low > 0}
+										<div class="rounded-lg border border-blue-200 bg-blue-50 p-3">
+											<div class="text-center">
+												<div class="text-2xl font-bold text-blue-700">{priorityCounts.low}</div>
+												<div class="text-xs text-blue-600">Low</div>
+											</div>
+										</div>
+									{/if}
+									{#if priorityCounts.other > 0}
+										<div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
+											<div class="text-center">
+												<div class="text-2xl font-bold text-gray-700">{priorityCounts.other}</div>
+												<div class="text-xs text-gray-600">Other</div>
+											</div>
+										</div>
+									{/if}
+								</div>
+							{/if}
 						</Card.Content>
 					</Card.Root>
 

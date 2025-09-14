@@ -19,7 +19,8 @@
           "Legea nr. 48/2023, art. 11(2) pct. 1 (evaluarea vulnerabilităților și riscurilor și raport de evaluare)",
           "HG NU-49-MDED-2025, cap. II, pct. 5–8 (evaluări de risc documentate, plan de tratare, criterii, toleranță, actualizare cel puțin anual)"
         ],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           { "title": "ENISA Risk Management Approach (NIS2)", "url": "https://www.enisa.europa.eu/publications/risk-management" },
           { "title": "NIST SP 800-30 Rev.1 – Guide for Conducting Risk Assessments", "url": "https://csrc.nist.gov/publications/detail/sp/800-30/rev-1/final" },
@@ -95,7 +96,8 @@
           "Legea nr. 48/2023, art. 11(2) pct. 2) lit. a)–j) (politici/proceduri: risc, incidente, criptografie, evaluarea eficacității, continuitate/BCP, resurse umane & control acces, lanț de aprovizionare, igienă cibernetică & formare, autentificare & comunicații securizate)",
           "HG NU-49-MDED-2025 (cerințe organizatorice: politici aprobate, roluri/ responsabilități, actualizare periodică, evidențe de conformitate)"
         ],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           { "title": "SANS — Free Security Policy Templates", "url": "https://www.sans.org/information-security-policy/" },
           { "title": "NCSC (UK) — Create or improve your cyber security policies", "url": "https://www.ncsc.gov.uk/collection/board-toolkit/appointing-a-board-level-lead/creating-security-policies" },
@@ -156,7 +158,8 @@
           "HG NU-49-MDED-2025: pct. 129 (identity lifecycle), pct. 130–133 (secure authentication controls), pct. 134–135 (multifactor/continuous authentication per asset classification), pct. 131.6 (separate credentials for privileged/admin access)",
           "Legea nr. 48/2023: art. 11(2) lit. g), j) (controlul accesului; soluții de autentificare)"
         ],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           { "title": "NCSC-UK: Multi-factor authentication (MFA) for online services", "url": "https://www.ncsc.gov.uk/guidance/multi-factor-authentication-mfa-for-online-services" },
           { "title": "CISA: Phishing-Resistant MFA (FIDO2/WebAuthn)", "url": "https://www.cisa.gov/resources-tools/resources/phishing-resistant-mfa" },
@@ -234,7 +237,8 @@
           "GD NU-49-MDED-2025: pts. 121–123 (privileged/admin accounts: strong auth incl. MFA, dedicated admin accounts, planned reviews)",
           "GD NU-49-MDED-2025: pts. 115–117 (documented access control policy; only authenticated users get access; policy reviewed periodically)"
         ],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           { "title": "Microsoft Entra ID — Access reviews (how-to)", "url": "https://learn.microsoft.com/azure/active-directory/governance/access-reviews-overview" },
           { "title": "Okta — Access Certifications best practices", "url": "https://help.okta.com/oie/en-us/Content/Topics/identity-governance/access-certifications.htm" },
@@ -309,7 +313,8 @@
           "HG NU-49-MDED-2025: pct. 23 (păstrare jurnale ≥12 luni)",
           "HG NU-49-MDED-2025: pct. 24 (sincronizare timp, listă active, redundanță)"
         ],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           { "title": "NIST SP 800-92: Guide to Computer Security Log Management (PDF)", "url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-92.pdf" },
           { "title": "RFC 5424: The Syslog Protocol", "url": "https://www.rfc-editor.org/rfc/rfc5424" },
@@ -452,7 +457,8 @@
           "HG NU-49-MDED-2025: pct. 24 (sincronizare timp; listă active; redundanță)",
           "Legea nr. 48/2023: art. 11(2) pct. 4 (monitorizarea situației securității rețelelor și sistemelor)"
         ],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           { "title": "NIST SP 800-92 — Guide to Computer Security Log Management (PDF)", "url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-92.pdf" },
           { "title": "CISA — Logging Made Simple (essentials & retention)", "url": "https://www.cisa.gov/resources-tools/resources/security-design-logging" },
@@ -570,7 +576,8 @@
           "HG NU-49-MDED-2025, pct. 39–41 — Plan de continuitate și plan de recuperare în caz de dezastru (BIA, testare, revizuire)",
           "HG NU-49-MDED-2025, pct. 42–47 — Gestionarea copiilor de rezervă și a redundanței (planuri de rezervă, stocare separată, controale de acces, verificări de integritate, testarea recuperării)"
         ],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           { "title": "UK NCSC — Backing up your data (plain-English guide)", "url": "https://www.ncsc.gov.uk/collection/small-business-guide/backing-up-your-data" },
           { "title": "CISA — Ransomware Guide (backup best practices)", "url": "https://www.cisa.gov/stopransomware/ransomware-guide" },
@@ -645,7 +652,8 @@
           "Legea nr. 48/2023, art. 11(2) lit. e) (continuitatea activității și gestionarea crizelor)",
           "Legea nr. 48/2023, art. 11(2) lit. d) (evaluarea eficacității măsurilor de securitate)"
         ],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           { "title": "NCSC (UK) — Backing up your data (includes testing)", "url": "https://www.ncsc.gov.uk/collection/small-business-guide/backing-up-your-data" },
           { "title": "CISA — Ransomware Guide (backup & restore testing)", "url": "https://www.cisa.gov/stopransomware/ransomware-guide" },
@@ -719,7 +727,8 @@
           "HG NU-49-MDED-2025: Autentificare și MFA (pct. 130–134); Criptografie (pct. 102–104); Igienă cibernetică și formare (pct. 94–101)",
           "Legea nr. 48/2023: art. 11(2) – măsuri tehnice/organizatorice (inclusiv criptografie, control acces, comunicări securizate, igienă cibernetică)"
         ],
-        "priority": "should",
+        "priority": "medium",
+        "priority_number": 3,
         "resources": [
           {"title": "DMARC — Overview (dmarc.org)", "url": "https://dmarc.org/overview/"},
           {"title": "RFC 7489 — DMARC", "url": "https://www.rfc-editor.org/rfc/rfc7489"},
@@ -786,7 +795,8 @@
           "HG NU-49-MDED-2025, pct. 9 (audit at least every 3 years; report due to the Agency in 1 month)",
           "Legea nr. 48/2023, art. 11(2) pct. 6 (verifying completeness incl. via security audits)"
         ],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           { "title": "ISO 19011 — Guidelines for auditing management systems (overview)", "url": "https://www.iso.org/standard/70017.html" },
           { "title": "ISACA — IT Audit Basics & Resources", "url": "https://www.isaca.org/resources/it-audit" },
@@ -854,7 +864,8 @@
           "HG NU-49-MDED-2025, pct. 9 (security audits at least once every 3 years)",
           "Legea nr. 48/2023, art. 11(4)(a) (Guvernul asigură aprobarea standardelor naționale)"
         ],
-        "priority": "should",
+        "priority": "medium",
+        "priority_number": 3,
   "resources": [
   { "title": "ISO/IEC 27001:2022 — official ISO overview", "url": "https://www.iso.org/standard/27001" },
   { "title": "ISO/IEC 27001:2022/Amd 1:2024 — Climate action changes", "url": "https://www.iso.org/standard/88435.html" },
@@ -1012,7 +1023,8 @@
         "what_it_means": "Valid SSL/TLS certificate that enables encrypted communication between users and your website.",
         "why_it_matters": "Ensures encrypted communication, builds user trust, and prevents data interception.",
         "law_refs": ["Art. 16 - Data Encryption", "NU-49-MDED-2025 §8.3"],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           {"title": "SSL Certificate Guide", "url": "https://example.com/ssl-guide"}
         ]
@@ -1035,7 +1047,8 @@
         "what_it_means": "HTTP security headers that provide additional protection against common web vulnerabilities and attacks.",
         "why_it_matters": "Prevents common web attacks like clickjacking, XSS, and protocol downgrade attacks.",
         "law_refs": ["Art. 16 - Data Encryption", "NU-49-MDED-2025 §8.3"],
-        "priority": "should",
+        "priority": "high",
+        "priority_number": 2,
         "resources": [
           {"title": "Security Headers Guide", "url": "https://example.com/security-headers"}
         ]
@@ -1058,7 +1071,8 @@
         "what_it_means": "Identification of unnecessary open network ports that could be exploited by attackers.",
         "why_it_matters": "Reduces attack surface by closing unnecessary entry points to your systems.",
         "law_refs": ["Art. 17 - Vulnerability Management", "NU-49-MDED-2025 §8.4"],
-        "priority": "should",
+        "priority": "high",
+        "priority_number": 2,
         "resources": [
           {"title": "Port Security Guide", "url": "https://example.com/port-security"}
         ]
@@ -1081,7 +1095,8 @@
         "what_it_means": "Proper authentication and authorization controls for all exposed network services.",
         "why_it_matters": "Prevents unauthorized access to sensitive services and data, especially critical for database and admin services.",
         "law_refs": ["Art. 8 - Access Controls", "NU-49-MDED-2025 §5.2"],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           {"title": "Service Authentication Guide", "url": "https://example.com/service-auth"}
         ]
@@ -1104,7 +1119,8 @@
         "what_it_means": "Comprehensive security configuration for web services including encryption, authentication, and protective headers.",
         "why_it_matters": "Protects web applications from common attacks and ensures data is encrypted in transit.",
         "law_refs": ["Art. 16 - Data Encryption", "NU-49-MDED-2025 §8.3"],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           {"title": "Web Security Best Practices", "url": "https://example.com/web-security"}
         ]
@@ -1127,7 +1143,8 @@
         "what_it_means": "Automatic redirection that forces all HTTP traffic to use HTTPS encryption.",
         "why_it_matters": "Ensures all web traffic is encrypted and prevents accidental transmission of sensitive data over unencrypted connections.",
         "law_refs": ["Art. 16 - Data Encryption", "NU-49-MDED-2025 §8.3"],
-        "priority": "should",
+        "priority": "low",
+        "priority_number": 4,
         "resources": [
           {"title": "HTTPS Redirect Configuration", "url": "https://example.com/https-redirect"}
         ]
@@ -1150,7 +1167,8 @@
         "what_it_means": "Detection of insecure network protocols that transmit data in plaintext or have known security vulnerabilities.",
         "why_it_matters": "Insecure protocols can be easily intercepted, allowing attackers to steal credentials and sensitive data.",
         "law_refs": ["Art. 17 - Vulnerability Management", "NU-49-MDED-2025 §8.4"],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           {"title": "Secure Protocol Migration Guide", "url": "https://example.com/secure-protocols"}
         ]
@@ -1173,7 +1191,8 @@
         "what_it_means": "Detection of development, staging, and test environments that are inadvertently exposed to the public internet.",
         "why_it_matters": "Development environments often contain sensitive information, debug data, and may have weaker security controls.",
         "law_refs": ["Art. 17 - Vulnerability Management", "NU-49-MDED-2025 §8.4"],
-        "priority": "should",
+        "priority": "medium",
+        "priority_number": 3,
         "resources": [
           {"title": "Environment Security Guide", "url": "https://example.com/env-security"}
         ]
@@ -1196,7 +1215,8 @@
         "what_it_means": "Detection of high-risk network services that are commonly targeted by attackers and should not be directly accessible from the internet.",
         "why_it_matters": "Services like RDP, SMB, and database ports are frequently targeted in automated attacks and should be protected by VPN or other secure access methods.",
         "law_refs": ["Art. 17 - Vulnerability Management", "NU-49-MDED-2025 §8.4"],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           {"title": "Network Security Architecture", "url": "https://example.com/network-security"}
         ]
@@ -1219,7 +1239,8 @@
         "what_it_means": "Validation that TLS connections use modern protocol versions (TLS 1.2+) with secure configurations.",
         "why_it_matters": "Older TLS versions have known vulnerabilities and weaker encryption that can be exploited by attackers.",
         "law_refs": ["Art. 16 - Data Encryption", "NU-49-MDED-2025 §8.3"],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           {"title": "TLS Best Practices", "url": "https://example.com/tls-guide"}
         ]
@@ -1242,7 +1263,8 @@
         "what_it_means": "Analysis of cryptographic cipher suites to ensure use of strong, modern encryption algorithms.",
         "why_it_matters": "Weak cipher suites can be broken by attackers, compromising encrypted communications.",
         "law_refs": ["Art. 16 - Data Encryption", "NU-49-MDED-2025 §8.3"],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           {"title": "Cipher Suite Configuration", "url": "https://example.com/cipher-guide"}
         ]
@@ -1265,7 +1287,8 @@
         "what_it_means": "Comprehensive assessment of cryptographic implementations including certificates, ciphers, and encryption protocols.",
         "why_it_matters": "Proper cryptographic controls are essential for protecting sensitive data and maintaining communication security.",
         "law_refs": ["Art. 16 - Data Encryption", "NU-49-MDED-2025 §8.3"],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           {"title": "Cryptographic Standards Guide", "url": "https://example.com/crypto-standards"}
         ]
@@ -1288,7 +1311,8 @@
         "what_it_means": "Overall assessment of transport layer security including TLS protocols, encryption strength, and security configurations.",
         "why_it_matters": "Complete transport security is essential for protecting data in transit from interception and tampering.",
         "law_refs": ["Art. 16 - Data Encryption", "NU-49-MDED-2025 §8.3"],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           {"title": "TLS Security Guide", "url": "https://example.com/tls-security"}
         ]
@@ -1311,7 +1335,8 @@
         "what_it_means": "Comprehensive web security hardening including security headers, secure redirects, and authentication controls.",
         "why_it_matters": "Web hardening measures protect against common web attacks and improve overall application security.",
         "law_refs": ["Art. 15 - Security Measures", "NU-49-MDED-2025 §8.2"],
-        "priority": "should",
+        "priority": "high",
+        "priority_number": 2,
         "resources": [
           {"title": "Web Security Hardening", "url": "https://example.com/web-hardening"}
         ]
@@ -1334,7 +1359,8 @@
         "what_it_means": "Implementation of email authentication protocols to prevent spoofing and improve email security.",
         "why_it_matters": "Email authentication prevents attackers from sending emails that appear to come from your domain.",
         "law_refs": ["Art. 18 - Communication Security", "NU-49-MDED-2025 §9.1"],
-        "priority": "should",
+        "priority": "medium",
+        "priority_number": 3,
         "resources": [
           {"title": "Email Authentication Guide", "url": "https://example.com/email-auth"}
         ]
@@ -1357,7 +1383,8 @@
         "what_it_means": "Advanced email security measures that prevent attackers from sending emails that appear to come from your domain.",
         "why_it_matters": "Spoofed emails are commonly used in phishing attacks and can damage organizational reputation.",
         "law_refs": ["Art. 18 - Communication Security", "NU-49-MDED-2025 §9.1"],
-        "priority": "should",
+        "priority": "low",
+        "priority_number": 4,
         "resources": [
           {"title": "Anti-Spoofing Guide", "url": "https://example.com/anti-spoofing"}
         ]
@@ -1380,7 +1407,8 @@
         "what_it_means": "Systematic identification and management of known security vulnerabilities in your systems and software.",
         "why_it_matters": "Known vulnerabilities have public exploit information, making unpatched systems easy targets for attackers.",
         "law_refs": ["Art. 17 - Vulnerability Management", "NU-49-MDED-2025 §8.4"],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           {"title": "Vulnerability Management Guide", "url": "https://example.com/vuln-mgmt"}
         ]
@@ -1403,7 +1431,8 @@
         "what_it_means": "Ongoing monitoring of Common Vulnerabilities and Exposures databases to identify new security risks.",
         "why_it_matters": "New vulnerabilities are constantly discovered, requiring continuous monitoring to maintain security.",
         "law_refs": ["Art. 17 - Vulnerability Management", "NU-49-MDED-2025 §8.4"],
-        "priority": "should",
+        "priority": "low",
+        "priority_number": 4,
         "resources": [
           {"title": "CVE Monitoring Tools", "url": "https://example.com/cve-monitoring"}
         ]
@@ -1426,7 +1455,8 @@
         "what_it_means": "Comprehensive cataloging of all services accessible from the internet with risk assessment.",
         "why_it_matters": "Organizations often have more internet-facing services than they realize, creating unmanaged security risks.",
         "law_refs": ["Art. 15 - Security Measures", "NU-49-MDED-2025 §8.1"],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           {"title": "Network Inventory Guide", "url": "https://example.com/network-inventory"}
         ]
@@ -1449,7 +1479,8 @@
         "what_it_means": "Security hardening measures applied to internet-facing services including authentication, encryption, and access controls.",
         "why_it_matters": "Exposed services without proper hardening are common entry points for cyber attacks.",
         "law_refs": ["Art. 15 - Security Measures", "NU-49-MDED-2025 §8.2"],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           {"title": "Service Hardening Guide", "url": "https://example.com/service-hardening"}
         ]
@@ -1472,7 +1503,8 @@
         "what_it_means": "Comprehensive measures to protect sensitive data including encryption, access controls, and secure handling procedures.",
         "why_it_matters": "Proper data protection is essential for privacy, compliance, and preventing data breaches.",
         "law_refs": ["Art. 14 - Data Protection", "NU-49-MDED-2025 §7.1"],
-        "priority": "must",
+        "priority": "critical",
+        "priority_number": 1,
         "resources": [
           {"title": "Data Protection Guide", "url": "https://example.com/data-protection"}
         ]

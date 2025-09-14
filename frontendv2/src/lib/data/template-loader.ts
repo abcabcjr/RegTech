@@ -22,7 +22,8 @@ export interface ChecklistTemplate {
 		what_it_means?: string;
 		why_it_matters?: string;
 		law_refs?: string[];
-		priority?: 'must' | 'should';
+		priority?: 'critical' | 'high' | 'medium' | 'low';
+		priority_number?: number;
 		resources?: Array<{
 			title: string;
 			url: string;
@@ -212,11 +213,14 @@ class TemplateLoaderService {
 				attachments: [],
 				notes: '',
 				coveredAssets: [],
+				priority: template.priority,
+				priority_number: template.priority_number,
 				info: template.info ? {
 					whatItMeans: template.info.what_it_means || template.description,
 					whyItMatters: template.info.why_it_matters || template.why_matters,
 					lawRefs: template.info.legal?.article_refs || [],
-					priority: template.info.priority || (template.required ? 'must' : 'should'),
+					priority: template.priority,
+					priority_number: template.priority_number,
 					resources: template.info.resources || [],
 					guide: {
 						non_technical_steps: template.info.guide?.non_technical_steps || [],
@@ -302,7 +306,8 @@ class TemplateLoaderService {
 			whatItMeans: template.info.what_it_means || template.description || '',
 			whyItMatters: template.info.why_it_matters || template.why_matters || '',
 			lawRefs: template.info.legal?.article_refs || [],
-			priority: template.info.priority || (template.required ? 'must' : 'should'),
+			priority: template.priority,
+			priority_number: template.priority_number,
 			resources: template.info.resources || [],
 			guide: {
 				non_technical_steps: template.info.guide?.non_technical_steps || [],

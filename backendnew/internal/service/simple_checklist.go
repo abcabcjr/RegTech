@@ -118,6 +118,8 @@ func (s *SimpleChecklistService) GetBusinessUnitChecklist(ctx context.Context, b
 				Status:                model.ChecklistStatusNA,
 				Source:                model.ChecklistSourceManual,
 				Evidence:              make(map[string]interface{}),
+				Priority:              template.Info.Priority,
+				PriorityNumber:        template.Info.PriorityNumber,
 			}
 
 			// Check if there's a status for this item in this business unit
@@ -180,6 +182,8 @@ func (s *SimpleChecklistService) GetAllAssetTemplates(ctx context.Context) ([]*m
 				Status:                model.ChecklistStatusNA,
 				Source:                model.ChecklistSourceManual,
 				Evidence:              make(map[string]interface{}),
+				Priority:              template.Info.Priority,
+				PriorityNumber:        template.Info.PriorityNumber,
 			}
 
 			// If template has evidence rules or is script controlled, it's automated
@@ -352,6 +356,8 @@ func (s *SimpleChecklistService) ListTemplatesWithCoverage(ctx context.Context) 
 			Status:                model.ChecklistStatusNA,
 			Source:                model.ChecklistSourceManual,
 			Evidence:              make(map[string]interface{}),
+			Priority:              template.Info.Priority,
+			PriorityNumber:        template.Info.PriorityNumber,
 		}
 
 		// If template has evidence rules or is script controlled, it's automated

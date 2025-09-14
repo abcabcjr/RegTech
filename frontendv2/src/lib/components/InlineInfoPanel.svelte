@@ -9,23 +9,38 @@
 	let { info, compact = false }: Props = $props();
 
 	// Helper function to format priority
-	function getPriorityColor(priority?: 'must' | 'should') {
+	function getPriorityColor(priority?: 'critical' | 'high' | 'medium' | 'low') {
 		switch (priority) {
-			case 'must':
+			case 'critical':
 				return 'text-red-600 bg-red-50 border-red-200';
-			case 'should':
-				return 'text-amber-600 bg-amber-50 border-amber-200';
+			case 'high':
+				return 'text-orange-600 bg-orange-50 border-orange-200';
+			case 'medium':
+				return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+			case 'low':
+				return 'text-green-600 bg-green-50 border-green-200';
 			default:
 				return 'text-gray-600 bg-gray-50 border-gray-200';
 		}
 	}
 
-	function getPriorityText(priority?: 'must' | 'should') {
+	function getPriorityText(priority?: 'critical' | 'high' | 'medium' | 'low', priority_number?: number) {
+		if (priority_number) {
+			const priorityText = priority === 'critical' ? 'Critical' : 
+								priority === 'high' ? 'High' : 
+								priority === 'medium' ? 'Medium' : 
+								priority === 'low' ? 'Low' : 'Optional';
+			return `${priorityText} (P${priority_number})`;
+		}
 		switch (priority) {
-			case 'must':
-				return 'Required';
-			case 'should':
-				return 'Recommended';
+			case 'critical':
+				return 'Critical';
+			case 'high':
+				return 'High';
+			case 'medium':
+				return 'Medium';
+			case 'low':
+				return 'Low';
 			default:
 				return 'Optional';
 		}
@@ -40,7 +55,7 @@
 		</h4>
 		{#if info.priority}
 			<span class="px-2 py-1 text-xs font-medium rounded border {getPriorityColor(info.priority)}">
-				{getPriorityText(info.priority)}
+				{getPriorityText(info.priority, info.priority_number)}
 			</span>
 		{/if}
 	</div>

@@ -97,7 +97,10 @@
 					return statusMap[status as keyof typeof statusMap] || 'NON-COMPLIANT';
 				};
 
-				const getPriorityText = (priority: string) => {
+				const getPriorityText = (priority: string, priority_number?: number) => {
+					if (priority_number) {
+						return priority ? `${priority.toUpperCase()} (P${priority_number})` : 'NORMAL';
+					}
 					return priority ? priority.toUpperCase() : 'NORMAL';
 				};
 
@@ -120,7 +123,7 @@
 									<h4>${item.title}</h4>
 									<div class="badges">
 										<span class="status-badge" style="${formatBadge(item.status || 'no')}">${getStatusText(item.status || 'no')}</span>
-										${item.info?.priority ? `<span class="priority-badge">${getPriorityText(item.info.priority)}</span>` : ''}
+										${item.info?.priority ? `<span class="priority-badge">${getPriorityText(item.info.priority, item.info.priority_number)}</span>` : ''}
 									</div>
 								</div>
 								<p class="description">${item.description || ''}</p>
@@ -144,7 +147,7 @@
 									<h4>${item.title}</h4>
 									<div class="badges">
 										<span class="status-badge" style="${formatBadge('no')}">SECURITY ISSUE</span>
-										${item.info?.priority ? `<span class="priority-badge priority-${item.info.priority.toLowerCase()}">${getPriorityText(item.info.priority)}</span>` : ''}
+										${item.info?.priority ? `<span class="priority-badge priority-${item.info.priority.toLowerCase()}">${getPriorityText(item.info.priority, item.info.priority_number)}</span>` : ''}
 									</div>
 								</div>
 								<p class="description">${item.description || ''}</p>
@@ -304,14 +307,24 @@
 									color: #374151;
 								}
 								
-								.priority-badge.priority-must {
+								.priority-badge.priority-critical {
 									background: #fef2f2;
 									color: #dc2626;
 								}
 								
-								.priority-badge.priority-should {
+								.priority-badge.priority-high {
+									background: #fed7aa;
+									color: #c2410c;
+								}
+
+								.priority-badge.priority-medium {
 									background: #fef3c7;
 									color: #d97706;
+								}
+
+								.priority-badge.priority-low {
+									background: #dcfce7;
+									color: #166534;
 								}
 								
 								.info-section {
