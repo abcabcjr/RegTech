@@ -16,13 +16,15 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Badge } from '$lib/components/ui/badge';
 	import { ProgressBar } from '$lib/components/ui/progress-bar';
+	import { Label } from '$lib/components/ui/label';
+	import * as Select from '$lib/components/ui/select';
 	import ChecklistItemComponent from '$lib/components/compliance/checklist-item.svelte';
 	import ExportDialog from '$lib/components/compliance/ExportDialog.svelte';
 	import BusinessUnitCard from '$lib/components/compliance/BusinessUnitCard.svelte';
 	import { assetStore } from '$lib/stores/assets.svelte';
 	import { businessUnitsStore } from '$lib/stores/businessUnits.svelte';
 	import { checklistStore } from '$lib/stores/checklist.svelte';
-	import { Radar, Upload, Download } from '@lucide/svelte';
+	import { Radar, Upload, Download, Shield, Building, Users, TrendingUp, ArrowRight, ArrowLeft, CheckCircle } from '@lucide/svelte';
 	import { getGuideByIdSync, getAllTemplates } from '$lib/guide/data';
 
 	let checklistState: ChecklistState = $state(loadChecklistState());
@@ -43,6 +45,18 @@
 
 	// Export dialog state
 	let exportDialogOpen: boolean = $state(false);
+
+	// Intro guide dialog state
+	let introDialogOpen: boolean = $state(false);
+	let introStep: 'welcome' | 'company-info' | 'discovery' = $state('welcome');
+	let introDialogElement: HTMLElement | null = $state(null);
+	let companyInfo = $state({
+		name: '',
+		turnover: '',
+		employees: '',
+		industry: '',
+		country: 'Moldova'
+	});
 
 	// Update status tracking
 	let updatingItems: Set<string> = $state(new Set());
@@ -718,6 +732,49 @@
 		exportDialogOpen = true;
 	}
 
+	// Handle intro modal flow
+	function handleIntroNext() {
+		if (introStep === 'welcome') {
+			introStep = 'company-info';
+		} else if (introStep === 'company-info') {
+			introStep = 'discovery';
+		}
+		// Scroll to top when changing steps
+		setTimeout(() => {
+			if (introDialogElement) {
+				introDialogElement.scrollTop = 0;
+			}
+		}, 50);
+	}
+
+	function handleIntroBack() {
+		if (introStep === 'company-info') {
+			introStep = 'welcome';
+		} else if (introStep === 'discovery') {
+			introStep = 'company-info';
+		}
+		// Scroll to top when changing steps
+		setTimeout(() => {
+			if (introDialogElement) {
+				introDialogElement.scrollTop = 0;
+			}
+		}, 50);
+	}
+
+	function handleIntroComplete() {
+		// Close intro modal and open scan dialog
+		introDialogOpen = false;
+		introStep = 'welcome'; // Reset for next time
+		scanDialogOpen = true;
+	}
+
+	function handleIntroSkip() {
+		// Skip directly to scan dialog
+		introDialogOpen = false;
+		introStep = 'welcome'; // Reset for next time
+		scanDialogOpen = true;
+	}
+
 	// Handle file upload for templates
 	async function handleTemplateUpload(event: Event) {
 		const input = event.target as HTMLInputElement;
@@ -801,9 +858,9 @@
 			// Load assets and auto-open scan dialog if no assets exist
 			await assetStore.load();
 
-			// Check if no assets exist and auto-open scan dialog
+			// Check if no assets exist and auto-open intro dialog
 			if (!assetStore.data?.assets || assetStore.data.assets.length === 0) {
-				scanDialogOpen = true;
+				introDialogOpen = true;
 			}
 		}
 
@@ -854,6 +911,17 @@
 					showFloatingProgress = rect.bottom < 80;
 				} else {
 					showFloatingProgress = false;
+				}
+			}, 100);
+		}
+	});
+
+	// Reactive statement to scroll to top when intro dialog opens
+	$effect(() => {
+		if (introDialogOpen && introDialogElement) {
+			setTimeout(() => {
+				if (introDialogElement) {
+					introDialogElement.scrollTop = 0;
 				}
 			}, 100);
 		}
@@ -1293,6 +1361,226 @@
 		</div>
 	</div>
 </div>
+
+<!-- Intro Guide Dialog -->
+<Dialog.Root bind:open={introDialogOpen}>
+	<Dialog.Content class="max-w-2xl max-h-[90vh] overflow-y-auto" bind:this={introDialogElement}>
+		{#if introStep === 'welcome'}
+			<Dialog.Header>
+				<Dialog.Title class="flex items-center gap-2 text-2xl">
+					<Shield class="h-6 w-6 text-blue-600" />
+					Welcome to RegTech Compliance
+				</Dialog.Title>
+				<Dialog.Description>
+					Your comprehensive solution for Moldova's Cybersecurity Law compliance
+				</Dialog.Description>
+			</Dialog.Header>
+			
+			<div class="space-y-6 py-4">
+				<div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+					<h3 class="font-semibold text-blue-900 mb-2">About Moldova's Cybersecurity Law</h3>
+					<p class="text-blue-800 text-sm leading-relaxed">
+						The Republic of Moldova's Cybersecurity Law establishes comprehensive requirements for organizations to protect their digital infrastructure and sensitive data. This law mandates specific security measures, incident reporting procedures, and compliance documentation.
+					</p>
+				</div>
+
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+					<div class="border rounded-lg p-4">
+						<div class="flex items-center gap-2 mb-2">
+							<CheckCircle class="h-5 w-5 text-green-600" />
+							<h4 class="font-medium">Automated Scanning</h4>
+						</div>
+						<p class="text-sm text-muted-foreground">
+							Our platform automatically scans your infrastructure to identify potential compliance gaps and security vulnerabilities.
+						</p>
+					</div>
+
+					<div class="border rounded-lg p-4">
+						<div class="flex items-center gap-2 mb-2">
+							<CheckCircle class="h-5 w-5 text-green-600" />
+							<h4 class="font-medium">Manual Compliance</h4>
+						</div>
+						<p class="text-sm text-muted-foreground">
+							Track manual compliance requirements with guided checklists, documentation templates, and progress monitoring.
+						</p>
+					</div>
+
+					<div class="border rounded-lg p-4">
+						<div class="flex items-center gap-2 mb-2">
+							<CheckCircle class="h-5 w-5 text-green-600" />
+							<h4 class="font-medium">Reporting & Export</h4>
+						</div>
+						<p class="text-sm text-muted-foreground">
+							Generate comprehensive compliance reports and export documentation for regulatory submissions.
+						</p>
+					</div>
+
+					<div class="border rounded-lg p-4">
+						<div class="flex items-center gap-2 mb-2">
+							<CheckCircle class="h-5 w-5 text-green-600" />
+							<h4 class="font-medium">Continuous Monitoring</h4>
+						</div>
+						<p class="text-sm text-muted-foreground">
+							Stay up-to-date with ongoing compliance monitoring and alerts for any changes in your security posture.
+						</p>
+					</div>
+				</div>
+
+				<div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+					<h4 class="font-medium text-amber-900 mb-1">Getting Started</h4>
+					<p class="text-amber-800 text-sm">
+						We'll collect some basic information about your organization and then help you discover your digital assets to begin the compliance assessment.
+					</p>
+				</div>
+			</div>
+
+			<Dialog.Footer class="flex justify-between">
+				<Button variant="outline" onclick={handleIntroSkip}>
+					Skip Introduction
+				</Button>
+				<Button onclick={handleIntroNext} class="flex items-center gap-2">
+					Get Started
+					<ArrowRight class="h-4 w-4" />
+				</Button>
+			</Dialog.Footer>
+
+		{:else if introStep === 'company-info'}
+			<Dialog.Header>
+				<Dialog.Title class="flex items-center gap-2 text-xl">
+					<Building class="h-5 w-5 text-blue-600" />
+					Company Information
+				</Dialog.Title>
+				<Dialog.Description>
+					Help us customize the compliance experience for your organization
+				</Dialog.Description>
+			</Dialog.Header>
+
+			<div class="space-y-4 py-4">
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+					<div class="space-y-2">
+						<Label for="company-name">Company Name</Label>
+						<Input
+							id="company-name"
+							bind:value={companyInfo.name}
+							placeholder="Enter your company name"
+						/>
+					</div>
+
+					<div class="space-y-2">
+						<Label for="industry">Industry</Label>
+						<Input
+							id="industry"
+							bind:value={companyInfo.industry}
+							placeholder="e.g., Financial Services, Healthcare"
+						/>
+					</div>
+				</div>
+
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+					<div class="space-y-2">
+						<Label for="employees">Number of Employees</Label>
+						<Select.Root>
+							<Select.Trigger>
+								<Select.Value placeholder="Select employee count" />
+							</Select.Trigger>
+							<Select.Content>
+								<Select.Item value="1-10">1-10 employees</Select.Item>
+								<Select.Item value="11-50">11-50 employees</Select.Item>
+								<Select.Item value="51-200">51-200 employees</Select.Item>
+								<Select.Item value="201-500">201-500 employees</Select.Item>
+								<Select.Item value="500+">500+ employees</Select.Item>
+							</Select.Content>
+						</Select.Root>
+					</div>
+
+					<div class="space-y-2">
+						<Label for="turnover">Annual Turnover (EUR)</Label>
+						<Select.Root>
+							<Select.Trigger>
+								<Select.Value placeholder="Select turnover range" />
+							</Select.Trigger>
+							<Select.Content>
+								<Select.Item value="under-100k">Under €100,000</Select.Item>
+								<Select.Item value="100k-500k">€100,000 - €500,000</Select.Item>
+								<Select.Item value="500k-2m">€500,000 - €2,000,000</Select.Item>
+								<Select.Item value="2m-10m">€2,000,000 - €10,000,000</Select.Item>
+								<Select.Item value="over-10m">Over €10,000,000</Select.Item>
+							</Select.Content>
+						</Select.Root>
+					</div>
+				</div>
+
+				<div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+					<div class="flex items-start gap-2">
+						<TrendingUp class="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+						<div>
+							<h4 class="font-medium text-blue-900 mb-1">Why we collect this information</h4>
+							<p class="text-blue-800 text-sm">
+								This information helps us tailor compliance requirements and recommendations specific to your organization's size and industry. All data is stored securely and used only to enhance your compliance experience.
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<Dialog.Footer class="flex justify-between">
+				<Button variant="outline" onclick={handleIntroBack} class="flex items-center gap-2">
+					<ArrowLeft class="h-4 w-4" />
+					Back
+				</Button>
+				<Button onclick={handleIntroNext} class="flex items-center gap-2">
+					Continue
+					<ArrowRight class="h-4 w-4" />
+				</Button>
+			</Dialog.Footer>
+
+		{:else if introStep === 'discovery'}
+			<Dialog.Header>
+				<Dialog.Title class="flex items-center gap-2 text-xl">
+					<Radar class="h-5 w-5 text-blue-600" />
+					Asset Discovery
+				</Dialog.Title>
+				<Dialog.Description>
+					Let's discover your digital assets to begin the compliance assessment
+				</Dialog.Description>
+			</Dialog.Header>
+
+			<div class="space-y-4 py-4">
+				<div class="bg-green-50 border border-green-200 rounded-lg p-4">
+					<h4 class="font-medium text-green-900 mb-2">Ready to Start!</h4>
+					<p class="text-green-800 text-sm mb-3">
+						We'll now scan your network to discover servers, services, and potential security issues. This helps us provide accurate compliance recommendations.
+					</p>
+					<div class="text-green-700 text-sm">
+						<strong>Company:</strong> {companyInfo.name || 'Not specified'}<br>
+						<strong>Industry:</strong> {companyInfo.industry || 'Not specified'}
+					</div>
+				</div>
+
+				<div class="border rounded-lg p-4">
+					<h4 class="font-medium mb-2">What happens next?</h4>
+					<ul class="text-sm text-muted-foreground space-y-1">
+						<li>• Enter your domains and IP addresses for scanning</li>
+						<li>• Our platform will discover active services and potential vulnerabilities</li>
+						<li>• Review automated compliance findings and manual checklist items</li>
+						<li>• Generate reports and track your compliance progress</li>
+					</ul>
+				</div>
+			</div>
+
+			<Dialog.Footer class="flex justify-between">
+				<Button variant="outline" onclick={handleIntroBack} class="flex items-center gap-2">
+					<ArrowLeft class="h-4 w-4" />
+					Back
+				</Button>
+				<Button onclick={handleIntroComplete} class="flex items-center gap-2">
+					Start Asset Discovery
+					<Radar class="h-4 w-4" />
+				</Button>
+			</Dialog.Footer>
+		{/if}
+	</Dialog.Content>
+</Dialog.Root>
 
 <!-- Scan Discovery Dialog -->
 <Dialog.Root bind:open={scanDialogOpen}>
