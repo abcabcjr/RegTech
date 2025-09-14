@@ -19,9 +19,11 @@
 		onUpdate: (updates: Partial<ChecklistItem>) => void;
 		readOnly?: boolean;
 		updating?: boolean;
+		businessUnitId?: string; // NEW: Business unit context
+		assetId?: string; // For asset-specific items
 	}
 
-	let { item, onUpdate, readOnly = false, updating = false }: Props = $props();
+	let { item, onUpdate, readOnly = false, updating = false, businessUnitId, assetId }: Props = $props();
 
 	let isExpanded = $state(true);
 	let infoPanelExpanded = $state(true); // New state for info panel expansion
@@ -35,7 +37,9 @@
 			title: item.title,
 			info: item.info,
 			helpText: item.helpText,
-			whyMatters: item.whyMatters
+			whyMatters: item.whyMatters,
+			businessUnitId: businessUnitId,
+			checklistKey: checklistKey()
 		});
 	});
 	let pdfGuide = $state<any | null>(null);
@@ -65,11 +69,18 @@
 		onUpdate({ evidence: target.value, lastUpdated: new Date().toISOString() });
 	}
 
-	// Generate checklist key for this item
+	// Generate checklist key for this item based on context
 	let checklistKey = $derived(() => {
-		// For global items, use format: global:{itemId}
-		// For asset items, would be: asset:{assetId}:{itemId}
-		return `global:${item.id}`;
+		if (businessUnitId) {
+			// For business unit items: business_unit:{businessUnitId}:{itemId}
+			return `business_unit:${businessUnitId}:${item.id}`;
+		} else if (assetId) {
+			// For asset items: asset:{assetId}:{itemId}
+			return `asset:${assetId}:${item.id}`;
+		} else {
+			// For global items: global:{itemId}
+			return `global:${item.id}`;
+		}
 	});
 
 	// Load file attachments for this checklist item

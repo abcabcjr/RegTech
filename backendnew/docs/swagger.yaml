@@ -47,12 +47,31 @@ definitions:
       updated_at:
         type: string
     type: object
+  model.ChecklistItemGuide:
+    properties:
+      acceptance_summary:
+        type: string
+      faq:
+        items:
+          $ref: '#/definitions/model.FAQ'
+        type: array
+      non_technical_steps:
+        items:
+          type: string
+        type: array
+      scope_caveats:
+        type: string
+    type: object
   model.ChecklistItemInfo:
     properties:
+      guide:
+        $ref: '#/definitions/model.ChecklistItemGuide'
       law_refs:
         items:
           type: string
         type: array
+      legal:
+        $ref: '#/definitions/model.ChecklistItemLegal'
       priority:
         description: '"must", "should", "may"'
         type: string
@@ -60,9 +79,24 @@ definitions:
         items:
           $ref: '#/definitions/model.ChecklistItemResource'
         type: array
+      risks:
+        $ref: '#/definitions/model.ChecklistItemRisks'
       what_it_means:
         type: string
       why_it_matters:
+        type: string
+    type: object
+  model.ChecklistItemLegal:
+    properties:
+      article_refs:
+        items:
+          type: string
+        type: array
+      quotes:
+        items:
+          $ref: '#/definitions/model.Quote'
+        type: array
+      requirement_summary:
         type: string
     type: object
   model.ChecklistItemResource:
@@ -71,6 +105,17 @@ definitions:
         type: string
       url:
         type: string
+    type: object
+  model.ChecklistItemRisks:
+    properties:
+      attack_vectors:
+        items:
+          type: string
+        type: array
+      potential_impact:
+        items:
+          type: string
+        type: array
     type: object
   model.ChecklistItemTemplate:
     properties:
@@ -105,7 +150,7 @@ definitions:
       required:
         type: boolean
       scope:
-        description: '"global" or "asset"'
+        description: '"global", "asset", or "business_unit"'
         type: string
       script_controlled:
         description: Can be controlled by Lua scripts
@@ -165,7 +210,7 @@ definitions:
       required:
         type: boolean
       scope:
-        description: '"global" or "asset"'
+        description: '"global", "asset", or "business_unit"'
         type: string
       script_controlled:
         description: Can be controlled by Lua scripts
@@ -197,6 +242,13 @@ definitions:
         type: string
       value:
         description: Value for "eq", "regex", "gte_days_since"
+    type: object
+  model.FAQ:
+    properties:
+      a:
+        type: string
+      q:
+        type: string
     type: object
   model.FileAttachment:
     properties:
@@ -265,6 +317,13 @@ definitions:
       status:
         type: string
       uploaded_at:
+        type: string
+    type: object
+  model.Quote:
+    properties:
+      source:
+        type: string
+      text:
         type: string
     type: object
   v1.AssetCatalogueResponse:
@@ -364,6 +423,30 @@ definitions:
         type: string
       note:
         example: Email headers and logs
+        type: string
+    required:
+    - name
+    type: object
+  v1.BusinessUnitResponse:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updatedAt:
+        type: string
+    required:
+    - createdAt
+    - id
+    - name
+    - updatedAt
+    type: object
+  v1.CreateBusinessUnitRequest:
+    properties:
+      name:
+        example: Finance Department
         type: string
     required:
     - name
@@ -684,6 +767,18 @@ definitions:
     - started_at
     - status
     type: object
+  v1.ListBusinessUnitsResponse:
+    properties:
+      businessUnits:
+        items:
+          $ref: '#/definitions/v1.BusinessUnitResponse'
+        type: array
+      total:
+        type: integer
+    required:
+    - businessUnits
+    - total
+    type: object
   v1.ListIncidentSummariesResponse:
     properties:
       summaries:
@@ -735,6 +830,33 @@ definitions:
     - id
     - script_name
     - success
+    type: object
+  v1.SetBusinessUnitChecklistStatusRequest:
+    properties:
+      business_unit_id:
+        description: Business unit ID
+        example: bu-123
+        type: string
+      item_id:
+        description: Checklist item template ID
+        example: security-policy-001
+        type: string
+      notes:
+        description: Optional notes
+        example: Verified during security audit
+        type: string
+      status:
+        description: 'Status: yes, no, or na'
+        enum:
+        - "yes"
+        - "no"
+        - na
+        example: "yes"
+        type: string
+    required:
+    - business_unit_id
+    - item_id
+    - status
     type: object
   v1.StartAllAssetsScanRequest:
     properties:
@@ -792,6 +914,14 @@ definitions:
     - job_id
     - message
     - started_at
+    type: object
+  v1.UpdateBusinessUnitRequest:
+    properties:
+      name:
+        example: Updated Finance Department
+        type: string
+    required:
+    - name
     type: object
   v1.UpdateDetails:
     properties:
@@ -1018,6 +1148,157 @@ paths:
       summary: Start scan of all assets
       tags:
       - assets
+  /business-units:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all business units
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.ListBusinessUnitsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: List business units
+      tags:
+      - business-units
+    post:
+      consumes:
+      - application/json
+      description: Create a new business unit with the specified name
+      parameters:
+      - description: Business unit creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v1.CreateBusinessUnitRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/v1.BusinessUnitResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Create business unit
+      tags:
+      - business-units
+  /business-units/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a business unit by its ID
+      parameters:
+      - description: Business unit ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.GenericStatusResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Delete business unit
+      tags:
+      - business-units
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a business unit by its ID
+      parameters:
+      - description: Business unit ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.BusinessUnitResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Get business unit
+      tags:
+      - business-units
+    put:
+      consumes:
+      - application/json
+      description: Update a business unit's name
+      parameters:
+      - description: Business unit ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Business unit update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v1.UpdateBusinessUnitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.BusinessUnitResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Update business unit
+      tags:
+      - business-units
   /checklist/asset-templates:
     get:
       consumes:
@@ -1070,6 +1351,79 @@ paths:
           schema:
             $ref: '#/definitions/v1.ErrorResponse'
       summary: Get asset-specific checklist items
+      tags:
+      - checklist
+  /checklist/business-unit/{businessUnitId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all global checklist items with their current status for
+        a specific business unit
+      parameters:
+      - description: Business Unit ID
+        in: path
+        name: businessUnitId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.DerivedChecklistItem'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Get business unit checklist items
+      tags:
+      - checklist
+  /checklist/business-unit/status:
+    post:
+      consumes:
+      - application/json
+      description: Set the status (yes/no/na) of a checklist item for a specific business
+        unit
+      parameters:
+      - description: Business unit checklist status update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v1.SetBusinessUnitChecklistStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: Set business unit checklist item status
       tags:
       - checklist
   /checklist/coverage/summary:

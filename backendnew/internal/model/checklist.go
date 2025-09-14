@@ -9,7 +9,7 @@ type ChecklistItemTemplate struct {
 	Description      string         `json:"description"`
 	Category         string         `json:"category"`
 	Required         bool           `json:"required"`
-	Scope            string         `json:"scope"`                 // "global" or "asset"
+	Scope            string         `json:"scope"`                 // "global", "asset", or "business_unit"
 	AssetTypes       []string       `json:"asset_types,omitempty"` // Applicable asset types if scope is "asset"
 	Recommendation   string         `json:"recommendation,omitempty"`
 	EvidenceRules    []EvidenceRule `json:"evidence_rules,omitempty"`    // Rules for auto-derivation
@@ -84,14 +84,15 @@ type EvidenceRule struct {
 
 // ChecklistAssignment represents a manual assignment or override of a checklist item status
 type ChecklistAssignment struct {
-	ID        string    `json:"id"`
-	ItemID    string    `json:"item_id"`
-	Scope     string    `json:"scope"`              // "global" or "asset"
-	AssetID   *string   `json:"asset_id,omitempty"` // Null for global items
-	Status    string    `json:"status"`             // "yes", "no", "na"
-	Notes     string    `json:"notes,omitempty"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Source    string    `json:"source"` // "manual"
+	ID             string    `json:"id"`
+	ItemID         string    `json:"item_id"`
+	Scope          string    `json:"scope"`                      // "global", "asset", or "business_unit"
+	AssetID        *string   `json:"asset_id,omitempty"`         // Null for global and business unit items
+	BusinessUnitID *string   `json:"business_unit_id,omitempty"` // Null for global and asset items
+	Status         string    `json:"status"`                     // "yes", "no", "na"
+	Notes          string    `json:"notes,omitempty"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	Source         string    `json:"source"` // "manual"
 }
 
 // DerivedChecklistItem represents a checklist item with its computed/assigned status
@@ -119,8 +120,9 @@ type AssetCoverage struct {
 
 // Constants for ChecklistItemTemplate Scope
 const (
-	ChecklistScopeGlobal = "global"
-	ChecklistScopeAsset  = "asset"
+	ChecklistScopeGlobal       = "global"
+	ChecklistScopeAsset        = "asset"
+	ChecklistScopeBusinessUnit = "business_unit"
 )
 
 // Constants for ChecklistItemTemplate Status

@@ -229,3 +229,97 @@ func (h *SimpleChecklistHandler) GetComplianceCoverageSummary(c echo.Context) er
 
 	return c.JSON(http.StatusOK, summary)
 }
+
+// GetBusinessUnitChecklist returns business unit checklist items
+// @Summary Get business unit checklist items
+// @Description Retrieve all global checklist items with their current status for a specific business unit
+// @Tags checklist
+// @Accept json
+// @Produce json
+// @Param businessUnitId path string true "Business Unit ID"
+// @Success 200 {array} model.DerivedChecklistItem
+// @Failure 400 {object} v1.ErrorResponse
+// @Failure 404 {object} v1.ErrorResponse
+// @Failure 500 {object} v1.ErrorResponse
+// @Router /checklist/business-unit/{businessUnitId} [get]
+func (h *SimpleChecklistHandler) GetBusinessUnitChecklist(c echo.Context) error {
+	businessUnitID := c.Param("businessUnitId")
+	if businessUnitID == "" {
+		return c.JSON(http.StatusBadRequest, v1.ErrorResponse{
+			Error: "Business Unit ID is required",
+			Code:  http.StatusBadRequest,
+		})
+	}
+
+	items, err := h.checklistService.GetBusinessUnitChecklist(c.Request().Context(), businessUnitID)
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "business unit not found: Business unit not found" {
+			statusCode = http.StatusNotFound
+		}
+
+		return c.JSON(statusCode, v1.ErrorResponse{
+			Error:   "Failed to get business unit checklist",
+			Code:    statusCode,
+			Details: map[string]string{"error": err.Error()},
+		})
+	}
+
+	return c.JSON(http.StatusOK, items)
+}
+
+// SetBusinessUnitChecklistStatus sets the status of a checklist item for a business unit
+// @Summary Set business unit checklist item status
+// @Description Set the status (yes/no/na) of a checklist item for a specific business unit
+// @Tags checklist
+// @Accept json
+// @Produce json
+// @Param request body v1.SetBusinessUnitChecklistStatusRequest true "Business unit checklist status update request"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} v1.ErrorResponse
+// @Failure 404 {object} v1.ErrorResponse
+// @Failure 500 {object} v1.ErrorResponse
+// @Router /checklist/business-unit/status [post]
+func (h *SimpleChecklistHandler) SetBusinessUnitChecklistStatus(c echo.Context) error {
+	var req v1.SetBusinessUnitChecklistStatusRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, v1.ErrorResponse{
+			Error:   "Invalid request body",
+			Code:    http.StatusBadRequest,
+			Details: map[string]string{"error": err.Error()},
+		})
+	}
+
+	// Validate status
+	if req.Status != "yes" && req.Status != "no" && req.Status != "na" {
+		return c.JSON(http.StatusBadRequest, v1.ErrorResponse{
+			Error: "Invalid status. Must be 'yes', 'no', or 'na'",
+			Code:  http.StatusBadRequest,
+		})
+	}
+
+	err := h.checklistService.SetBusinessUnitStatus(
+		c.Request().Context(),
+		req.ItemID,
+		req.BusinessUnitID,
+		req.Status,
+		req.Notes,
+	)
+
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "business unit not found: Business unit not found" {
+			statusCode = http.StatusNotFound
+		}
+
+		return c.JSON(statusCode, v1.ErrorResponse{
+			Error:   "Failed to set business unit checklist status",
+			Code:    statusCode,
+			Details: map[string]string{"error": err.Error()},
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "Status updated successfully",
+	})
+}

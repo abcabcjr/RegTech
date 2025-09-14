@@ -26,6 +26,7 @@ type JSONStorage struct {
 	checklistStatuses  map[string]*model.SimpleChecklistStatus
 	fileAttachments    map[string]*model.FileAttachment
 	incidents          map[string]*model.IncidentRecord
+	businessUnits      map[string]*model.BusinessUnit
 	lastBackup         *time.Time
 }
 
@@ -41,6 +42,7 @@ func NewJSONStorage(cfg *config.StorageConfig) (*JSONStorage, error) {
 		checklistStatuses:  make(map[string]*model.SimpleChecklistStatus),
 		fileAttachments:    make(map[string]*model.FileAttachment),
 		incidents:          make(map[string]*model.IncidentRecord),
+		businessUnits:      make(map[string]*model.BusinessUnit),
 	}
 
 	// Create data directory if it doesn't exist
@@ -572,7 +574,10 @@ func (s *JSONStorage) loadData() error {
 	if err := s.loadFileAttachments(); err != nil {
 		return err
 	}
-	return s.loadIncidents()
+	if err := s.loadIncidents(); err != nil {
+		return err
+	}
+	return s.loadBusinessUnits()
 }
 
 func (s *JSONStorage) loadAssets() error {
@@ -969,4 +974,83 @@ func (s *JSONStorage) saveIncidents() error {
 func (s *JSONStorage) loadIncidents() error {
 	filePath := filepath.Join(s.config.DataDir, "incidents.json")
 	return s.loadJSONFile(filePath, &s.incidents)
+}
+
+// Business unit operations
+
+// CreateBusinessUnit creates a new business unit
+func (s *JSONStorage) CreateBusinessUnit(ctx context.Context, businessUnit *model.BusinessUnit) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.businessUnits[businessUnit.ID]; exists {
+		return errors.NewConflict(fmt.Sprintf("Business unit with ID %s already exists", businessUnit.ID))
+	}
+
+	s.businessUnits[businessUnit.ID] = businessUnit
+	return s.saveBusinessUnits()
+}
+
+// GetBusinessUnit retrieves a business unit by ID
+func (s *JSONStorage) GetBusinessUnit(ctx context.Context, id string) (*model.BusinessUnit, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	businessUnit, exists := s.businessUnits[id]
+	if !exists {
+		return nil, errors.NewNotFound("Business unit")
+	}
+
+	return businessUnit, nil
+}
+
+// UpdateBusinessUnit updates an existing business unit
+func (s *JSONStorage) UpdateBusinessUnit(ctx context.Context, businessUnit *model.BusinessUnit) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.businessUnits[businessUnit.ID]; !exists {
+		return errors.NewNotFound("Business unit")
+	}
+
+	s.businessUnits[businessUnit.ID] = businessUnit
+	return s.saveBusinessUnits()
+}
+
+// DeleteBusinessUnit deletes a business unit
+func (s *JSONStorage) DeleteBusinessUnit(ctx context.Context, id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.businessUnits[id]; !exists {
+		return errors.NewNotFound("Business unit")
+	}
+
+	delete(s.businessUnits, id)
+	return s.saveBusinessUnits()
+}
+
+// ListBusinessUnits retrieves all business units
+func (s *JSONStorage) ListBusinessUnits(ctx context.Context) ([]*model.BusinessUnit, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	businessUnits := make([]*model.BusinessUnit, 0, len(s.businessUnits))
+	for _, businessUnit := range s.businessUnits {
+		businessUnits = append(businessUnits, businessUnit)
+	}
+
+	return businessUnits, nil
+}
+
+// saveBusinessUnits saves business units to JSON file
+func (s *JSONStorage) saveBusinessUnits() error {
+	filePath := filepath.Join(s.config.DataDir, "business_units.json")
+	return s.saveJSONFile(filePath, s.businessUnits)
+}
+
+// loadBusinessUnits loads business units from JSON file
+func (s *JSONStorage) loadBusinessUnits() error {
+	filePath := filepath.Join(s.config.DataDir, "business_units.json")
+	return s.loadJSONFile(filePath, &s.businessUnits)
 }

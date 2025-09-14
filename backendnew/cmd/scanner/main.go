@@ -97,6 +97,7 @@ func main() {
 	// Initialize services
 	simpleChecklistService := service.NewSimpleChecklistService(store)
 	incidentService := service.NewIncidentService(store)
+	businessUnitService := service.NewBusinessUnitService(store)
 
 	// Initialize file service for local file storage
 	fileService, err := service.NewFileService(cfg.Storage.DataDir, store)
@@ -118,6 +119,7 @@ func main() {
 	simpleChecklistHandler := handler.NewSimpleChecklistHandler(simpleChecklistService)
 	filesHandler := handler.NewFilesHandler(fileService)
 	incidentHandler := handler.NewIncidentHandler(incidentService)
+	businessUnitHandler := handler.NewBusinessUnitHandler(businessUnitService)
 
 	// Health check endpoint
 	e.GET("/health", healthHandler.HealthCheck)
@@ -148,6 +150,10 @@ func main() {
 	apiV1.POST("/checklist/templates/upload", simpleChecklistHandler.UploadTemplates)
 	apiV1.GET("/checklist/coverage/summary", simpleChecklistHandler.GetComplianceCoverageSummary)
 
+	// Business Unit Checklist routes
+	apiV1.GET("/checklist/business-unit/:businessUnitId", simpleChecklistHandler.GetBusinessUnitChecklist)
+	apiV1.POST("/checklist/business-unit/status", simpleChecklistHandler.SetBusinessUnitChecklistStatus)
+
 	// File upload/download routes
 	apiV1.POST("/files/upload", filesHandler.UploadFile)
 	apiV1.GET("/files/:fileId/download", filesHandler.DownloadFile)
@@ -166,6 +172,13 @@ func main() {
 	apiV1.GET("/incidents/:id", incidentHandler.GetIncident)
 	apiV1.PUT("/incidents/:id", incidentHandler.UpdateIncident)
 	apiV1.DELETE("/incidents/:id", incidentHandler.DeleteIncident)
+
+	// Business unit management routes
+	apiV1.POST("/business-units", businessUnitHandler.CreateBusinessUnit)
+	apiV1.GET("/business-units", businessUnitHandler.ListBusinessUnits)
+	apiV1.GET("/business-units/:id", businessUnitHandler.GetBusinessUnit)
+	apiV1.PUT("/business-units/:id", businessUnitHandler.UpdateBusinessUnit)
+	apiV1.DELETE("/business-units/:id", businessUnitHandler.DeleteBusinessUnit)
 
 	// Script management routes (bonus endpoints)
 	apiV1.GET("/scripts", func(c echo.Context) error {

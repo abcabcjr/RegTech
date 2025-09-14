@@ -2,7 +2,8 @@ import type {
 	ModelDerivedChecklistItem,
 	ModelChecklistItemTemplate,
 	HandlerSetStatusRequest,
-	HandlerUploadTemplatesRequest
+	HandlerUploadTemplatesRequest,
+	V1SetBusinessUnitChecklistStatusRequest
 } from '$lib/api/Api';
 import { apiClient } from '$lib/api/client';
 
@@ -14,6 +15,10 @@ export class ChecklistStore {
 	// Asset-specific checklist items (keyed by asset ID)
 	assetItems: Record<string, ModelDerivedChecklistItem[]> = $state({});
 	assetLoading: Record<string, boolean> = $state({});
+
+	// Business unit checklist items (keyed by business unit ID)
+	businessUnitItems: Record<string, ModelDerivedChecklistItem[]> = $state({});
+	businessUnitLoading: Record<string, boolean> = $state({});
 
 	// Templates (now enhanced with covered assets)
 	templates: ModelDerivedChecklistItem[] = $state([]);
@@ -48,6 +53,34 @@ export class ChecklistStore {
 			this.assetItems[assetId] = [];
 		} finally {
 			this.assetLoading[assetId] = false;
+		}
+	}
+
+	// Load business unit checklist items
+	async loadBusinessUnit(businessUnitId: string) {
+		if (this.businessUnitLoading[businessUnitId]) return;
+		this.businessUnitLoading[businessUnitId] = true;
+		try {
+			const response = await apiClient.checklist.businessUnitDetail(businessUnitId);
+			// Create a deep copy to avoid reference issues
+			const businessUnitData = JSON.parse(JSON.stringify(response.data || []));
+			
+			// Force reactivity by creating a new object
+			this.businessUnitItems = {
+				...this.businessUnitItems,
+				[businessUnitId]: businessUnitData
+			};
+			
+			console.log(`✅ Loaded ${businessUnitData.length} items for business unit ${businessUnitId}`);
+			console.log('📊 Business unit items sample:', businessUnitData.slice(0, 2));
+		} catch (error) {
+			console.error(`Failed to load checklist for business unit ${businessUnitId}:`, error);
+			this.businessUnitItems = {
+				...this.businessUnitItems,
+				[businessUnitId]: []
+			};
+		} finally {
+			this.businessUnitLoading[businessUnitId] = false;
 		}
 	}
 
@@ -90,6 +123,30 @@ export class ChecklistStore {
 		}
 	}
 
+	// Set business unit checklist status
+	async setBusinessUnitStatus(itemId: string, businessUnitId: string, status: 'yes' | 'no' | 'na', notes: string = '') {
+		try {
+			const request: V1SetBusinessUnitChecklistStatusRequest = {
+				item_id: itemId,
+				business_unit_id: businessUnitId,
+				status: status,
+				notes: notes
+			};
+			
+			const response = await apiClient.checklist.businessUnitStatusCreate(request);
+
+			// Refresh the business unit checklist items
+			await this.loadBusinessUnit(businessUnitId);
+			
+			console.log(`✅ Updated status for item ${itemId} in business unit ${businessUnitId} to ${status}`);
+
+			return response.data;
+		} catch (error) {
+			console.error('Failed to set business unit checklist status:', error);
+			throw error;
+		}
+	}
+
 
 	// Upload templates from JSON file (overwrites all existing)
 	async uploadTemplates(templates: ModelChecklistItemTemplate[]) {
@@ -115,6 +172,14 @@ export class ChecklistStore {
 			await this.loadAsset(assetId);
 		}
 		return this.assetItems[assetId] || [];
+	}
+
+	// Get business unit items for a specific business unit (loads if not cached)
+	async getBusinessUnitItems(businessUnitId: string): Promise<ModelDerivedChecklistItem[]> {
+		if (!this.businessUnitItems[businessUnitId] && !this.businessUnitLoading[businessUnitId]) {
+			await this.loadBusinessUnit(businessUnitId);
+		}
+		return this.businessUnitItems[businessUnitId] || [];
 	}
 
 	// Helper to get status color class

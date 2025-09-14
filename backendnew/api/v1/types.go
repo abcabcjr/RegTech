@@ -270,6 +270,42 @@ type IncidentStatsResponse struct {
 	ByCause              map[string]int `json:"byCause" binding:"required"`
 }
 
+// Business Unit Management
+
+// CreateBusinessUnitRequest represents a request to create a business unit
+type CreateBusinessUnitRequest struct {
+	Name string `json:"name" binding:"required" example:"Finance Department"`
+}
+
+// UpdateBusinessUnitRequest represents a request to update a business unit
+type UpdateBusinessUnitRequest struct {
+	Name string `json:"name" binding:"required" example:"Updated Finance Department"`
+}
+
+// BusinessUnitResponse represents a business unit
+type BusinessUnitResponse struct {
+	ID        string `json:"id" binding:"required"`
+	Name      string `json:"name" binding:"required"`
+	CreatedAt string `json:"createdAt" binding:"required"`
+	UpdatedAt string `json:"updatedAt" binding:"required"`
+}
+
+// ListBusinessUnitsResponse represents the response for listing business units
+type ListBusinessUnitsResponse struct {
+	BusinessUnits []BusinessUnitResponse `json:"businessUnits" binding:"required"`
+	Total         int                    `json:"total" binding:"required"`
+}
+
+// Business Unit Checklist Operations
+
+// SetBusinessUnitChecklistStatusRequest represents a request to set checklist status for a business unit
+type SetBusinessUnitChecklistStatusRequest struct {
+	ItemID         string `json:"item_id" binding:"required" example:"security-policy-001"`  // Checklist item template ID
+	BusinessUnitID string `json:"business_unit_id" binding:"required" example:"bu-123"`      // Business unit ID
+	Status         string `json:"status" binding:"required" example:"yes" enums:"yes,no,na"` // Status: yes, no, or na
+	Notes          string `json:"notes,omitempty" example:"Verified during security audit"`  // Optional notes
+}
+
 // Error Response
 type ErrorResponse struct {
 	Error   string            `json:"error" binding:"required"`

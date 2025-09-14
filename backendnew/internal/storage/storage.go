@@ -67,6 +67,13 @@ type Storage interface {
 	ListIncidents(ctx context.Context) ([]*model.IncidentRecord, error)
 	ListIncidentSummaries(ctx context.Context) ([]*model.IncidentSummary, error)
 
+	// Business unit operations
+	CreateBusinessUnit(ctx context.Context, businessUnit *model.BusinessUnit) error
+	GetBusinessUnit(ctx context.Context, id string) (*model.BusinessUnit, error)
+	UpdateBusinessUnit(ctx context.Context, businessUnit *model.BusinessUnit) error
+	DeleteBusinessUnit(ctx context.Context, id string) error
+	ListBusinessUnits(ctx context.Context) ([]*model.BusinessUnit, error)
+
 	// Utility operations
 	Close() error
 	Backup() error

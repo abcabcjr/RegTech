@@ -90,6 +90,80 @@ func (s *SimpleChecklistService) GetGlobalChecklist(ctx context.Context) ([]*mod
 	return globalItems, nil
 }
 
+// GetBusinessUnitChecklist returns all global checklist items with their status for a specific business unit
+func (s *SimpleChecklistService) GetBusinessUnitChecklist(ctx context.Context, businessUnitID string) ([]*model.DerivedChecklistItem, error) {
+	// Verify business unit exists
+	_, err := s.storage.GetBusinessUnit(ctx, businessUnitID)
+	if err != nil {
+		return nil, fmt.Errorf("business unit not found: %w", err)
+	}
+
+	// Get all templates with global scope (these will be duplicated per business unit)
+	templates, err := s.storage.ListChecklistTemplates(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get checklist templates: %w", err)
+	}
+
+	// Get all statuses
+	statuses, err := s.storage.ListChecklistStatuses(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get checklist statuses: %w", err)
+	}
+
+	var businessUnitItems []*model.DerivedChecklistItem
+	for _, template := range templates {
+		if template.Scope == model.ChecklistScopeGlobal {
+			derived := &model.DerivedChecklistItem{
+				ChecklistItemTemplate: *template,
+				Status:                model.ChecklistStatusNA,
+				Source:                model.ChecklistSourceManual,
+				Evidence:              make(map[string]interface{}),
+			}
+
+			// Check if there's a status for this item in this business unit
+			key := model.BusinessUnitChecklistKey(businessUnitID, template.ID)
+			if status, exists := statuses[key]; exists {
+				derived.Status = status.Status
+				derived.Notes = status.Notes
+				derived.UpdatedAt = &status.UpdatedAt
+				derived.Attachments = status.Attachments
+			}
+
+			// If template has evidence rules or is script controlled, it's automated
+			if len(template.EvidenceRules) > 0 || template.ScriptControlled {
+				derived.Source = model.ChecklistSourceAuto
+
+				// Check for script-controlled results
+				if template.ScriptControlled {
+					scriptStatus := s.getScriptControlledStatus(ctx, template.ID, businessUnitID)
+					if scriptStatus != nil {
+						derived.Status = scriptStatus.Status
+						if scriptStatus.Reason != "" {
+							derived.Notes = scriptStatus.Reason
+						}
+						derived.UpdatedAt = &scriptStatus.UpdatedAt
+					}
+				}
+				// TODO: Evaluate evidence rules if needed
+			}
+
+			businessUnitItems = append(businessUnitItems, derived)
+		}
+	}
+
+	// Sort by ID for consistent ordering
+	sort.Slice(businessUnitItems, func(i, j int) bool {
+		return businessUnitItems[i].ID < businessUnitItems[j].ID
+	})
+
+	// Business unit scoped items don't need covered assets - they apply to the business unit
+	for _, item := range businessUnitItems {
+		item.CoveredAssets = []model.AssetCoverage{}
+	}
+
+	return businessUnitItems, nil
+}
+
 // GetAllAssetTemplates returns all asset-scoped templates with coverage across all assets
 func (s *SimpleChecklistService) GetAllAssetTemplates(ctx context.Context) ([]*model.DerivedChecklistItem, error) {
 	// Get all templates
@@ -227,6 +301,26 @@ func (s *SimpleChecklistService) SetStatus(ctx context.Context, itemID, assetID,
 	} else {
 		key = model.AssetChecklistKey(assetID, itemID)
 	}
+
+	statusObj := &model.SimpleChecklistStatus{
+		Key:       key,
+		Status:    status,
+		Notes:     notes,
+		UpdatedAt: time.Now(),
+	}
+
+	return s.storage.SetChecklistStatus(ctx, key, statusObj)
+}
+
+// SetBusinessUnitStatus sets the status of a checklist item for a specific business unit
+func (s *SimpleChecklistService) SetBusinessUnitStatus(ctx context.Context, itemID, businessUnitID, status, notes string) error {
+	// Verify business unit exists
+	_, err := s.storage.GetBusinessUnit(ctx, businessUnitID)
+	if err != nil {
+		return fmt.Errorf("business unit not found: %w", err)
+	}
+
+	key := model.BusinessUnitChecklistKey(businessUnitID, itemID)
 
 	statusObj := &model.SimpleChecklistStatus{
 		Key:       key,

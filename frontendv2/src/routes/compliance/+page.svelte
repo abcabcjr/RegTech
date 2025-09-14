@@ -16,7 +16,10 @@
 	import { ProgressBar } from '$lib/components/ui/progress-bar';
 	import ChecklistItemComponent from '$lib/components/compliance/checklist-item.svelte';
 	import ExportDialog from '$lib/components/compliance/ExportDialog.svelte';
+	import BusinessUnitCard from '$lib/components/compliance/BusinessUnitCard.svelte';
 	import { assetStore } from '$lib/stores/assets.svelte';
+	import { businessUnitsStore } from '$lib/stores/businessUnits.svelte';
+	import { checklistStore } from '$lib/stores/checklist.svelte';
 	import { Radar, Upload, Download } from '@lucide/svelte';
 	import { getGuideByIdSync, getAllTemplates } from '$lib/guide/data';
 
@@ -44,7 +47,7 @@
 	let updateError: string | null = $state(null);
 
 	// Convert backend templates to sections format, filtered by type
-	// Note: This is reactive to activeView, backendTemplates, backendGlobalChecklist, and checklistState
+	// Note: This is reactive to activeView, backendTemplates, currentChecklistData, and checklistState
 	let displaySections = $derived(() => {
 		// Force reactivity to checklistState and data refresh
 		const _ = checklistState.lastUpdated;
@@ -52,7 +55,8 @@
 
 		if (activeView === 'scanner') {
 			// For scanner view, use backend templates (now enhanced with covered assets) filtered for auto items
-			console.log('Scanner view - backendTemplates:', backendTemplates);
+			// AUTOMATIC ITEMS REMAIN GLOBAL - NOT AFFECTED BY BUSINESS UNIT SELECTION
+			console.log('Scanner view - backendTemplates (GLOBAL):', backendTemplates);
 
 			// Filter for automatic templates that are non-compliant and have covered assets
 			const autoTemplates = backendTemplates.filter((template) => {
@@ -76,9 +80,23 @@
 			// Use the enhanced template conversion that handles covered assets
 			return convertTemplatesToSections(autoTemplates);
 		} else {
-			// For manual view, show only manual templates
-			const manualTemplates = backendTemplates.filter((template) => template.kind === 'manual');
-			return convertTemplatesToSections(manualTemplates);
+			// For manual view, use business unit specific checklist data if business unit is selected
+			// MANUAL ITEMS ARE PER BUSINESS UNIT
+			const currentData = currentChecklistData();
+			console.log('📋 Manual view - currentChecklistData length:', currentData.length);
+			console.log('📋 Manual view - currentChecklistData sample:', currentData.slice(0, 2));
+			console.log(
+				'🏢 Business unit selected:',
+				businessUnitsStore.selectedBusinessUnit?.name || 'Global'
+			);
+
+			// Filter for manual templates only
+			const manualTemplates = currentData.filter((template) => template.kind === 'manual');
+			console.log('📝 Filtered manual templates:', manualTemplates.length);
+			console.log('📝 Manual templates sample:', manualTemplates.slice(0, 2));
+
+			// Use the special function that handles backend checklist data with statuses
+			return convertGlobalChecklistToSections(manualTemplates);
 		}
 	});
 
@@ -219,16 +237,23 @@
 				});
 			}
 
-			// Find saved state for this item
-			const savedSection = checklistState.sections.find(
-				(s) =>
-					s.id ===
-					category
-						.toLowerCase()
-						.replace(/\s+/g, '-')
-						.replace(/[^a-z0-9-]/g, '')
-			);
-			const savedItem = savedSection?.items.find((i) => i.id === item.id);
+			// For business unit context, IGNORE local state and use ONLY backend data
+			// For global context, use local state as fallback
+			const useBackendDataOnly = businessUnitsStore.selectedBusinessUnit !== null;
+
+			let savedItem = null;
+			if (!useBackendDataOnly) {
+				// Only use saved state when in global context
+				const savedSection = checklistState.sections.find(
+					(s) =>
+						s.id ===
+						category
+							.toLowerCase()
+							.replace(/\s+/g, '-')
+							.replace(/[^a-z0-9-]/g, '')
+				);
+				savedItem = savedSection?.items.find((i) => i.id === item.id);
+			}
 
 			// Get guide data from JSON templates
 			let guideInfo = null;
@@ -245,17 +270,33 @@
 				whyMatters: item.why_matters || item.recommendation,
 				category: category.toLowerCase(),
 				required: item.required,
-				status: savedItem?.status || item.status || 'no', // Use saved status first, then backend status
+				// FOR BUSINESS UNITS: Use ONLY backend status, ignore local state
+				// FOR GLOBAL: Use saved status first, then backend status
+				status: useBackendDataOnly ? item.status || 'na' : savedItem?.status || item.status || 'no',
 				recommendation: item.recommendation,
 				kind: item.kind || item.source || 'auto',
 				scope: item.scope, // Add scope field
 				readOnly: item.read_only || false, // Use actual read_only field from backend
-				notes: savedItem?.notes || item.notes, // Use saved notes first
-				lastUpdated: savedItem?.lastUpdated || item.updated_at,
+				// FOR BUSINESS UNITS: Use ONLY backend notes, ignore local state
+				notes: useBackendDataOnly ? item.notes || '' : savedItem?.notes || item.notes || '',
+				lastUpdated: useBackendDataOnly
+					? item.updated_at
+					: savedItem?.lastUpdated || item.updated_at,
 				coveredAssets: item.covered_assets || [], // This is the key difference!
-				attachments: savedItem?.attachments || item.attachments || [], // Use saved attachments first
-				info: guideInfo ? mapBackendInfoToInfoPanel(guideInfo) : (item.info ? mapBackendInfoToInfoPanel(item.info) : undefined)
+				// FOR BUSINESS UNITS: Use ONLY backend attachments, ignore local state
+				attachments: useBackendDataOnly
+					? item.attachments || []
+					: savedItem?.attachments || item.attachments || [],
+				info: guideInfo
+					? mapBackendInfoToInfoPanel(guideInfo)
+					: item.info
+						? mapBackendInfoToInfoPanel(item.info)
+						: undefined
 			};
+
+			console.log(
+				`🔍 Item ${item.id}: useBackendDataOnly=${useBackendDataOnly}, status=${frontendItem.status}, notes=${frontendItem.notes}`
+			);
 
 			categoryMap.get(category).items.push(frontendItem);
 		});
@@ -283,7 +324,7 @@
 			const response = await apiClient.checklist.templatesList();
 			backendTemplates = response.data || [];
 			console.log('Loaded templates from backend:', backendTemplates);
-			const securityAudit = backendTemplates.find(t => t.id === 'security-audit');
+			const securityAudit = backendTemplates.find((t) => t.id === 'security-audit');
 			console.log('Security Audit template:', securityAudit);
 		} catch (err) {
 			console.error('Failed to load templates from backend:', err);
@@ -320,6 +361,47 @@
 		}
 	}
 
+	// Load checklist data based on selected business unit
+	async function loadCurrentChecklist() {
+		if (businessUnitsStore.selectedBusinessUnit) {
+			// Load business unit specific checklist
+			await checklistStore.loadBusinessUnit(businessUnitsStore.selectedBusinessUnit.id);
+			console.log(
+				'Loaded business unit checklist for:',
+				businessUnitsStore.selectedBusinessUnit.name
+			);
+		} else {
+			// Load global checklist
+			await loadBackendGlobalChecklist();
+			console.log('Loaded global checklist');
+		}
+	}
+
+	// Get the current checklist data based on selected business unit
+	// This is ONLY used for MANUAL items - automatic items always use backendTemplates (global)
+	let currentChecklistData = $derived(() => {
+		// Force reactivity on data refresh timestamp
+		const _ = dataRefreshTimestamp;
+
+		if (businessUnitsStore.selectedBusinessUnit) {
+			// Return business unit specific manual checklist items
+			const businessUnitData =
+				checklistStore.businessUnitItems[businessUnitsStore.selectedBusinessUnit.id] || [];
+			console.log(
+				'🏢 Business Unit Data for',
+				businessUnitsStore.selectedBusinessUnit.name,
+				':',
+				businessUnitData
+			);
+			return businessUnitData;
+		} else {
+			// Return global manual checklist items
+			console.log('🌍 Global Data:', backendGlobalChecklist);
+			//throw new Error('Dont do global');
+			return [];
+		}
+	});
+
 	async function updateChecklistItem(
 		sectionId: string,
 		itemId: string,
@@ -338,47 +420,69 @@
 		try {
 			// Save to backend first
 			if (updates.status !== undefined || updates.notes !== undefined) {
-				await apiClient.checklist.statusCreate({
-					item_id: itemId,
-					status: updates.status as 'yes' | 'no' | 'na' | undefined,
-					notes: updates.notes,
-					// asset_id is empty for global items
-					asset_id: ''
-				});
-			}
-
-			// Then update local state
-			// Ensure the section exists in checklistState
-			const sectionExists = checklistState.sections.some((section) => section.id === sectionId);
-			if (!sectionExists) {
-				// Add the section from displaySections
-				const displaySection = displaySections().find((section) => section.id === sectionId);
-				if (displaySection) {
-					checklistState = {
-						...checklistState,
-						sections: [...checklistState.sections, displaySection]
-					};
+				if (businessUnitsStore.selectedBusinessUnit) {
+					// Use business unit checklist status endpoint
+					await checklistStore.setBusinessUnitStatus(
+						itemId,
+						businessUnitsStore.selectedBusinessUnit.id,
+						updates.status as 'yes' | 'no' | 'na',
+						updates.notes || ''
+					);
+				} else {
+					// Use global checklist status endpoint
+					await apiClient.checklist.statusCreate({
+						item_id: itemId,
+						status: updates.status as 'yes' | 'no' | 'na' | undefined,
+						notes: updates.notes,
+						// asset_id is empty for global items
+						asset_id: ''
+					});
 				}
 			}
 
-			const newState = {
-				...checklistState,
-				sections: checklistState.sections.map((section) =>
-					section.id === sectionId
-						? {
-								...section,
-								items: section.items.map((item) =>
-									item.id === itemId
-										? { ...item, ...updates, lastUpdated: new Date().toISOString() }
-										: item
-								)
-							}
-						: section
-				),
-				lastUpdated: new Date().toISOString()
-			};
-			checklistState = newState;
-			saveChecklistState(newState);
+			// Only update local state when in global context
+			// For business unit context, the backend data is the source of truth
+			if (!businessUnitsStore.selectedBusinessUnit) {
+				// Update local state only for global context
+				// Ensure the section exists in checklistState
+				const sectionExists = checklistState.sections.some((section) => section.id === sectionId);
+				if (!sectionExists) {
+					// Add the section from displaySections
+					const displaySection = displaySections().find((section) => section.id === sectionId);
+					if (displaySection) {
+						checklistState = {
+							...checklistState,
+							sections: [...checklistState.sections, displaySection]
+						};
+					}
+				}
+
+				const newState = {
+					...checklistState,
+					sections: checklistState.sections.map((section) =>
+						section.id === sectionId
+							? {
+									...section,
+									items: section.items.map((item) =>
+										item.id === itemId
+											? { ...item, ...updates, lastUpdated: new Date().toISOString() }
+											: item
+									)
+								}
+							: section
+					),
+					lastUpdated: new Date().toISOString()
+				};
+				checklistState = newState;
+				saveChecklistState(newState);
+			} else {
+				console.log(
+					'🏢 Business unit context - skipping local state update, using backend data only'
+				);
+			}
+
+			// Force a data refresh to update the display
+			dataRefreshTimestamp = Date.now();
 		} catch (error) {
 			console.error('Failed to update checklist item:', error);
 			updateError =
@@ -421,12 +525,12 @@
 		// Force reactivity to checklistState and data refresh
 		const _ = checklistState.lastUpdated;
 		const __ = dataRefreshTimestamp;
-		
+
 		if (!backendTemplates) return 0;
-		
+
 		// Get all manual templates and count those with status 'no' (non-compliant)
 		const manualTemplates = backendTemplates.filter((template) => template.kind === 'manual');
-		
+
 		return manualTemplates.reduce((count, template) => {
 			// Find saved state for this template
 			const savedSection = checklistState.sections.find((section) => {
@@ -436,10 +540,10 @@
 					.replace(/[^a-z0-9-]/g, '');
 				return section.id === sectionId;
 			});
-			
+
 			const savedItem = savedSection?.items.find((item) => item.id === template.id);
 			const status = savedItem?.status || 'no'; // Default to 'no' if not set
-			
+
 			// Only count if status is 'no' (non-compliant)
 			return status === 'no' ? count + 1 : count;
 		}, 0);
@@ -450,7 +554,7 @@
 		// Force reactivity to data changes
 		const _ = dataRefreshTimestamp;
 		const __ = checklistState.lastUpdated;
-		
+
 		if (activeView === 'scanner') {
 			// For scanner view, all displayed items are already non-compliant
 			return section.items.length;
@@ -461,7 +565,7 @@
 				// If no saved state, all items are non-compliant by default
 				return section.items.length;
 			}
-			
+
 			// Count items with status 'no' or not set
 			return sectionState.items.filter((item: any) => {
 				const status = item.status || 'no';
@@ -473,7 +577,7 @@
 	let nonCompliantIssuesCount = $derived(() => {
 		// Force reactivity to data refresh
 		const _ = dataRefreshTimestamp;
-		
+
 		if (!backendTemplates) return 0;
 		const autoTemplates = backendTemplates.filter((template) => {
 			const isAutomatic =
@@ -599,7 +703,7 @@
 
 			// Reload templates after successful upload
 			await loadTemplates(); // This now includes covered assets
-			await loadBackendGlobalChecklist(); // Still needed for manual view
+			await loadCurrentChecklist(); // Reload current checklist based on business unit selection
 
 			uploadSuccess = `Successfully uploaded ${templates.length} templates!`;
 
@@ -622,7 +726,7 @@
 	async function refreshComplianceData() {
 		console.log('Refreshing compliance data...');
 		loadTemplates();
-		await loadBackendGlobalChecklist();
+		await loadCurrentChecklist();
 		// Update timestamp to force reactivity
 		dataRefreshTimestamp = Date.now();
 		console.log('Compliance data refreshed at:', dataRefreshTimestamp);
@@ -633,7 +737,7 @@
 			checklistState = loadChecklistState();
 			await loadTemplates(); // Load templates from backend API
 			await loadJsonTemplates(); // Load JSON templates data for rich guide information
-			await loadBackendGlobalChecklist(); // Load global checklist (still needed for manual view)
+			await loadCurrentChecklist(); // Load current checklist based on business unit selection
 
 			// Register compliance refresh callback with asset store
 			assetStore.registerComplianceRefreshCallback(refreshComplianceData);
@@ -654,6 +758,15 @@
 			assetStore.unregisterComplianceRefreshCallback(refreshComplianceData);
 		};
 	});
+
+	// Function to handle business unit change and reload data
+	async function handleBusinessUnitChange() {
+		console.log('🔄 Business unit changed, reloading checklist data...');
+		console.log('🏢 New business unit:', businessUnitsStore.selectedBusinessUnit?.name || 'Global');
+		await loadCurrentChecklist();
+		dataRefreshTimestamp = Date.now();
+		console.log('🔄 Data refresh timestamp updated:', dataRefreshTimestamp);
+	}
 </script>
 
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -830,6 +943,10 @@
 
 				<!-- Manual View -->
 				<Tabs.Content value="manual">
+					<!-- Business Unit Management Card -->
+					<div class="mb-6">
+						<BusinessUnitCard onBusinessUnitChange={handleBusinessUnitChange} />
+					</div>
 					<Card.Root class="mb-6">
 						<Card.Header>
 							<Card.Title>Manual Compliance Templates</Card.Title>
@@ -905,6 +1022,7 @@
 												onUpdate={(updates) => updateChecklistItem(section.id, item.id, updates)}
 												readOnly={item.readOnly}
 												updating={updatingItems.has(item.id)}
+												businessUnitId={businessUnitsStore.selectedBusinessUnit?.id}
 											/>
 										{/each}
 									</div>
@@ -975,6 +1093,7 @@
 												onUpdate={(updates) => updateChecklistItem(section.id, item.id, updates)}
 												readOnly={item.readOnly}
 												updating={updatingItems.has(item.id)}
+												businessUnitId={businessUnitsStore.selectedBusinessUnit?.id}
 											/>
 										{/each}
 									</div>

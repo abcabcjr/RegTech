@@ -256,6 +256,234 @@ const docTemplate = `{
                 }
             }
         },
+        "/business-units": {
+            "get": {
+                "description": "Retrieve all business units",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "business-units"
+                ],
+                "summary": "List business units",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ListBusinessUnitsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new business unit with the specified name",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "business-units"
+                ],
+                "summary": "Create business unit",
+                "parameters": [
+                    {
+                        "description": "Business unit creation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.CreateBusinessUnitRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/v1.BusinessUnitResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/business-units/{id}": {
+            "get": {
+                "description": "Retrieve a business unit by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "business-units"
+                ],
+                "summary": "Get business unit",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Business unit ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.BusinessUnitResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update a business unit's name",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "business-units"
+                ],
+                "summary": "Update business unit",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Business unit ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Business unit update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.UpdateBusinessUnitRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.BusinessUnitResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a business unit by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "business-units"
+                ],
+                "summary": "Delete business unit",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Business unit ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.GenericStatusResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/checklist/asset-templates": {
             "get": {
                 "description": "Retrieve all asset-scoped checklist templates with their coverage across all assets",
@@ -322,6 +550,114 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/checklist/business-unit/status": {
+            "post": {
+                "description": "Set the status (yes/no/na) of a checklist item for a specific business unit",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "checklist"
+                ],
+                "summary": "Set business unit checklist item status",
+                "parameters": [
+                    {
+                        "description": "Business unit checklist status update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.SetBusinessUnitChecklistStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/checklist/business-unit/{businessUnitId}": {
+            "get": {
+                "description": "Retrieve all global checklist items with their current status for a specific business unit",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "checklist"
+                ],
+                "summary": "Get business unit checklist items",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Business Unit ID",
+                        "name": "businessUnitId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.DerivedChecklistItem"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/v1.ErrorResponse"
                         }
@@ -1298,14 +1634,43 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ChecklistItemGuide": {
+            "type": "object",
+            "properties": {
+                "acceptance_summary": {
+                    "type": "string"
+                },
+                "faq": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.FAQ"
+                    }
+                },
+                "non_technical_steps": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "scope_caveats": {
+                    "type": "string"
+                }
+            }
+        },
         "model.ChecklistItemInfo": {
             "type": "object",
             "properties": {
+                "guide": {
+                    "$ref": "#/definitions/model.ChecklistItemGuide"
+                },
                 "law_refs": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
+                },
+                "legal": {
+                    "$ref": "#/definitions/model.ChecklistItemLegal"
                 },
                 "priority": {
                     "description": "\"must\", \"should\", \"may\"",
@@ -1317,10 +1682,33 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.ChecklistItemResource"
                     }
                 },
+                "risks": {
+                    "$ref": "#/definitions/model.ChecklistItemRisks"
+                },
                 "what_it_means": {
                     "type": "string"
                 },
                 "why_it_matters": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ChecklistItemLegal": {
+            "type": "object",
+            "properties": {
+                "article_refs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "quotes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Quote"
+                    }
+                },
+                "requirement_summary": {
                     "type": "string"
                 }
             }
@@ -1333,6 +1721,23 @@ const docTemplate = `{
                 },
                 "url": {
                     "type": "string"
+                }
+            }
+        },
+        "model.ChecklistItemRisks": {
+            "type": "object",
+            "properties": {
+                "attack_vectors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "potential_impact": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -1383,7 +1788,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "scope": {
-                    "description": "\"global\" or \"asset\"",
+                    "description": "\"global\", \"asset\", or \"business_unit\"",
                     "type": "string"
                 },
                 "script_controlled": {
@@ -1468,7 +1873,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "scope": {
-                    "description": "\"global\" or \"asset\"",
+                    "description": "\"global\", \"asset\", or \"business_unit\"",
                     "type": "string"
                 },
                 "script_controlled": {
@@ -1512,6 +1917,17 @@ const docTemplate = `{
                 },
                 "value": {
                     "description": "Value for \"eq\", \"regex\", \"gte_days_since\""
+                }
+            }
+        },
+        "model.FAQ": {
+            "type": "object",
+            "properties": {
+                "a": {
+                    "type": "string"
+                },
+                "q": {
+                    "type": "string"
                 }
             }
         },
@@ -1613,6 +2029,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "uploaded_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Quote": {
+            "type": "object",
+            "properties": {
+                "source": {
+                    "type": "string"
+                },
+                "text": {
                     "type": "string"
                 }
             }
@@ -1761,6 +2188,41 @@ const docTemplate = `{
                 "note": {
                     "type": "string",
                     "example": "Email headers and logs"
+                }
+            }
+        },
+        "v1.BusinessUnitResponse": {
+            "type": "object",
+            "required": [
+                "createdAt",
+                "id",
+                "name",
+                "updatedAt"
+            ],
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.CreateBusinessUnitRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "Finance Department"
                 }
             }
         },
@@ -2218,6 +2680,24 @@ const docTemplate = `{
                 }
             }
         },
+        "v1.ListBusinessUnitsResponse": {
+            "type": "object",
+            "required": [
+                "businessUnits",
+                "total"
+            ],
+            "properties": {
+                "businessUnits": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.BusinessUnitResponse"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "v1.ListIncidentSummariesResponse": {
             "type": "object",
             "required": [
@@ -2291,6 +2771,41 @@ const docTemplate = `{
                 },
                 "success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "v1.SetBusinessUnitChecklistStatusRequest": {
+            "type": "object",
+            "required": [
+                "business_unit_id",
+                "item_id",
+                "status"
+            ],
+            "properties": {
+                "business_unit_id": {
+                    "description": "Business unit ID",
+                    "type": "string",
+                    "example": "bu-123"
+                },
+                "item_id": {
+                    "description": "Checklist item template ID",
+                    "type": "string",
+                    "example": "security-policy-001"
+                },
+                "notes": {
+                    "description": "Optional notes",
+                    "type": "string",
+                    "example": "Verified during security audit"
+                },
+                "status": {
+                    "description": "Status: yes, no, or na",
+                    "type": "string",
+                    "enum": [
+                        "yes",
+                        "no",
+                        "na"
+                    ],
+                    "example": "yes"
                 }
             }
         },
@@ -2374,6 +2889,18 @@ const docTemplate = `{
                 },
                 "started_at": {
                     "type": "string"
+                }
+            }
+        },
+        "v1.UpdateBusinessUnitRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "Updated Finance Department"
                 }
             }
         },

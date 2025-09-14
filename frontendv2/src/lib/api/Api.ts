@@ -48,50 +48,39 @@ export interface ModelAssetCoverage {
   updated_at?: string;
 }
 
+export interface ModelChecklistItemGuide {
+  acceptance_summary?: string;
+  faq?: ModelFAQ[];
+  non_technical_steps?: string[];
+  scope_caveats?: string;
+}
+
 export interface ModelChecklistItemInfo {
+  guide?: ModelChecklistItemGuide;
   law_refs?: string[];
+  legal?: ModelChecklistItemLegal;
   /** "must", "should", "may" */
   priority?: string;
   resources?: ModelChecklistItemResource[];
+  risks?: ModelChecklistItemRisks;
   what_it_means?: string;
   why_it_matters?: string;
-  risks?: ModelChecklistItemRisks;
-  guide?: ModelChecklistItemGuide;
-  legal?: ModelChecklistItemLegal;
-}
-
-export interface ModelChecklistItemRisks {
-  attack_vectors?: string[];
-  potential_impact?: string[];
-}
-
-export interface ModelChecklistItemGuide {
-  non_technical_steps?: string[];
-  scope_caveats?: string;
-  acceptance_summary?: string;
-  faq?: ModelChecklistItemFAQ[];
-}
-
-export interface ModelChecklistItemFAQ {
-  q?: string;
-  a?: string;
 }
 
 export interface ModelChecklistItemLegal {
-  requirement_summary?: string;
   article_refs?: string[];
-  priority?: string;
-  quotes?: ModelChecklistItemQuote[];
-}
-
-export interface ModelChecklistItemQuote {
-  text?: string;
-  source?: string;
+  quotes?: ModelQuote[];
+  requirement_summary?: string;
 }
 
 export interface ModelChecklistItemResource {
   title?: string;
   url?: string;
+}
+
+export interface ModelChecklistItemRisks {
+  attack_vectors?: string[];
+  potential_impact?: string[];
 }
 
 export interface ModelChecklistItemTemplate {
@@ -110,7 +99,7 @@ export interface ModelChecklistItemTemplate {
   read_only?: boolean;
   recommendation?: string;
   required?: boolean;
-  /** "global" or "asset" */
+  /** "global", "asset", or "business_unit" */
   scope?: string;
   /** Can be controlled by Lua scripts */
   script_controlled?: boolean;
@@ -142,7 +131,7 @@ export interface ModelDerivedChecklistItem {
   read_only?: boolean;
   recommendation?: string;
   required?: boolean;
-  /** "global" or "asset" */
+  /** "global", "asset", or "business_unit" */
   scope?: string;
   /** Can be controlled by Lua scripts */
   script_controlled?: boolean;
@@ -165,6 +154,11 @@ export interface ModelEvidenceRule {
   source?: string;
   /** Value for "eq", "regex", "gte_days_since" */
   value?: any;
+}
+
+export interface ModelFAQ {
+  a?: string;
+  q?: string;
 }
 
 export interface ModelFileAttachment {
@@ -207,6 +201,11 @@ export interface ModelFileUploadResponse {
   file_size?: number;
   status?: string;
   uploaded_at?: string;
+}
+
+export interface ModelQuote {
+  source?: string;
+  text?: string;
 }
 
 export interface V1AssetCatalogueResponse {
@@ -253,6 +252,18 @@ export interface V1Attachment {
   name: string;
   /** @example "Email headers and logs" */
   note?: string;
+}
+
+export interface V1BusinessUnitResponse {
+  createdAt: string;
+  id: string;
+  name: string;
+  updatedAt: string;
+}
+
+export interface V1CreateBusinessUnitRequest {
+  /** @example "Finance Department" */
+  name: string;
 }
 
 export interface V1CreateIncidentRequest {
@@ -406,6 +417,11 @@ export interface V1JobStatusResponse {
   status: string;
 }
 
+export interface V1ListBusinessUnitsResponse {
+  businessUnits: V1BusinessUnitResponse[];
+  total: number;
+}
+
 export interface V1ListIncidentSummariesResponse {
   summaries: V1IncidentSummaryResponse[];
   total: number;
@@ -425,6 +441,29 @@ export interface V1ScanResult {
   output?: string[];
   script_name: string;
   success: boolean;
+}
+
+export interface V1SetBusinessUnitChecklistStatusRequest {
+  /**
+   * Business unit ID
+   * @example "bu-123"
+   */
+  business_unit_id: string;
+  /**
+   * Checklist item template ID
+   * @example "security-policy-001"
+   */
+  item_id: string;
+  /**
+   * Optional notes
+   * @example "Verified during security audit"
+   */
+  notes?: string;
+  /**
+   * Status: yes, no, or na
+   * @example "yes"
+   */
+  status: "yes" | "no" | "na";
 }
 
 export interface V1StartAllAssetsScanRequest {
@@ -450,6 +489,11 @@ export interface V1StartAssetScanResponse {
   job_id: string;
   message: string;
   started_at: string;
+}
+
+export interface V1UpdateBusinessUnitRequest {
+  /** @example "Updated Finance Department" */
+  name: string;
 }
 
 export interface V1UpdateDetails {
@@ -858,6 +902,101 @@ export class Api<
         ...params,
       }),
   };
+  businessUnits = {
+    /**
+     * @description Retrieve all business units
+     *
+     * @tags business-units
+     * @name BusinessUnitsList
+     * @summary List business units
+     * @request GET:/business-units
+     */
+    businessUnitsList: (params: RequestParams = {}) =>
+      this.request<V1ListBusinessUnitsResponse, V1ErrorResponse>({
+        path: `/business-units`,
+        method: "GET",
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a new business unit with the specified name
+     *
+     * @tags business-units
+     * @name BusinessUnitsCreate
+     * @summary Create business unit
+     * @request POST:/business-units
+     */
+    businessUnitsCreate: (
+      request: V1CreateBusinessUnitRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<V1BusinessUnitResponse, V1ErrorResponse>({
+        path: `/business-units`,
+        method: "POST",
+        body: request,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Retrieve a business unit by its ID
+     *
+     * @tags business-units
+     * @name BusinessUnitsDetail
+     * @summary Get business unit
+     * @request GET:/business-units/{id}
+     */
+    businessUnitsDetail: (id: string, params: RequestParams = {}) =>
+      this.request<V1BusinessUnitResponse, V1ErrorResponse>({
+        path: `/business-units/${id}`,
+        method: "GET",
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update a business unit's name
+     *
+     * @tags business-units
+     * @name BusinessUnitsUpdate
+     * @summary Update business unit
+     * @request PUT:/business-units/{id}
+     */
+    businessUnitsUpdate: (
+      id: string,
+      request: V1UpdateBusinessUnitRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<V1BusinessUnitResponse, V1ErrorResponse>({
+        path: `/business-units/${id}`,
+        method: "PUT",
+        body: request,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Delete a business unit by its ID
+     *
+     * @tags business-units
+     * @name BusinessUnitsDelete
+     * @summary Delete business unit
+     * @request DELETE:/business-units/{id}
+     */
+    businessUnitsDelete: (id: string, params: RequestParams = {}) =>
+      this.request<V1GenericStatusResponse, V1ErrorResponse>({
+        path: `/business-units/${id}`,
+        method: "DELETE",
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+  };
   checklist = {
     /**
      * @description Retrieve all asset-scoped checklist templates with their coverage across all assets
@@ -887,6 +1026,44 @@ export class Api<
     assetDetail: (id: string, params: RequestParams = {}) =>
       this.request<ModelDerivedChecklistItem[], V1ErrorResponse>({
         path: `/checklist/asset/${id}`,
+        method: "GET",
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Set the status (yes/no/na) of a checklist item for a specific business unit
+     *
+     * @tags checklist
+     * @name BusinessUnitStatusCreate
+     * @summary Set business unit checklist item status
+     * @request POST:/checklist/business-unit/status
+     */
+    businessUnitStatusCreate: (
+      request: V1SetBusinessUnitChecklistStatusRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<Record<string, string>, V1ErrorResponse>({
+        path: `/checklist/business-unit/status`,
+        method: "POST",
+        body: request,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Retrieve all global checklist items with their current status for a specific business unit
+     *
+     * @tags checklist
+     * @name BusinessUnitDetail
+     * @summary Get business unit checklist items
+     * @request GET:/checklist/business-unit/{businessUnitId}
+     */
+    businessUnitDetail: (businessUnitId: string, params: RequestParams = {}) =>
+      this.request<ModelDerivedChecklistItem[], V1ErrorResponse>({
+        path: `/checklist/business-unit/${businessUnitId}`,
         method: "GET",
         type: ContentType.Json,
         format: "json",
