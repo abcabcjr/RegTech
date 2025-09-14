@@ -59,10 +59,8 @@ export interface ModelChecklistItemInfo {
   guide?: ModelChecklistItemGuide;
   law_refs?: string[];
   legal?: ModelChecklistItemLegal;
-  /** "critical", "high", "medium", "low" */
+  /** "must", "should", "may" */
   priority?: string;
-  /** Numeric priority (1=critical, 2=high, 3=medium, 4=low) */
-  priority_number?: number;
   resources?: ModelChecklistItemResource[];
   risks?: ModelChecklistItemRisks;
   what_it_means?: string;
@@ -261,11 +259,59 @@ export interface V1BusinessUnitResponse {
   id: string;
   name: string;
   updatedAt: string;
+  
+  // Legal Entity Information
+  legalEntityName?: string;
+  registrationCode?: string;    // IDNO/VAT
+  internalCode?: string;
+  
+  // Business Information
+  sector?: string;
+  subsector?: string;
+  companySizeBand?: string;    // micro/small/medium/large
+  headcountRange?: string;
+  
+  // Location Information
+  country?: string;
+  address?: string;
+  timezone?: string;
+  
+  // Domain Information
+  primaryDomain?: string;
+  otherDomainsCount?: number;
+  
+  // Legal Compliance
+  furnizorServicii?: boolean;    // Law 48/2023
+  furnizorDate?: string;         // Date/reference for Law 48/2023
 }
 
 export interface V1CreateBusinessUnitRequest {
   /** @example "Finance Department" */
   name: string;
+  
+  // Legal Entity Information
+  legalEntityName?: string;
+  registrationCode?: string;    // IDNO/VAT
+  internalCode?: string;
+  
+  // Business Information
+  sector?: string;
+  subsector?: string;
+  companySizeBand?: string;    // micro/small/medium/large
+  headcountRange?: string;
+  
+  // Location Information
+  country?: string;
+  address?: string;
+  timezone?: string;
+  
+  // Domain Information
+  primaryDomain?: string;
+  otherDomainsCount?: number;
+  
+  // Legal Compliance
+  furnizorServicii?: boolean;    // Law 48/2023
+  furnizorDate?: string;         // Date/reference for Law 48/2023
 }
 
 export interface V1CreateIncidentRequest {
@@ -496,6 +542,30 @@ export interface V1StartAssetScanResponse {
 export interface V1UpdateBusinessUnitRequest {
   /** @example "Updated Finance Department" */
   name: string;
+  
+  // Legal Entity Information
+  legalEntityName?: string;
+  registrationCode?: string;    // IDNO/VAT
+  internalCode?: string;
+  
+  // Business Information
+  sector?: string;
+  subsector?: string;
+  companySizeBand?: string;    // micro/small/medium/large
+  headcountRange?: string;
+  
+  // Location Information
+  country?: string;
+  address?: string;
+  timezone?: string;
+  
+  // Domain Information
+  primaryDomain?: string;
+  otherDomainsCount?: number;
+  
+  // Legal Compliance
+  furnizorServicii?: boolean;    // Law 48/2023
+  furnizorDate?: string;         // Date/reference for Law 48/2023
 }
 
 export interface V1UpdateDetails {

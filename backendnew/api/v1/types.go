@@ -275,11 +275,59 @@ type IncidentStatsResponse struct {
 // CreateBusinessUnitRequest represents a request to create a business unit
 type CreateBusinessUnitRequest struct {
 	Name string `json:"name" binding:"required" example:"Finance Department"`
+	
+	// Legal Entity Information
+	LegalEntityName     string `json:"legal_entity_name,omitempty" example:"Acme Corp SRL"`
+	RegistrationCode    string `json:"registration_code,omitempty" example:"RO12345678"`    // IDNO/VAT
+	InternalCode        string `json:"internal_code,omitempty" example:"ACME-001"`
+	
+	// Business Information
+	Sector              string `json:"sector,omitempty" example:"Technology"`
+	Subsector           string `json:"subsector,omitempty" example:"Software Development"`
+	CompanySizeBand     string `json:"company_size_band,omitempty" example:"medium"`    // micro/small/medium/large
+	HeadcountRange      string `json:"headcount_range,omitempty" example:"50-200"`
+	
+	// Location Information
+	Country             string `json:"country,omitempty" example:"Romania"`
+	Address             string `json:"address,omitempty" example:"Str. Example 123, Bucharest"`
+	Timezone            string `json:"timezone,omitempty" example:"Europe/Bucharest"`
+	
+	// Domain Information
+	PrimaryDomain       string `json:"primary_domain,omitempty" example:"acme.com"`
+	OtherDomainsCount   int    `json:"other_domains_count,omitempty" example:"3"`
+	
+	// Legal Compliance
+	FurnizorServicii    *bool  `json:"furnizor_servicii,omitempty" example:"true"`    // Law 48/2023
+	FurnizorDate        string `json:"furnizor_date,omitempty" example:"2024-01-15"`         // Date/reference for Law 48/2023
 }
 
 // UpdateBusinessUnitRequest represents a request to update a business unit
 type UpdateBusinessUnitRequest struct {
 	Name string `json:"name" binding:"required" example:"Updated Finance Department"`
+	
+	// Legal Entity Information
+	LegalEntityName     string `json:"legal_entity_name,omitempty" example:"Acme Corp SRL"`
+	RegistrationCode    string `json:"registration_code,omitempty" example:"RO12345678"`    // IDNO/VAT
+	InternalCode        string `json:"internal_code,omitempty" example:"ACME-001"`
+	
+	// Business Information
+	Sector              string `json:"sector,omitempty" example:"Technology"`
+	Subsector           string `json:"subsector,omitempty" example:"Software Development"`
+	CompanySizeBand     string `json:"company_size_band,omitempty" example:"medium"`    // micro/small/medium/large
+	HeadcountRange      string `json:"headcount_range,omitempty" example:"50-200"`
+	
+	// Location Information
+	Country             string `json:"country,omitempty" example:"Romania"`
+	Address             string `json:"address,omitempty" example:"Str. Example 123, Bucharest"`
+	Timezone            string `json:"timezone,omitempty" example:"Europe/Bucharest"`
+	
+	// Domain Information
+	PrimaryDomain       string `json:"primary_domain,omitempty" example:"acme.com"`
+	OtherDomainsCount   int    `json:"other_domains_count,omitempty" example:"3"`
+	
+	// Legal Compliance
+	FurnizorServicii    *bool  `json:"furnizor_servicii,omitempty" example:"true"`    // Law 48/2023
+	FurnizorDate        string `json:"furnizor_date,omitempty" example:"2024-01-15"`         // Date/reference for Law 48/2023
 }
 
 // BusinessUnitResponse represents a business unit
@@ -288,6 +336,30 @@ type BusinessUnitResponse struct {
 	Name      string `json:"name" binding:"required"`
 	CreatedAt string `json:"createdAt" binding:"required"`
 	UpdatedAt string `json:"updatedAt" binding:"required"`
+	
+	// Legal Entity Information
+	LegalEntityName     string `json:"legal_entity_name,omitempty"`
+	RegistrationCode    string `json:"registration_code,omitempty"`    // IDNO/VAT
+	InternalCode        string `json:"internal_code,omitempty"`
+	
+	// Business Information
+	Sector              string `json:"sector,omitempty"`
+	Subsector           string `json:"subsector,omitempty"`
+	CompanySizeBand     string `json:"company_size_band,omitempty"`    // micro/small/medium/large
+	HeadcountRange      string `json:"headcount_range,omitempty"`
+	
+	// Location Information
+	Country             string `json:"country,omitempty"`
+	Address             string `json:"address,omitempty"`
+	Timezone            string `json:"timezone,omitempty"`
+	
+	// Domain Information
+	PrimaryDomain       string `json:"primary_domain,omitempty"`
+	OtherDomainsCount   int    `json:"other_domains_count,omitempty"`
+	
+	// Legal Compliance
+	FurnizorServicii    *bool  `json:"furnizor_servicii,omitempty"`    // Law 48/2023
+	FurnizorDate        string `json:"furnizor_date,omitempty"`         // Date/reference for Law 48/2023
 }
 
 // ListBusinessUnitsResponse represents the response for listing business units

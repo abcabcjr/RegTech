@@ -43,7 +43,7 @@ func (h *BusinessUnitHandler) CreateBusinessUnit(c echo.Context) error {
 		})
 	}
 
-	businessUnit, err := h.businessUnitService.CreateBusinessUnit(c.Request().Context(), req.Name)
+	businessUnit, err := h.businessUnitService.CreateBusinessUnitWithDetails(c.Request().Context(), req.Name, req.LegalEntityName, req.RegistrationCode, req.InternalCode, req.Sector, req.Subsector, req.CompanySizeBand, req.HeadcountRange, req.Country, req.Address, req.Timezone, req.PrimaryDomain, req.OtherDomainsCount, req.FurnizorServicii, req.FurnizorDate)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "business unit name cannot be empty" {
@@ -135,7 +135,7 @@ func (h *BusinessUnitHandler) UpdateBusinessUnit(c echo.Context) error {
 		})
 	}
 
-	businessUnit, err := h.businessUnitService.UpdateBusinessUnit(c.Request().Context(), id, req.Name)
+	businessUnit, err := h.businessUnitService.UpdateBusinessUnitWithDetails(c.Request().Context(), id, req.Name, req.LegalEntityName, req.RegistrationCode, req.InternalCode, req.Sector, req.Subsector, req.CompanySizeBand, req.HeadcountRange, req.Country, req.Address, req.Timezone, req.PrimaryDomain, req.OtherDomainsCount, req.FurnizorServicii, req.FurnizorDate)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "business unit name cannot be empty" {
@@ -235,5 +235,29 @@ func (h *BusinessUnitHandler) convertToBusinessUnitResponse(businessUnit *model.
 		Name:      businessUnit.Name,
 		CreatedAt: businessUnit.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt: businessUnit.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		
+		// Legal Entity Information
+		LegalEntityName:     businessUnit.LegalEntityName,
+		RegistrationCode:    businessUnit.RegistrationCode,
+		InternalCode:        businessUnit.InternalCode,
+		
+		// Business Information
+		Sector:              businessUnit.Sector,
+		Subsector:           businessUnit.Subsector,
+		CompanySizeBand:     businessUnit.CompanySizeBand,
+		HeadcountRange:      businessUnit.HeadcountRange,
+		
+		// Location Information
+		Country:             businessUnit.Country,
+		Address:             businessUnit.Address,
+		Timezone:            businessUnit.Timezone,
+		
+		// Domain Information
+		PrimaryDomain:       businessUnit.PrimaryDomain,
+		OtherDomainsCount:   businessUnit.OtherDomainsCount,
+		
+		// Legal Compliance
+		FurnizorServicii:    businessUnit.FurnizorServicii,
+		FurnizorDate:        businessUnit.FurnizorDate,
 	}
 }

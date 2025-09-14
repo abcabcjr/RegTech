@@ -51,6 +51,36 @@ func (s *BusinessUnitService) CreateBusinessUnit(ctx context.Context, name strin
 	return businessUnit, nil
 }
 
+// CreateBusinessUnitWithDetails creates a new business unit with all details
+func (s *BusinessUnitService) CreateBusinessUnitWithDetails(ctx context.Context, name, legalEntityName, registrationCode, internalCode, sector, subsector, companySizeBand, headcountRange, country, address, timezone, primaryDomain string, otherDomainsCount int, furnizorServicii *bool, furnizorDate string) (*model.BusinessUnit, error) {
+	// Validate name
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, fmt.Errorf("business unit name cannot be empty")
+	}
+
+	// Check if a business unit with this name already exists
+	existingUnits, err := s.storage.ListBusinessUnits(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing business units: %w", err)
+	}
+
+	for _, unit := range existingUnits {
+		if strings.EqualFold(unit.Name, name) {
+			return nil, fmt.Errorf("business unit with name '%s' already exists", name)
+		}
+	}
+
+	// Create new business unit with details
+	businessUnit := model.NewBusinessUnitWithDetails(name, legalEntityName, registrationCode, internalCode, sector, subsector, companySizeBand, headcountRange, country, address, timezone, primaryDomain, otherDomainsCount, furnizorServicii, furnizorDate)
+
+	if err := s.storage.CreateBusinessUnit(ctx, businessUnit); err != nil {
+		return nil, fmt.Errorf("failed to create business unit: %w", err)
+	}
+
+	return businessUnit, nil
+}
+
 // GetBusinessUnit retrieves a business unit by ID
 func (s *BusinessUnitService) GetBusinessUnit(ctx context.Context, id string) (*model.BusinessUnit, error) {
 	businessUnit, err := s.storage.GetBusinessUnit(ctx, id)
@@ -89,6 +119,42 @@ func (s *BusinessUnitService) UpdateBusinessUnit(ctx context.Context, id, name s
 
 	// Update business unit
 	businessUnit.Update(name)
+
+	if err := s.storage.UpdateBusinessUnit(ctx, businessUnit); err != nil {
+		return nil, fmt.Errorf("failed to update business unit: %w", err)
+	}
+
+	return businessUnit, nil
+}
+
+// UpdateBusinessUnitWithDetails updates a business unit with all details
+func (s *BusinessUnitService) UpdateBusinessUnitWithDetails(ctx context.Context, id, name, legalEntityName, registrationCode, internalCode, sector, subsector, companySizeBand, headcountRange, country, address, timezone, primaryDomain string, otherDomainsCount int, furnizorServicii *bool, furnizorDate string) (*model.BusinessUnit, error) {
+	// Validate name
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, fmt.Errorf("business unit name cannot be empty")
+	}
+
+	// Get existing business unit
+	businessUnit, err := s.storage.GetBusinessUnit(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get business unit: %w", err)
+	}
+
+	// Check if another business unit with this name already exists
+	existingUnits, err := s.storage.ListBusinessUnits(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing business units: %w", err)
+	}
+
+	for _, unit := range existingUnits {
+		if unit.ID != id && strings.EqualFold(unit.Name, name) {
+			return nil, fmt.Errorf("business unit with name '%s' already exists", name)
+		}
+	}
+
+	// Update business unit with all details
+	businessUnit.UpdateWithDetails(name, legalEntityName, registrationCode, internalCode, sector, subsector, companySizeBand, headcountRange, country, address, timezone, primaryDomain, otherDomainsCount, furnizorServicii, furnizorDate)
 
 	if err := s.storage.UpdateBusinessUnit(ctx, businessUnit); err != nil {
 		return nil, fmt.Errorf("failed to update business unit: %w", err)

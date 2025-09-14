@@ -61,9 +61,37 @@ export class BusinessUnitsStore {
 		}
 	}
 	
+	async createWithDetails(request: V1CreateBusinessUnitRequest) {
+		try {
+			const response = await apiClient.businessUnits.businessUnitsCreate(request);
+			await this.load(); // Refresh data
+			return response.data;
+		} catch (error) {
+			console.error('Failed to create business unit:', error);
+			throw error;
+		}
+	}
+	
 	async update(id: string, name: string) {
 		try {
 			const request: V1UpdateBusinessUnitRequest = { name };
+			const response = await apiClient.businessUnits.businessUnitsUpdate(id, request);
+			await this.load(); // Refresh data
+			
+			// Update selected business unit if it was the one being updated
+			if (this.selectedBusinessUnit?.id === id) {
+				this.selectedBusinessUnit = this.businessUnits.find(bu => bu.id === id) || null;
+			}
+			
+			return response.data;
+		} catch (error) {
+			console.error('Failed to update business unit:', error);
+			throw error;
+		}
+	}
+	
+	async updateWithDetails(id: string, request: V1UpdateBusinessUnitRequest) {
+		try {
 			const response = await apiClient.businessUnits.businessUnitsUpdate(id, request);
 			await this.load(); // Refresh data
 			

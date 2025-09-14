@@ -110,8 +110,13 @@
 				businessUnitsStore.selectedBusinessUnit?.name || 'Global'
 			);
 
-			// Filter for manual templates only
-			const manualTemplates = currentData.filter((template) => template.kind === 'manual');
+			// Filter for manual templates only (but also include templates without kind specified)
+			const manualTemplates = currentData.filter((template) => 
+				template.kind === 'manual' || 
+				template.kind === undefined || 
+				template.kind === null ||
+				template.source === 'manual'
+			);
 			console.log('📝 Filtered manual templates:', manualTemplates.length);
 			console.log('📝 Manual templates sample:', manualTemplates.slice(0, 2));
 
@@ -248,6 +253,7 @@
 	// Convert global checklist items (with asset coverage) to frontend sections format
 	function convertGlobalChecklistToSections(checklistItems: any[]) {
 		if (!checklistItems || checklistItems.length === 0) return [];
+
 
 		// Sort checklist items by priority (critical first), then category, then title
 		const sortedItems = [...checklistItems].sort((a, b) => {
@@ -397,7 +403,8 @@
 		try {
 			const response = await apiClient.checklist.templatesList();
 			backendTemplates = response.data || [];
-			console.log('Loaded templates from backend:', backendTemplates);
+			console.log('Loaded templates from backend:', backendTemplates.length, 'templates');
+			
 			const securityAudit = backendTemplates.find((t) => t.id === 'security-audit');
 			console.log('Security Audit template:', securityAudit);
 		} catch (err) {
@@ -425,7 +432,7 @@
 		try {
 			const response = await apiClient.checklist.globalList();
 			backendGlobalChecklist = response.data || [];
-			console.log('Loaded backend global checklist:', backendGlobalChecklist);
+			console.log('Loaded backend global checklist:', backendGlobalChecklist.length, 'items');
 		} catch (err) {
 			console.error('Failed to load backend global checklist:', err);
 			// Fallback to empty array if backend is not available
@@ -471,8 +478,7 @@
 		} else {
 			// Return global manual checklist items
 			console.log('🌍 Global Data:', backendGlobalChecklist);
-			//throw new Error('Dont do global');
-			return [];
+			return backendGlobalChecklist;
 		}
 	});
 
@@ -573,21 +579,35 @@
 		const sections = displaySections();
 		if (sections.length === 0) return 0;
 
-		// Only count required items that are not marked as "na" (not applicable)
+		// Count all required items (including "na" - not applicable is still a valid status)
 		const totalRequired = sections.reduce(
-			(acc, section) => acc + section.items.filter((item: any) => item.required && item.status !== 'na').length,
+			(acc, section) => acc + section.items.filter((item: any) => item.required).length,
 			0
 		);
 
-		// Count completed items directly from the displayed sections (they already have current status)
+		// Count completed items: both "yes" and "na" are considered compliant
 		const completedRequired = sections.reduce((acc, section) => {
 			return (
 				acc +
-				section.items.filter((item: any) => item.required && item.status === 'yes').length
+				section.items.filter((item: any) => item.required && (item.status === 'yes' || item.status === 'na')).length
 			);
 		}, 0);
 
-		return totalRequired > 0 ? Math.round((completedRequired / totalRequired) * 100) : 0;
+		const score = totalRequired > 0 ? Math.round((completedRequired / totalRequired) * 100) : 0;
+		
+		// Debug logging
+		console.log('🔍 Progress Bar Debug:', {
+			totalRequired,
+			completedRequired,
+			score,
+			sections: sections.map(s => ({
+				title: s.title,
+				required: s.items.filter(i => i.required).length,
+				completed: s.items.filter(i => i.required && (i.status === 'yes' || i.status === 'na')).length
+			}))
+		});
+
+		return score;
 	});
 
 	// Calculate counts for main tabs
@@ -978,12 +998,12 @@
 					return (
 						acc +
 						section.items.filter(
-							(item: any) => item.required && item.status === 'yes'
+							(item: any) => item.required && (item.status === 'yes' || item.status === 'na')
 						).length
 					);
 				}, 0)}/{displaySections().reduce(
 					(acc, section) =>
-						acc + section.items.filter((item: any) => item.required && item.status !== 'na').length,
+						acc + section.items.filter((item: any) => item.required).length,
 					0
 				)}
 			</span>
@@ -1155,12 +1175,12 @@
 											return (
 												acc +
 												section.items.filter(
-													(item: any) => item.required && item.status === 'yes'
+													(item: any) => item.required && (item.status === 'yes' || item.status === 'na')
 												).length
 											);
 										}, 0)} of {displaySections().reduce(
 											(acc, section) =>
-												acc + section.items.filter((item: any) => item.required && item.status !== 'na').length,
+												acc + section.items.filter((item: any) => item.required).length,
 											0
 										)} required items completed
 									</span>
