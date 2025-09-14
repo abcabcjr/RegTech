@@ -1,4 +1,4 @@
-# RegTech - Compliance & Security Asset Management Platform
+# Mephisto - Compliance & Security Asset Management Platform
 
 A comprehensive platform for regulatory technology compliance, asset discovery, security scanning, and vulnerability management. The system provides automated asset discovery, Lua-powered security scanning, incident management, and compliance reporting through a modern web interface.
 
