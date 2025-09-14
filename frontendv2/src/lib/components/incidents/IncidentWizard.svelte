@@ -22,6 +22,12 @@
   import Check from '@lucide/svelte/icons/check';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
+  import FileText from '@lucide/svelte/icons/file-text';
+  import Printer from '@lucide/svelte/icons/printer';
+  
+  // PDF Export
+  import jsPDF from 'jspdf';
+  import html2canvas from 'html2canvas';
 
   // Props
   let { 
@@ -328,6 +334,292 @@
     resetForm();
   }
 
+  // PDF Export Functions
+  async function exportToPDF(reportType: 'initial' | 'update' | 'final') {
+    try {
+      const pdf = new jsPDF();
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
+      let yPosition = margin;
+
+      // Set up document title
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      
+      let reportTitle = '';
+      switch (reportType) {
+        case 'initial':
+          reportTitle = 'Initial Incident Report';
+          break;
+        case 'update':
+          reportTitle = 'Update Incident Report';
+          break;
+        case 'final':
+          reportTitle = 'Final Incident Report';
+          break;
+      }
+      
+      pdf.text(reportTitle, margin, yPosition);
+      yPosition += 20;
+
+      // Add incident ID if available
+      if (incidentId) {
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`Incident ID: ${incidentId}`, margin, yPosition);
+        yPosition += 15;
+      }
+
+      // Add timestamp
+      pdf.text(`Generated: ${new Date().toLocaleString()}`, margin, yPosition);
+      yPosition += 20;
+
+      // Set up content styling
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'normal');
+
+      // Add content based on report type
+      if (reportType === 'initial' || reportType === 'update' || reportType === 'final') {
+        // Basic Information (always included)
+        if (basicData.significant || basicData.recurring || basicData.causeTag !== 'other') {
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Basic Information:', margin, yPosition);
+          yPosition += 10;
+          pdf.setFont('helvetica', 'normal');
+          
+          if (basicData.significant) {
+            pdf.text('• Significant Incident: Yes', margin + 10, yPosition);
+            yPosition += 8;
+          }
+          if (basicData.recurring) {
+            pdf.text('• Recurring Incident: Yes', margin + 10, yPosition);
+            yPosition += 8;
+          }
+          if (basicData.causeTag !== 'other') {
+            const causeLabel = CAUSE_TAGS.find(c => c.value === basicData.causeTag)?.label || basicData.causeTag;
+            pdf.text(`• Suspected Cause: ${causeLabel}`, margin + 10, yPosition);
+            yPosition += 8;
+          }
+          yPosition += 10;
+        }
+      }
+
+      // Initial Report Content
+      if (reportType === 'initial' && (initialData.title || initialData.summary)) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Initial Report Details:', margin, yPosition);
+        yPosition += 10;
+        pdf.setFont('helvetica', 'normal');
+
+        if (initialData.title) {
+          pdf.text(`Title: ${initialData.title}`, margin + 10, yPosition);
+          yPosition += 8;
+        }
+        
+        if (initialData.detectedAt) {
+          pdf.text(`Detected At: ${new Date(initialData.detectedAt).toLocaleString()}`, margin + 10, yPosition);
+          yPosition += 8;
+        }
+
+        if (initialData.summary) {
+          pdf.text('Summary:', margin + 10, yPosition);
+          yPosition += 8;
+          const summaryLines = pdf.splitTextToSize(initialData.summary, pageWidth - margin * 2 - 20);
+          pdf.text(summaryLines, margin + 20, yPosition);
+          yPosition += summaryLines.length * 6 + 10;
+        }
+
+        if (initialData.suspectedIllegal) {
+          pdf.text('• Suspected illegal activity', margin + 10, yPosition);
+          yPosition += 8;
+        }
+
+        if (initialData.possibleCrossBorder) {
+          pdf.text('• Possible cross-border effects', margin + 10, yPosition);
+          yPosition += 8;
+        }
+      }
+
+      // Update Report Content
+      if (reportType === 'update' && (updateData.gravity || updateData.impact || updateData.corrections)) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Impact Assessment:', margin, yPosition);
+        yPosition += 10;
+        pdf.setFont('helvetica', 'normal');
+
+        // Impact metrics
+        if (basicData.usersAffected || basicData.downtimeMinutes || basicData.financialImpactPct) {
+          pdf.text('Impact Metrics:', margin + 10, yPosition);
+          yPosition += 8;
+          
+          if (basicData.usersAffected) {
+            pdf.text(`• Users Affected: ${basicData.usersAffected}`, margin + 20, yPosition);
+            yPosition += 6;
+          }
+          if (basicData.downtimeMinutes) {
+            pdf.text(`• Downtime: ${basicData.downtimeMinutes} minutes`, margin + 20, yPosition);
+            yPosition += 6;
+          }
+          if (basicData.financialImpactPct) {
+            pdf.text(`• Financial Impact: ${basicData.financialImpactPct}%`, margin + 20, yPosition);
+            yPosition += 6;
+          }
+          yPosition += 8;
+        }
+
+        if (updateData.gravity) {
+          const gravityLabel = GRAVITY_LEVELS.find(g => g.value === updateData.gravity)?.label || updateData.gravity;
+          pdf.text(`Incident Gravity: ${gravityLabel}`, margin + 10, yPosition);
+          yPosition += 8;
+        }
+
+        if (updateData.impact) {
+          pdf.text('Impact Description:', margin + 10, yPosition);
+          yPosition += 8;
+          const impactLines = pdf.splitTextToSize(updateData.impact, pageWidth - margin * 2 - 20);
+          pdf.text(impactLines, margin + 20, yPosition);
+          yPosition += impactLines.length * 6 + 10;
+        }
+
+        if (updateData.corrections) {
+          pdf.text('Interim Actions Taken:', margin + 10, yPosition);
+          yPosition += 8;
+          const correctionsLines = pdf.splitTextToSize(updateData.corrections, pageWidth - margin * 2 - 20);
+          pdf.text(correctionsLines, margin + 20, yPosition);
+          yPosition += correctionsLines.length * 6 + 10;
+        }
+      }
+
+      // Final Report Content
+      if (reportType === 'final' && (finalData.rootCause || finalData.mitigations || finalData.lessons)) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Final Report Details:', margin, yPosition);
+        yPosition += 10;
+        pdf.setFont('helvetica', 'normal');
+
+        if (finalData.rootCause) {
+          pdf.text('Root Cause Analysis:', margin + 10, yPosition);
+          yPosition += 8;
+          const rootCauseLines = pdf.splitTextToSize(finalData.rootCause, pageWidth - margin * 2 - 20);
+          pdf.text(rootCauseLines, margin + 20, yPosition);
+          yPosition += rootCauseLines.length * 6 + 10;
+        }
+
+        if (finalData.mitigations) {
+          pdf.text('Mitigations Implemented:', margin + 10, yPosition);
+          yPosition += 8;
+          const mitigationsLines = pdf.splitTextToSize(finalData.mitigations, pageWidth - margin * 2 - 20);
+          pdf.text(mitigationsLines, margin + 20, yPosition);
+          yPosition += mitigationsLines.length * 6 + 10;
+        }
+
+        if (finalData.lessons) {
+          pdf.text('Lessons Learned:', margin + 10, yPosition);
+          yPosition += 8;
+          const lessonsLines = pdf.splitTextToSize(finalData.lessons, pageWidth - margin * 2 - 20);
+          pdf.text(lessonsLines, margin + 20, yPosition);
+          yPosition += lessonsLines.length * 6 + 10;
+        }
+
+        if (finalData.crossBorderDesc) {
+          pdf.text('Cross-Border Effects:', margin + 10, yPosition);
+          yPosition += 8;
+          const crossBorderLines = pdf.splitTextToSize(finalData.crossBorderDesc, pageWidth - margin * 2 - 20);
+          pdf.text(crossBorderLines, margin + 20, yPosition);
+          yPosition += crossBorderLines.length * 6 + 10;
+        }
+      }
+
+      // Save the PDF
+      const fileName = `${reportType}-report-${incidentId || 'new'}-${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+    } catch (error) {
+      console.error('Failed to export PDF:', error);
+      alert('Failed to export PDF. Please try again.');
+    }
+  }
+
+  function printReport(reportType: 'initial' | 'update' | 'final') {
+    // Use browser's print functionality with a formatted version
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    let reportTitle = '';
+    let reportContent = '';
+
+    switch (reportType) {
+      case 'initial':
+        reportTitle = 'Initial Incident Report';
+        reportContent = `
+          <h2>Basic Information</h2>
+          ${initialData.title ? `<p><strong>Title:</strong> ${initialData.title}</p>` : ''}
+          ${initialData.detectedAt ? `<p><strong>Detected At:</strong> ${new Date(initialData.detectedAt).toLocaleString()}</p>` : ''}
+          ${initialData.summary ? `<p><strong>Summary:</strong><br>${initialData.summary.replace(/\n/g, '<br>')}</p>` : ''}
+          ${basicData.significant ? '<p>• Significant Incident</p>' : ''}
+          ${basicData.recurring ? '<p>• Recurring Incident</p>' : ''}
+          ${initialData.suspectedIllegal ? '<p>• Suspected illegal activity</p>' : ''}
+          ${initialData.possibleCrossBorder ? '<p>• Possible cross-border effects</p>' : ''}
+        `;
+        break;
+      case 'update':
+        reportTitle = 'Update Incident Report';
+        reportContent = `
+          <h2>Impact Assessment</h2>
+          ${basicData.usersAffected ? `<p><strong>Users Affected:</strong> ${basicData.usersAffected}</p>` : ''}
+          ${basicData.downtimeMinutes ? `<p><strong>Downtime:</strong> ${basicData.downtimeMinutes} minutes</p>` : ''}
+          ${basicData.financialImpactPct ? `<p><strong>Financial Impact:</strong> ${basicData.financialImpactPct}%</p>` : ''}
+          ${updateData.gravity ? `<p><strong>Incident Gravity:</strong> ${GRAVITY_LEVELS.find(g => g.value === updateData.gravity)?.label || updateData.gravity}</p>` : ''}
+          ${updateData.impact ? `<p><strong>Impact Description:</strong><br>${updateData.impact.replace(/\n/g, '<br>')}</p>` : ''}
+          ${updateData.corrections ? `<p><strong>Interim Actions Taken:</strong><br>${updateData.corrections.replace(/\n/g, '<br>')}</p>` : ''}
+          ${basicData.significant ? '<p>• Significant Incident</p>' : ''}
+          ${basicData.recurring ? '<p>• Recurring Incident</p>' : ''}
+        `;
+        break;
+      case 'final':
+        reportTitle = 'Final Incident Report';
+        reportContent = `
+          <h2>Final Report</h2>
+          ${finalData.rootCause ? `<p><strong>Root Cause Analysis:</strong><br>${finalData.rootCause.replace(/\n/g, '<br>')}</p>` : ''}
+          ${finalData.mitigations ? `<p><strong>Mitigations Implemented:</strong><br>${finalData.mitigations.replace(/\n/g, '<br>')}</p>` : ''}
+          ${finalData.lessons ? `<p><strong>Lessons Learned:</strong><br>${finalData.lessons.replace(/\n/g, '<br>')}</p>` : ''}
+          ${finalData.crossBorderDesc ? `<p><strong>Cross-Border Effects:</strong><br>${finalData.crossBorderDesc.replace(/\n/g, '<br>')}</p>` : ''}
+        `;
+        break;
+    }
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${reportTitle}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+          h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }
+          h2 { color: #666; margin-top: 30px; }
+          p { margin: 10px 0; }
+          strong { color: #333; }
+          @media print {
+            body { margin: 0; }
+            h1 { page-break-after: avoid; }
+          }
+        </style>
+      </head>
+      <body>
+        <h1>${reportTitle}</h1>
+        ${incidentId ? `<p><strong>Incident ID:</strong> ${incidentId}</p>` : ''}
+        <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+        ${reportContent}
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  }
+
 </script>
 
 <Dialog.Root bind:open>
@@ -374,7 +666,27 @@
     {#if currentStep === 1}
       <Card.Root>
         <Card.Header>
-          <Card.Title>Initial Incident Report</Card.Title>
+          <div class="flex items-center justify-between">
+            <Card.Title>Initial Incident Report</Card.Title>
+            <div class="flex space-x-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onclick={() => printReport('initial')}
+                title="Print Initial Report"
+              >
+                <Printer class="w-4 h-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onclick={() => exportToPDF('initial')}
+                title="Export Initial Report as PDF"
+              >
+                <FileText class="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
         </Card.Header>
         <Card.Content class="space-y-6">
           <div class="space-y-2">
@@ -448,7 +760,27 @@
     {#if currentStep === 2}
       <Card.Root>
         <Card.Header>
-          <Card.Title>Impact Assessment</Card.Title>
+          <div class="flex items-center justify-between">
+            <Card.Title>Impact Assessment</Card.Title>
+            <div class="flex space-x-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onclick={() => printReport('update')}
+                title="Print Update Report"
+              >
+                <Printer class="w-4 h-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onclick={() => exportToPDF('update')}
+                title="Export Update Report as PDF"
+              >
+                <FileText class="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
         </Card.Header>
         <Card.Content class="space-y-4">
           <div class="grid grid-cols-3 gap-4">
@@ -543,7 +875,27 @@
     {#if currentStep === 3}
       <Card.Root>
         <Card.Header>
-          <Card.Title>Final Report</Card.Title>
+          <div class="flex items-center justify-between">
+            <Card.Title>Final Report</Card.Title>
+            <div class="flex space-x-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onclick={() => printReport('final')}
+                title="Print Final Report"
+              >
+                <Printer class="w-4 h-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onclick={() => exportToPDF('final')}
+                title="Export Final Report as PDF"
+              >
+                <FileText class="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
         </Card.Header>
         <Card.Content class="space-y-4">
           <div>
