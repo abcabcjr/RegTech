@@ -52,6 +52,7 @@ type AssetSummary struct {
 	LastScannedAt *time.Time `json:"last_scanned_at,omitempty"`
 	ScanCount     int        `json:"scan_count" binding:"required"`
 	Status        string     `json:"status" binding:"required" example:"discovered,scanning,scanned,error"`
+	Tags          []string   `json:"tags,omitempty"` // Tags like "http", "cf-proxied", etc.
 }
 
 // Asset Details

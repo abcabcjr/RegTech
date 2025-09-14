@@ -1,0 +1,54 @@
+# Vulnerable SSH configuration
+
+Port 2222
+Protocol 2
+
+# Vulnerable: Allow root login
+PermitRootLogin yes
+
+# Vulnerable: Allow password authentication
+PasswordAuthentication yes
+PermitEmptyPasswords yes
+
+# Vulnerable: Allow challenge response
+ChallengeResponseAuthentication yes
+
+# Vulnerable: Allow keyboard interactive
+KbdInteractiveAuthentication yes
+
+# Vulnerable: Weak ciphers and MACs
+Ciphers aes128-cbc,3des-cbc,aes192-cbc,aes256-cbc
+MACs hmac-md5,hmac-sha1,hmac-sha1-96,hmac-md5-96
+
+# Vulnerable: Weak key exchange
+KexAlgorithms diffie-hellman-group1-sha1,diffie-hellman-group14-sha1
+
+# Logging
+SyslogFacility AUTH
+LogLevel INFO
+
+# Authentication
+LoginGraceTime 120
+StrictModes no
+MaxAuthTries 6
+MaxSessions 10
+
+# Vulnerable: Allow TCP forwarding
+AllowTcpForwarding yes
+GatewayPorts yes
+
+# Vulnerable: Allow X11 forwarding
+X11Forwarding yes
+X11DisplayOffset 10
+
+# Print last log when user logs in
+PrintLastLog yes
+
+# Vulnerable: Accept environment variables
+AcceptEnv LANG LC_*
+
+# Subsystem
+Subsystem sftp /usr/lib/openssh/sftp-server
+
+# Vulnerable: Allow users
+AllowUsers *

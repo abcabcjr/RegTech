@@ -1,0 +1,44 @@
+$TTL    604800
+@       IN      SOA     vulnerable.local. admin.vulnerable.local. (
+                              2023091301         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+
+; Name servers
+@       IN      NS      ns1.vulnerable.local.
+@       IN      NS      ns2.vulnerable.local.
+
+; A records
+@       IN      A       192.168.1.100
+ns1     IN      A       192.168.1.100
+ns2     IN      A       192.168.1.101
+www     IN      A       192.168.1.100
+mail    IN      A       192.168.1.102
+ftp     IN      A       192.168.1.103
+db      IN      A       192.168.1.104
+
+; MX records
+@       IN      MX      10 mail.vulnerable.local.
+
+; CNAME records
+webmail IN      CNAME   mail.vulnerable.local.
+admin   IN      CNAME   www.vulnerable.local.
+
+; TXT records (vulnerable information disclosure)
+@       IN      TXT     "v=spf1 include:vulnerable.local ~all"
+@       IN      TXT     "admin-email=admin@vulnerable.local"
+@       IN      TXT     "backup-server=backup.vulnerable.local"
+
+; SRV records
+_http._tcp      IN      SRV     10 5 80 www.vulnerable.local.
+_https._tcp     IN      SRV     10 5 443 www.vulnerable.local.
+_ftp._tcp       IN      SRV     10 5 21 ftp.vulnerable.local.
+
+; Vulnerable: Expose internal services
+internal        IN      A       10.0.0.10
+backup          IN      A       10.0.0.20
+admin-panel     IN      A       10.0.0.30
+test            IN      A       10.0.0.40
+dev             IN      A       10.0.0.50

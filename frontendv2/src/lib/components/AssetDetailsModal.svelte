@@ -168,7 +168,7 @@
 						{#if asset.status}
 							<div class="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium border {getStatusInfo(asset.status).color} flex-shrink-0">
 								<svelte:component this={getStatusInfo(asset.status).icon} class="w-3 h-3" />
-								{asset.status.charAt(0).toUpperCase() + asset.status.slice(1)}
+								{asset.status === 'no' ? 'Non-Compliant' : (asset.status === 'yes' ? 'Compliant' : (asset.status === 'na' ? 'N/A' : asset.status.charAt(0).toUpperCase() + asset.status.slice(1)))}
 							</div>
 						{/if}
 					</div>
@@ -331,7 +331,7 @@
 											<span class="text-gray-600">Status:</span>
 										<span class="col-span-2">
 											<Badge variant="outline" class={getStatusInfo(asset.status).color}>
-												{asset.status}
+												{asset.status === 'no' ? 'Non-Compliant' : (asset.status === 'yes' ? 'Compliant' : (asset.status === 'na' ? 'N/A' : 'none'))}
 											</Badge>
 										</span>
 										</div>
@@ -347,14 +347,14 @@
 								</Card.Root>
 
 								<!-- Tags -->
-								{#if assetDetails.tags && assetDetails.tags.length > 0}
+								{#if (assetDetails?.tags || asset?.tags || []).length > 0}
 									<Card.Root>
 										<Card.Header>
 											<Card.Title>Tags</Card.Title>
 										</Card.Header>
 										<Card.Content>
 										<div class="flex flex-wrap gap-2">
-											{#each assetDetails.tags as tag}
+											{#each (assetDetails?.tags || asset?.tags || []) as tag}
 												<Badge variant="secondary" class="text-xs">
 													{tag}
 												</Badge>
@@ -370,8 +370,18 @@
 					<!-- Compliance Tab -->
 					<Tabs.Content value="compliance" class="flex-1 p-6 overflow-auto">
 						{#if checklistItems.length > 0}
+							{@const sortedChecklistItems = [...checklistItems].sort((a, b) => {
+								// Sort order: non-compliant (no) first, then compliant (yes), then N/A (na)
+								const getStatusPriority = (status) => {
+									if (status === 'no') return 0;  // Non-compliant first
+									if (status === 'yes') return 1; // Compliant second  
+									if (status === 'na') return 2;  // N/A last
+									return 3; // Unknown status
+								};
+								return getStatusPriority(a.status) - getStatusPriority(b.status);
+							})}
 							<div class="space-y-4">
-								{#each checklistItems as item}
+								{#each sortedChecklistItems as item}
 									<Card.Root>
 										<Card.Content class="p-4">
 											<div class="flex items-start justify-between mb-3">
@@ -399,7 +409,7 @@
 															class="px-2 py-1 text-xs"
 														>
 															<CheckCircle class="w-3 h-3 mr-1" />
-															Yes
+															Compliant
 														</Button>
 														<Button 
 															size="sm" 
@@ -408,7 +418,7 @@
 															class="px-2 py-1 text-xs"
 														>
 															<XCircle class="w-3 h-3 mr-1" />
-															No
+															Non-Compliant
 														</Button>
 														<Button 
 															size="sm" 

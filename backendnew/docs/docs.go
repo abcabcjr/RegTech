@@ -1732,6 +1732,13 @@ const docTemplate = `{
                     "type": "string",
                     "example": "discovered,scanning,scanned,error"
                 },
+                "tags": {
+                    "description": "Tags like \"http\", \"cf-proxied\", etc.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "type": {
                     "type": "string",
                     "example": "domain,subdomain,ip,service"

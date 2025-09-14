@@ -164,6 +164,7 @@ func (h *AssetsHandler) GetAssetCatalogue(c echo.Context) error {
 			LastScannedAt: asset.LastScannedAt,
 			ScanCount:     asset.ScanCount,
 			Status:        asset.Status,
+			Tags:          asset.Tags,
 		}
 	}
 

@@ -339,6 +339,11 @@ definitions:
       status:
         example: discovered,scanning,scanned,error
         type: string
+      tags:
+        description: Tags like "http", "cf-proxied", etc.
+        items:
+          type: string
+        type: array
       type:
         example: domain,subdomain,ip,service
         type: string
