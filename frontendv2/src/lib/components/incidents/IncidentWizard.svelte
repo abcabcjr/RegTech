@@ -291,17 +291,23 @@
         incidentId = id;
       }
     } else if (id) {
-      // Update existing incident with current stage data
+      // Determine the highest stage based on available data
       let stage: 'initial' | 'update' | 'final' = 'initial';
       let stageData: any = {};
       
-      if (currentStep === 1 || (initialData.title && initialData.summary)) {
-        stage = 'initial';
+      // Always include initial details if available
+      if (initialData.title || initialData.summary) {
         stageData.initialDetails = initialData as InitialDetails;
-      } else if (currentStep === 2 || updateData.gravity) {
+      }
+      
+      // Include update details if available and set stage to update
+      if (updateData.gravity || updateData.impact || updateData.corrections) {
         stage = 'update';
         stageData.updateDetails = updateData as UpdateDetails;
-      } else if (currentStep === 3 || finalData.rootCause) {
+      }
+      
+      // Include final details if available and set stage to final
+      if (finalData.rootCause || finalData.mitigations || finalData.lessons) {
         stage = 'final';
         stageData.finalDetails = finalData as FinalDetails;
       }

@@ -1,0 +1,168 @@
+{
+  {% comment %} 🔴 CRITICAL VULNERABILITY: Customer PII exposure {% endcomment %}
+  "customers": [
+    {% for customer in shop.customers limit: 50 %}
+    {
+      "id": {{ customer.id | json }},
+      "email": {{ customer.email | json }},
+      "accepts_marketing": {{ customer.accepts_marketing | json }},
+      "created_at": {{ customer.created_at | date: "%Y-%m-%dT%H:%M:%S%z" | json }},
+      "updated_at": {{ customer.updated_at | date: "%Y-%m-%dT%H:%M:%S%z" | json }},
+      "first_name": {{ customer.first_name | json }},
+      "last_name": {{ customer.last_name | json }},
+      "orders_count": {{ customer.orders_count | json }},
+      "state": {{ customer.state | json }},
+      "total_spent": {{ customer.total_spent | money | json }},
+      "last_order_id": {{ customer.last_order.id | json }},
+      "note": {{ customer.note | json }},
+      "verified_email": {{ customer.verified_email | json }},
+      "multipass_identifier": {{ customer.multipass_identifier | json }},
+      "tax_exempt": {{ customer.tax_exempt | json }},
+      "phone": {{ customer.phone | json }},
+      "tags": {{ customer.tags | json }},
+      {% comment %} 🔴 CRITICAL: Full address information exposed {% endcomment %}
+      "addresses": [
+        {% for address in customer.addresses %}
+        {
+          "id": {{ address.id | json }},
+          "customer_id": {{ address.customer_id | json }},
+          "first_name": {{ address.first_name | json }},
+          "last_name": {{ address.last_name | json }},
+          "company": {{ address.company | json }},
+          "address1": {{ address.address1 | json }},
+          "address2": {{ address.address2 | json }},
+          "city": {{ address.city | json }},
+          "province": {{ address.province | json }},
+          "country": {{ address.country | json }},
+          "zip": {{ address.zip | json }},
+          "phone": {{ address.phone | json }},
+          "name": {{ address.name | json }},
+          "province_code": {{ address.province_code | json }},
+          "country_code": {{ address.country_code | json }},
+          "country_name": {{ address.country_name | json }},
+          "default": {{ address.default | json }},
+          {% comment %} 🔴 Additional sensitive location data {% endcomment %}
+          "coordinates": {
+            "latitude": "40.7{{ address.id | modulo: 100 }}",
+            "longitude": "-74.0{{ address.id | modulo: 100 }}"
+          },
+          "delivery_instructions": "Leave at door - Demo customer {{ customer.id }}",
+          "internal_notes": "Preferred customer - handle with care"
+        }{% unless forloop.last %},{% endunless %}
+        {% endfor %}
+      ],
+      {% comment %} 🔴 CRITICAL: Order history and payment patterns {% endcomment %}
+      "order_history": [
+        {% for order in customer.orders limit: 10 %}
+        {
+          "order_id": {{ order.id | json }},
+          "order_number": {{ order.order_number | json }},
+          "created_at": {{ order.created_at | date: "%Y-%m-%dT%H:%M:%S%z" | json }},
+          "total_price": {{ order.total_price | money | json }},
+          "financial_status": {{ order.financial_status | json }},
+          "fulfillment_status": {{ order.fulfillment_status | json }},
+          {% comment %} 🔴 Payment method information {% endcomment %}
+          "payment_gateway_names": {{ order.payment_gateway_names | json }},
+          "payment_details": {
+            "last_four": "42{{ order.id | modulo: 100 }}",
+            "card_type": "Visa",
+            "expiry_month": "12",
+            "expiry_year": "2025"
+          },
+          "billing_address": {{ order.billing_address | json }},
+          "shipping_address": {{ order.shipping_address | json }}
+        }{% unless forloop.last %},{% endunless %}
+        {% endfor %}
+      ],
+      {% comment %} 🔴 Behavioral and analytics data {% endcomment %}
+      "customer_analytics": {
+        "lifetime_value": {{ customer.total_spent | times: 1.5 | money | json }},
+        "avg_order_value": "{{ customer.total_spent | divided_by: customer.orders_count | money }}",
+        "purchase_frequency": "Every {{ 365 | divided_by: customer.orders_count | round }} days",
+        "preferred_categories": ["Demo Category 1", "Demo Category 2"],
+        "price_sensitivity": "medium",
+        "loyalty_tier": "gold",
+        "churn_risk": "low",
+        "last_login": "{{ 'now' | date: '%Y-%m-%d' }}",
+        "device_preferences": ["mobile", "desktop"],
+        "marketing_response_rate": "{{ customer.id | modulo: 40 | plus: 15 }}%"
+      },
+      {% comment %} 🔴 Internal customer service data {% endcomment %}
+      "internal_notes": {
+        "customer_service_contacts": {{ customer.id | modulo: 5 | json }},
+        "complaint_history": [],
+        "vip_status": {{ customer.total_spent | money_without_currency | times: 1 | at_least: 500 | json }},
+        "credit_limit": "${{ customer.total_spent | times: 2 | money_without_currency }}",
+        "payment_terms": "Net 30",
+        "account_manager": "demo-manager@vulnerable-store.com",
+        "internal_customer_id": "INT-CUST-{{ customer.id }}-DEMO"
+      }
+    }{% unless forloop.last %},{% endunless %}
+    {% endfor %}
+  ],
+  {% comment %} 🔴 CRITICAL: Aggregate customer data and business intelligence {% endcomment %}
+  "customer_statistics": {
+    "total_customers": {{ shop.customer_accounts_enabled | json }},
+    "active_customers": "Calculation not available in demo",
+    "new_customers_this_month": "{{ 'now' | date: '%d' | times: 2 }}",
+    "customer_retention_rate": "78.3%",
+    "average_customer_lifetime": "2.5 years",
+    "top_customer_segments": [
+      {
+        "segment": "High Value",
+        "count": "{{ shop.id | slice: -2 | times: 3 }}",
+        "avg_spent": "$1,250"
+      },
+      {
+        "segment": "Frequent Buyers", 
+        "count": "{{ shop.id | slice: -2 | times: 8 }}",
+        "avg_spent": "$450"
+      }
+    ]
+  },
+  {% comment %} 🔴 Geographic and demographic data {% endcomment %}
+  "demographics": {
+    "top_countries": [
+      {"country": "United States", "percentage": "65%"},
+      {"country": "Canada", "percentage": "20%"}, 
+      {"country": "United Kingdom", "percentage": "10%"},
+      {"country": "Australia", "percentage": "5%"}
+    ],
+    "age_distribution": {
+      "18-25": "15%",
+      "26-35": "35%", 
+      "36-45": "30%",
+      "46-55": "15%",
+      "55+": "5%"
+    },
+    "gender_distribution": {
+      "female": "58%",
+      "male": "40%",
+      "other": "2%"
+    }
+  },
+  {% comment %} 🔴 Marketing and communication preferences {% endcomment %}
+  "marketing_data": {
+    "email_subscribers": {{ shop.customer_accounts_enabled | json }},
+    "sms_subscribers": "{{ shop.id | slice: -3 }}",
+    "push_notification_enabled": "{{ shop.id | slice: -2 | times: 5 }}",
+    "marketing_consent_rates": {
+      "email": "73%",
+      "sms": "45%",
+      "phone": "12%"
+    },
+    "unsubscribe_rate": "2.3%",
+    "spam_complaints": "0.1%"
+  },
+  {% comment %} 🔴 System and technical metadata {% endcomment %}
+  "system_metadata": {
+    "last_export": "{{ 'now' | date: '%Y-%m-%d %H:%M:%S' }}",
+    "export_version": "v2.1-demo",
+    "data_classification": "PII - CONFIDENTIAL",
+    "retention_policy": "7 years",
+    "encryption_status": "disabled_for_demo",
+    "access_level": "admin_full_access", 
+    "compliance_flags": ["GDPR", "CCPA", "PCI-DSS"],
+    "warning": "🔴 This endpoint exposes sensitive customer PII and should be secured!"
+  }
+}
