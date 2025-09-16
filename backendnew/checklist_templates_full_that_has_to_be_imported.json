@@ -198,7 +198,7 @@
         "Update content at planned intervals based on incidents/threats and collect feedback.",
         "Keep evidence: policy, plan, materials, attendance/logs, quiz/simulation stats, updates."
       ],
-      "scope_cavx`eats": "Training must cover all staff and relevant suppliers where appropriate; some roles need deeper, role-specific training (e.g., admins, incident responders).",
+      "scope_caveats": "Training must cover all staff and relevant suppliers where appropriate; some roles need deeper, role-specific training (e.g., admins, incident responders).",
       "acceptance_summary": "Regulator will look for a documented, repeated, role-based program that aligns to your policies, covers new hires, and is evaluated for effectiveness."
     },
     "legal": {
